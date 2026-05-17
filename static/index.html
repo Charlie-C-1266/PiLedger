@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinDash</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <rect width="28" height="28" rx="8" fill="#6366f1"/>
+          <path d="M7 19l5-5 3 3 6-8" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>FinDash</span>
+      </div>
+      <div class="net-worth">
+        <span class="nw-label">Net Worth</span>
+        <span class="nw-value" id="total-amount">£0.00</span>
+      </div>
+      <div class="header-user">
+        <span id="header-username" class="header-username"></span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+      </div>
+      <button class="btn btn-primary" id="btn-add-account" onclick="openAddAccountModal()">+ Add Account</button>
+    </div>
+    <nav class="nav-bar">
+      <button class="nav-tab active" data-view="overview" onclick="showView('overview')">Overview</button>
+      <button class="nav-tab" data-view="budget" onclick="showView('budget')">Budget Planner</button>
+    </nav>
+  </header>
+
+  <main class="main">
+
+    <!-- ════════════════════ OVERVIEW VIEW ════════════════════ -->
+    <div id="view-overview">
+
+      <!-- Summary cards -->
+      <div class="summary-row">
+        <div class="card summary-card">
+          <div class="sc-icon sc-savings">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 3v2m0 6v2m-3-5h5.5a1.5 1.5 0 010 3H7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="sc-info">
+            <span class="sc-label">Total Savings</span>
+            <span class="sc-value" id="total-savings">£0.00</span>
+          </div>
+        </div>
+        <div class="card summary-card">
+          <div class="sc-icon sc-current">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="5" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M2 9h16" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M6 13h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="sc-info">
+            <span class="sc-label">Current Accounts</span>
+            <span class="sc-value" id="total-current">£0.00</span>
+          </div>
+        </div>
+        <div class="card summary-card">
+          <div class="sc-icon sc-count">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/>
+              <path d="M2 17a5 5 0 0110 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M14 7h4M14 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="sc-info">
+            <span class="sc-label">Accounts</span>
+            <span class="sc-value" id="account-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accounts grid -->
+      <section class="section">
+        <h2 class="section-title">Accounts</h2>
+        <div class="accounts-grid" id="accounts-grid"></div>
+      </section>
+
+      <!-- Charts row -->
+      <section class="section charts-row">
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3>Balance History</h3>
+            <select id="history-days" onchange="loadHistoryChart()">
+              <option value="30">30 days</option>
+              <option value="90" selected>90 days</option>
+              <option value="180">6 months</option>
+              <option value="365">1 year</option>
+            </select>
+          </div>
+          <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
+        </div>
+        <div class="card chart-card chart-card--sm">
+          <div class="chart-header"><h3>Distribution</h3></div>
+          <div class="chart-wrap"><canvas id="distribution-chart"></canvas></div>
+        </div>
+      </section>
+
+      <!-- Savings projections -->
+      <section class="section" id="projections-section" style="display:none">
+        <h2 class="section-title">Savings Projections</h2>
+        <div class="card chart-card chart-card--full">
+          <div class="chart-header">
+            <h3>Projected Growth (compound interest)</h3>
+            <select id="projection-months" onchange="loadProjectionChart()">
+              <option value="12">1 year</option>
+              <option value="24" selected>2 years</option>
+              <option value="60">5 years</option>
+            </select>
+          </div>
+          <div class="chart-wrap"><canvas id="projection-chart"></canvas></div>
+        </div>
+        <div class="projection-stats" id="projection-stats"></div>
+      </section>
+
+    </div><!-- /view-overview -->
+
+    <!-- ════════════════════ BUDGET VIEW ════════════════════ -->
+    <div id="view-budget" style="display:none">
+
+      <!-- Toolbar: period selector + add item button -->
+      <div class="budget-toolbar">
+        <div class="period-group">
+          <button class="period-btn active" data-months="3"  onclick="setBudgetPeriod(3)">3 months</button>
+          <button class="period-btn"        data-months="6"  onclick="setBudgetPeriod(6)">6 months</button>
+          <button class="period-btn"        data-months="12" onclick="setBudgetPeriod(12)">12 months</button>
+        </div>
+        <button class="btn btn-primary" onclick="openAddBudgetModal()">+ Add Budget Item</button>
+      </div>
+
+      <!-- Projection chart -->
+      <div class="card chart-card chart-card--full">
+        <div class="chart-header">
+          <h3>Projected Account Balances</h3>
+          <span class="chart-note" id="budget-chart-note"></span>
+        </div>
+        <div class="chart-wrap chart-wrap--lg"><canvas id="budget-chart"></canvas></div>
+      </div>
+
+      <!-- Budget items per account -->
+      <section class="section">
+        <h2 class="section-title">Budget Items</h2>
+        <div class="budget-grid" id="budget-items-grid"></div>
+      </section>
+
+      <!-- Monthly breakdown table -->
+      <section class="section">
+        <h2 class="section-title">Monthly Breakdown</h2>
+        <div class="card table-card">
+          <div class="table-scroll">
+            <table id="budget-table" class="breakdown-table"></table>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /view-budget -->
+
+  </main>
+
+  <!-- ══════════════════════ MODALS ══════════════════════ -->
+
+  <!-- Add Account -->
+  <div class="modal-overlay" id="add-account-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add Account</h3>
+        <button class="modal-close" onclick="closeModal('add-account-modal')">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Account Name</label>
+          <input type="text" id="add-name" placeholder="e.g. HSBC Savings" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select id="add-type" onchange="toggleAddInterest()">
+            <option value="current">Current</option>
+            <option value="savings">Savings</option>
+          </select>
+        </div>
+        <div class="field" id="add-interest-group" style="display:none">
+          <label>Annual Interest Rate (%)</label>
+          <input type="number" id="add-interest" placeholder="e.g. 4.5" step="0.01" min="0" max="100" />
+        </div>
+        <div class="field">
+          <label>Colour</label>
+          <input type="color" id="add-color" value="#6366f1" />
+        </div>
+        <div class="field">
+          <label>Opening Balance (£) <span class="field-hint">optional</span></label>
+          <input type="number" id="add-balance" placeholder="0.00" step="0.01" min="0" />
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn btn-ghost" onclick="closeModal('add-account-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitAddAccount()">Add Account</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Update Balance -->
+  <div class="modal-overlay" id="update-balance-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Update Balance</h3>
+        <button class="modal-close" onclick="closeModal('update-balance-modal')">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-sub" id="update-balance-title"></p>
+        <div class="field">
+          <label>New Balance (£)</label>
+          <input type="number" id="update-balance-amount" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div class="field">
+          <label>Notes <span class="field-hint">optional</span></label>
+          <input type="text" id="update-balance-notes" placeholder="e.g. Monthly check" autocomplete="off" />
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn btn-ghost" onclick="closeModal('update-balance-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitUpdateBalance()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Account -->
+  <div class="modal-overlay" id="edit-account-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Edit Account</h3>
+        <button class="modal-close" onclick="closeModal('edit-account-modal')">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Account Name</label>
+          <input type="text" id="edit-name" autocomplete="off" />
+        </div>
+        <div class="field" id="edit-interest-group">
+          <label>Annual Interest Rate (%)</label>
+          <input type="number" id="edit-interest" step="0.01" min="0" max="100" />
+        </div>
+        <div class="field">
+          <label>Colour</label>
+          <input type="color" id="edit-color" />
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--split">
+        <button class="btn btn-danger" onclick="openDeleteConfirm()">Delete Account</button>
+        <div class="modal-footer-right">
+          <button class="btn btn-ghost" onclick="closeModal('edit-account-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitEditAccount()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Account -->
+  <div class="modal-overlay" id="confirm-delete-modal">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <h3>Delete Account</h3>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="delete-account-name"></strong>?
+           All balance history will be permanently removed.</p>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn btn-ghost" onclick="closeModal('confirm-delete-modal')">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Item (shared add / edit) -->
+  <div class="modal-overlay" id="budget-item-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="bim-title">Add Budget Item</h3>
+        <button class="modal-close" onclick="closeModal('budget-item-modal')">&#215;</button>
+      </div>
+      <div class="modal-body">
+        <div class="field" id="bim-account-field">
+          <label>Account</label>
+          <select id="bim-account"></select>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" id="bim-name" placeholder="e.g. Rent, Salary, Netflix" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Direction</label>
+          <div class="dir-toggle">
+            <button type="button" class="dir-btn active" id="dir-out" onclick="setBiDir('out')">Money out</button>
+            <button type="button" class="dir-btn" id="dir-in" onclick="setBiDir('in')">Money in</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Amount (£)</label>
+          <input type="number" id="bim-amount" placeholder="0.00" step="0.01" min="0" />
+        </div>
+        <div class="field">
+          <label>Frequency</label>
+          <select id="bim-frequency">
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn btn-ghost" onclick="closeModal('budget-item-modal')">Cancel</button>
+        <button class="btn btn-primary" id="bim-submit" onclick="submitBudgetItem()">Add Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Delete Budget Item -->
+  <div class="modal-overlay" id="confirm-delete-budget-modal">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <h3>Remove Budget Item</h3>
+      </div>
+      <div class="modal-body">
+        <p>Remove <strong id="dbi-name"></strong> from your budget?</p>
+      </div>
+      <div class="modal-footer modal-footer--end">
+        <button class="btn btn-ghost" onclick="closeModal('confirm-delete-budget-modal')">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmDeleteBudgetItem()">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

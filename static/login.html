@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinDash – Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="login-body">
+
+  <div class="login-card">
+
+    <div class="login-logo">
+      <svg width="36" height="36" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="#6366f1"/>
+        <path d="M7 19l5-5 3 3 6-8" stroke="white" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>FinDash</span>
+    </div>
+
+    <div class="login-tabs">
+      <button class="login-tab active" id="tab-login"    onclick="showTab('login')">Sign in</button>
+      <button class="login-tab"        id="tab-register" onclick="showTab('register')">Register</button>
+    </div>
+
+    <!-- Sign in form -->
+    <form id="form-login" onsubmit="submitLogin(event)" novalidate>
+      <div class="field">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" autocomplete="username"
+               spellcheck="false" required autofocus />
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required />
+      </div>
+      <div class="login-error" id="login-error" role="alert"></div>
+      <button type="submit" class="btn btn-primary login-submit" id="login-btn">Sign in</button>
+    </form>
+
+    <!-- Register form -->
+    <form id="form-register" onsubmit="submitRegister(event)" novalidate style="display:none">
+      <div class="field">
+        <label for="reg-username">Username</label>
+        <input type="text" id="reg-username" autocomplete="username"
+               spellcheck="false" required minlength="2" />
+      </div>
+      <div class="field">
+        <label for="reg-password">Password <span class="field-hint">min. 8 characters</span></label>
+        <input type="password" id="reg-password" autocomplete="new-password" required minlength="8" />
+      </div>
+      <div class="field">
+        <label for="reg-confirm">Confirm Password</label>
+        <input type="password" id="reg-confirm" autocomplete="new-password" required />
+      </div>
+      <div class="login-error" id="reg-error" role="alert"></div>
+      <button type="submit" class="btn btn-primary login-submit" id="reg-btn">Create account</button>
+    </form>
+
+  </div>
+
+  <script>
+    function showTab(name) {
+      const isLogin = name === 'login';
+      document.getElementById('form-login').style.display    = isLogin ? '' : 'none';
+      document.getElementById('form-register').style.display = isLogin ? 'none' : '';
+      document.getElementById('tab-login').classList.toggle('active', isLogin);
+      document.getElementById('tab-register').classList.toggle('active', !isLogin);
+      document.getElementById('login-error').textContent = '';
+      document.getElementById('reg-error').textContent   = '';
+      // Focus first field
+      const first = isLogin ? 'login-username' : 'reg-username';
+      setTimeout(() => document.getElementById(first).focus(), 50);
+    }
+
+    function setLoading(btnId, loading) {
+      const btn = document.getElementById(btnId);
+      btn.disabled = loading;
+      btn.textContent = loading
+        ? (btnId === 'login-btn' ? 'Signing in…' : 'Creating account…')
+        : (btnId === 'login-btn' ? 'Sign in' : 'Create account');
+    }
+
+    async function submitLogin(e) {
+      e.preventDefault();
+      const errEl   = document.getElementById('login-error');
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      errEl.textContent = '';
+      setLoading('login-btn', true);
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.detail || 'Login failed'; return; }
+        window.location.href = '/';
+      } catch {
+        errEl.textContent = 'Network error — please try again.';
+      } finally {
+        setLoading('login-btn', false);
+      }
+    }
+
+    async function submitRegister(e) {
+      e.preventDefault();
+      const errEl    = document.getElementById('reg-error');
+      const username = document.getElementById('reg-username').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const confirm  = document.getElementById('reg-confirm').value;
+      errEl.textContent = '';
+      if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
+      setLoading('reg-btn', true);
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { errEl.textContent = data.detail || 'Registration failed'; return; }
+        // Auto-login after successful registration
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        if (loginRes.ok) {
+          window.location.href = '/';
+        } else {
+          showTab('login');
+          document.getElementById('login-username').value = username;
+        }
+      } catch {
+        errEl.textContent = 'Network error — please try again.';
+      } finally {
+        setLoading('reg-btn', false);
+      }
+    }
+  </script>
+</body>
+</html>
