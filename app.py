@@ -48,8 +48,9 @@ def init():
         );
         CREATE TABLE IF NOT EXISTS accounts (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
             name          TEXT    NOT NULL,
-            type          TEXT    NOT NULL CHECK(type IN ('current','savings')),
+            type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
             interest_rate REAL    DEFAULT 0,
             color         TEXT    DEFAULT '#6366f1',
             created_at    TEXT    DEFAULT (datetime('now'))
@@ -79,6 +80,32 @@ def init():
             "ALTER TABLE accounts ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE"
         )
         conn.commit()
+
+    # Migrate: widen the type CHECK constraint to allow 'loan'.
+    # SQLite can't alter a CHECK constraint in place, so we recreate the table.
+    sql_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts'"
+    ).fetchone()
+    if sql_row and "'loan'" not in (sql_row[0] or ""):
+        conn.executescript("""
+            PRAGMA foreign_keys = OFF;
+            CREATE TABLE accounts_new (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                name          TEXT    NOT NULL,
+                type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
+                interest_rate REAL    DEFAULT 0,
+                color         TEXT    DEFAULT '#6366f1',
+                created_at    TEXT    DEFAULT (datetime('now'))
+            );
+            INSERT INTO accounts_new (id, user_id, name, type, interest_rate, color, created_at)
+                SELECT id, user_id, name, type, interest_rate, color, created_at FROM accounts;
+            DROP TABLE accounts;
+            ALTER TABLE accounts_new RENAME TO accounts;
+            PRAGMA foreign_keys = ON;
+        """)
+        conn.commit()
+
     conn.close()
 
 
@@ -268,8 +295,8 @@ def list_accounts(uid: int = Depends(require_auth)):
 
 @app.post("/api/accounts", status_code=201)
 def create_account(data: AccountIn, uid: int = Depends(require_auth)):
-    if data.type not in ("current", "savings"):
-        raise HTTPException(400, "type must be 'current' or 'savings'")
+    if data.type not in ("current", "savings", "loan"):
+        raise HTTPException(400, "type must be 'current', 'savings', or 'loan'")
     conn = db()
     cur = conn.execute(
         "INSERT INTO accounts(user_id, name, type, interest_rate, color) VALUES(?,?,?,?,?)",
@@ -359,10 +386,13 @@ def get_summary(uid: int = Depends(require_auth)):
     conn.close()
     current = sum(r["balance"] or 0 for r in rows if r["type"] == "current")
     savings = sum(r["balance"] or 0 for r in rows if r["type"] == "savings")
+    loans   = sum(r["balance"] or 0 for r in rows if r["type"] == "loan")
     return {
-        "total": current + savings,
+        # Net worth: assets minus liabilities
+        "total":         current + savings - loans,
         "total_current": current,
         "total_savings": savings,
+        "total_loans":   loans,
         "account_count": len(rows),
     }
 
@@ -551,7 +581,17 @@ def budget_projection(months: int = 6, uid: int = Depends(require_auth)):
             "final_balance":   points[-1]["balance"],
         })
 
-    return {"months": months, "accounts": result}
+    # Net worth at each month: assets minus liabilities
+    net_worth = []
+    for m in range(months + 1):
+        nw = 0.0
+        for acc in result:
+            v = acc["points"][m]["balance"]
+            nw += -v if acc["type"] == "loan" else v
+        date = result[0]["points"][m]["date"] if result else now.strftime("%Y-%m-%d")
+        net_worth.append({"month": m, "balance": round(nw, 2), "date": date})
+
+    return {"months": months, "accounts": result, "net_worth": net_worth}
 
 
 # ─── Serve SPA ─────────────────────────────────────────────────────────────────

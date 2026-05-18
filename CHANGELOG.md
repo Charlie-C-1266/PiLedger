@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.0] — 2026-05-18
+
+### Loans & Debt Tracking
+
+#### Added
+
+**Backend**
+- `'loan'` is now a valid account type alongside `'current'` and `'savings'`. Loans store their balance as a positive number (the amount owed) and accrue interest each month; budget items with negative amounts represent payments that reduce the balance.
+- Schema migration in `init()` — uses `sqlite_master.sql` to detect tables created with the old `CHECK(type IN ('current','savings'))` constraint and recreates them with the wider `CHECK(type IN ('current','savings','loan'))` constraint, preserving all existing rows. Migration is a no-op for fresh databases.
+- `GET /api/summary` now returns `total_loans` and computes `total` as **net worth** (current + savings − loans) instead of a flat sum of balances. The "Net Worth" figure in the header now reflects liabilities correctly.
+- `POST /api/accounts` validates that `type` is one of `current`, `savings`, or `loan` and returns `400` for anything else (error message updated accordingly).
+- `GET /api/budget/projection` response now includes a `net_worth` array — one entry per month — computed as `sum(assets) − sum(loans)`. Available even when there are no loans, so the frontend always has a single line representing overall trajectory.
+
+**Frontend**
+- Summary row expanded from 3 to 4 cards: Total Savings · Current Accounts · **Total Debt** · Accounts. Responsive breakpoints adjusted so the grid collapses to 2×2 below 960px and a single column below 500px.
+- Add Account modal: the type dropdown gained a `Loan / Debt` option, and the interest-rate field now appears for both savings and loan accounts. The field label switches between "Annual Interest Rate (%)" and "APR (%)" based on the chosen type.
+- Edit Account modal: same dynamic label behaviour; the rate field is shown for loans as well as savings.
+- Account cards show loans with a red `loan` badge, label the rate as "APR" in red instead of green "AER", and replace "Updated:" with "Owed ·" so a high balance reads as a liability rather than an asset.
+- Distribution doughnut chart now excludes loans — it shows where the user's **assets** are held, not their debts.
+- Budget Planner projection chart includes a bold dark **Net Worth** line on top of the per-account lines, giving a single read of overall trajectory. Loan lines are rendered with a dashed stroke so a downward trend visually parses as "debt being paid down" rather than an asset losing value.
+- Monthly Breakdown table totals row now shows **Net worth** (assets − liabilities) at each month, sourced from the new `net_worth` array. The monthly-net column flips the sign for loans so a payment of −£1,200 contributes +£1,200 to net worth growth.
+
+**Tests**
+- `tests/test_loans.py` — 12 new tests covering loan creation, summary inclusion, net worth subtraction, user isolation, interest accrual with no payments, balance reduction under payments, `net_worth` array shape, asset-only edge cases, and budget item round-trip on a loan account.
+- `test_summary_empty` in `tests/test_dashboard.py` updated to include `total_loans: 0.0` in the expected response shape.
+
+---
+
 ## [0.5.2] — 2026-05-17
 
 ### Security

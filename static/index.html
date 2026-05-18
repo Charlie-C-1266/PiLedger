@@ -69,6 +69,18 @@
           </div>
         </div>
         <div class="card summary-card">
+          <div class="sc-icon sc-loans">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M3 7l7-4 7 4v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M7 18v-6h6v6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="sc-info">
+            <span class="sc-label">Total Debt</span>
+            <span class="sc-value" id="total-loans">£0.00</span>
+          </div>
+        </div>
+        <div class="card summary-card">
           <div class="sc-icon sc-count">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/>
@@ -189,10 +201,11 @@
           <select id="add-type" onchange="toggleAddInterest()">
             <option value="current">Current</option>
             <option value="savings">Savings</option>
+            <option value="loan">Loan / Debt</option>
           </select>
         </div>
         <div class="field" id="add-interest-group" style="display:none">
-          <label>Annual Interest Rate (%)</label>
+          <label id="add-interest-label">Annual Interest Rate (%)</label>
           <input type="number" id="add-interest" placeholder="e.g. 4.5" step="0.01" min="0" max="100" />
         </div>
         <div class="field">
@@ -249,7 +262,7 @@
           <input type="text" id="edit-name" autocomplete="off" />
         </div>
         <div class="field" id="edit-interest-group">
-          <label>Annual Interest Rate (%)</label>
+          <label id="edit-interest-label">Annual Interest Rate (%)</label>
           <input type="number" id="edit-interest" step="0.01" min="0" max="100" />
         </div>
         <div class="field">

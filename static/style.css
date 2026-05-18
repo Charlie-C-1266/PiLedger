@@ -160,7 +160,7 @@ body {
 /* ─── Summary row ───────────────────────────────────────────────────────────── */
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
@@ -182,6 +182,7 @@ body {
 }
 .sc-savings { background: var(--green-lt); color: var(--green-dk); }
 .sc-current { background: var(--indigo-lt); color: var(--indigo-dk); }
+.sc-loans   { background: #fee2e2; color: #991b1b; }
 .sc-count   { background: #fef3c7; color: #92400e; }
 
 .sc-info { display: flex; flex-direction: column; gap: 2px; }
@@ -233,6 +234,7 @@ body {
 }
 .badge-savings { background: var(--green-lt); color: var(--green-dk); }
 .badge-current { background: var(--indigo-lt); color: var(--indigo-dk); }
+.badge-loan    { background: #fee2e2; color: #991b1b; }
 
 .account-balance {
   font-size: 26px;
@@ -252,6 +254,7 @@ body {
   color: var(--green);
   margin-bottom: 2px;
 }
+.account-rate--loan { color: var(--red); }
 
 /* ─── Charts row ─────────────────────────────────────────────────────────────── */
 .charts-row {
@@ -747,16 +750,20 @@ body {
 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 960px) {
-  .charts-row { grid-template-columns: 1fr; }
+  .charts-row  { grid-template-columns: 1fr; }
+  .summary-row { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 700px) {
-  .summary-row { grid-template-columns: 1fr; }
   .main { padding: 16px; gap: 20px; }
   .header-inner { padding: 0 16px; }
   .nav-bar { padding: 0 16px; }
   .nw-value { font-size: 18px; }
   .budget-toolbar { flex-wrap: wrap; }
+}
+
+@media (max-width: 500px) {
+  .summary-row { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 460px) {

@@ -110,9 +110,10 @@ async function loadAll() {
 }
 
 function renderSummary(s) {
-  document.getElementById('total-amount').textContent  = fmt(s.total);
+  document.getElementById('total-amount').textContent   = fmt(s.total);
   document.getElementById('total-savings').textContent  = fmt(s.total_savings);
   document.getElementById('total-current').textContent  = fmt(s.total_current);
+  document.getElementById('total-loans').textContent    = fmt(s.total_loans || 0);
   document.getElementById('account-count').textContent  = s.account_count;
 }
 
@@ -140,9 +141,10 @@ function renderAccounts(accounts) {
         <button class="btn-icon" onclick="openEditModal(${a.id})" title="Edit">&#9998;</button>
       </div>
       <div class="account-balance">${fmt(a.current_balance)}</div>
-      <div class="account-updated">Updated: ${fmtDate(a.last_updated)}</div>
-      ${a.type === 'savings' && a.interest_rate > 0
-        ? `<div class="account-rate">${a.interest_rate}% AER</div>` : ''}
+      <div class="account-updated">${a.type === 'loan' ? 'Owed · ' : 'Updated: '}${fmtDate(a.last_updated)}</div>
+      ${a.interest_rate > 0 && (a.type === 'savings' || a.type === 'loan')
+        ? `<div class="account-rate${a.type === 'loan' ? ' account-rate--loan' : ''}">${a.interest_rate}% ${a.type === 'loan' ? 'APR' : 'AER'}</div>`
+        : ''}
       <button class="btn btn-primary btn-sm mt-8" onclick="openUpdateModal(${a.id})">Update Balance</button>
     </div>`).join('');
 }
@@ -206,8 +208,11 @@ function renderDistributionChart(accounts) {
   const canvas = document.getElementById('distribution-chart');
   if (charts.distribution) { charts.distribution.destroy(); charts.distribution = null; }
 
-  const with_bal = accounts.filter(a => a.current_balance != null && a.current_balance > 0);
-  if (!with_bal.length) { charts.distribution = emptyChart(canvas, 'No balances yet'); return; }
+  // Loans are liabilities, not part of the asset distribution
+  const with_bal = accounts.filter(a =>
+    a.type !== 'loan' && a.current_balance != null && a.current_balance > 0
+  );
+  if (!with_bal.length) { charts.distribution = emptyChart(canvas, 'No asset balances yet'); return; }
 
   charts.distribution = new Chart(canvas, {
     type: 'doughnut',
@@ -330,8 +335,23 @@ function renderBudgetChart(projection) {
     borderColor:     a.color,
     backgroundColor: hexToRgba(a.color, 0.06),
     fill: false, tension: 0.3, borderWidth: 2,
+    // Dash loan lines so a downward trend visually reads as "debt reducing"
+    // rather than being confused with an asset losing value.
+    borderDash: a.type === 'loan' ? [6, 4] : [],
     pointRadius: 0, pointHoverRadius: 4,
   }));
+
+  // Bold net-worth line — the single most useful read of where things are heading
+  if (projection.net_worth?.length) {
+    datasets.unshift({
+      label: 'Net Worth',
+      data: projection.net_worth.map(p => p.balance),
+      borderColor: '#1e293b',
+      backgroundColor: 'rgba(30, 41, 59, 0.04)',
+      fill: false, tension: 0.3, borderWidth: 3,
+      pointRadius: 0, pointHoverRadius: 5,
+    });
+  }
 
   // Add a zero reference line annotation via a dummy dataset
   const hasNegative = projection.accounts.some(a => a.points.some(p => p.balance < 0));
@@ -455,14 +475,18 @@ function renderBreakdownTable(projection) {
     </tr>`;
   });
 
-  // Totals row
-  const totalNet = accounts.reduce((s, a) => s + a.monthly_net, 0);
+  // Net-worth totals row — assets minus liabilities.
+  // For monthly_net: a payment on a loan (e.g. -£1,200) *improves* net worth by +£1,200,
+  // so we flip the sign for loan accounts before summing.
+  const totalNet = accounts.reduce((s, a) =>
+    s + (a.type === 'loan' ? -a.monthly_net : a.monthly_net), 0);
   const netClass = totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : '';
   html += `<tr class="tr-total">
-    <td>Total</td>
+    <td>Net worth</td>
     <td class="td-net ${netClass}">${totalNet !== 0 ? fmtSigned(totalNet) : '—'}</td>`;
+  const netWorthPoints = projection.net_worth || [];
   for (let m = 0; m <= months; m++) {
-    const total = accounts.reduce((s, a) => s + (a.points[m]?.balance || 0), 0);
+    const total = netWorthPoints[m]?.balance ?? 0;
     html += `<td class="td-bal${total < 0 ? ' negative' : ''}">${fmt(total)}</td>`;
   }
   html += '</tr></tbody>';
@@ -494,8 +518,11 @@ function openAddAccountModal() {
 }
 
 function toggleAddInterest() {
-  document.getElementById('add-interest-group').style.display =
-    document.getElementById('add-type').value === 'savings' ? '' : 'none';
+  const t = document.getElementById('add-type').value;
+  const hasRate = (t === 'savings' || t === 'loan');
+  document.getElementById('add-interest-group').style.display = hasRate ? '' : 'none';
+  document.getElementById('add-interest-label').textContent =
+    t === 'loan' ? 'APR (%)' : 'Annual Interest Rate (%)';
 }
 
 async function submitAddAccount() {
@@ -540,10 +567,13 @@ async function submitUpdateBalance() {
 function openEditModal(id) {
   state.editingId = id;
   const a = state.accounts.find(a => a.id === id);
+  const hasRate = (a.type === 'savings' || a.type === 'loan');
   document.getElementById('edit-name').value     = a.name;
   document.getElementById('edit-interest').value = a.interest_rate;
   document.getElementById('edit-color').value    = a.color || '#6366f1';
-  document.getElementById('edit-interest-group').style.display = a.type === 'savings' ? '' : 'none';
+  document.getElementById('edit-interest-group').style.display = hasRate ? '' : 'none';
+  document.getElementById('edit-interest-label').textContent =
+    a.type === 'loan' ? 'APR (%)' : 'Annual Interest Rate (%)';
   openModal('edit-account-modal');
   setTimeout(() => document.getElementById('edit-name').focus(), 50);
 }

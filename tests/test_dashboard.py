@@ -11,7 +11,10 @@ import math
 
 def test_summary_empty(alice):
     body = alice.get("/api/summary").json()
-    assert body == {"total": 0.0, "total_current": 0.0, "total_savings": 0.0, "account_count": 0}
+    assert body == {
+        "total": 0.0, "total_current": 0.0, "total_savings": 0.0,
+        "total_loans": 0.0, "account_count": 0,
+    }
 
 
 def test_summary_requires_auth(client):
