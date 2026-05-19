@@ -2,21 +2,37 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #f1f5f9;
-  --surface:    #ffffff;
-  --border:     #e2e8f0;
-  --text:       #1e293b;
-  --muted:      #64748b;
-  --accent:     #6366f1;
-  --accent-dk:  #4f46e5;
-  --green:      #10b981;
-  --green-lt:   #dcfce7;
-  --green-dk:   #15803d;
-  --indigo-lt:  #ede9fe;
-  --indigo-dk:  #4338ca;
-  --red:        #ef4444;
-  --red-dk:     #dc2626;
-  --amber:      #f59e0b;
+  /* Default palette — Olive. Alternative themes only override the accent
+     triplet (see [data-theme="..."] blocks below). --accent-lt and
+     --accent-ring are derived via color-mix so they adapt automatically when
+     either the accent or the surface (light/dark mode) changes. */
+  --accent:      #708238;
+  --accent-dk:   #556b1f;
+  --accent-lt:   color-mix(in srgb, var(--accent) 18%, var(--surface));
+  --accent-ring: color-mix(in srgb, var(--accent) 30%, transparent);
+  --accent-text: var(--accent-dk);
+
+  /* Surface tones */
+  --bg:          #f3f4ec;
+  --surface:     #ffffff;
+  --border:      #e0e3d6;
+  --text:        #1f2516;
+  --muted:       #6a7257;
+
+  /* Semantic */
+  --green:       #16a34a;
+  --green-lt:    #dcfce7;
+  --green-dk:    #15803d;
+  --red:         #dc2626;
+  --red-dk:      #b91c1c;
+  --red-lt:      #fee2e2;
+  --red-text:    #991b1b;
+  --amber-lt:    #fef3c7;
+  --amber-dk:    #92400e;
+
+  /* Neutral chip — for the subtype badge, breakdown table headers, etc. */
+  --chip-bg:     #eef0e6;
+  --chip-text:   #525c43;
 
   --shadow-sm:  0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
   --shadow:     0 1px 3px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.04);
@@ -26,6 +42,41 @@
   --r-sm: 8px;
   --r-xs: 6px;
 }
+
+/* Alternative palettes — flip the accent only. --accent-lt and the focus
+   ring are derived from --accent and --surface above, so swapping themes
+   here automatically restyles every accent-aware element. */
+[data-theme="indigo"] { --accent: #6366f1; --accent-dk: #4f46e5; }
+[data-theme="slate"]  { --accent: #475569; --accent-dk: #334155; }
+[data-theme="rose"]   { --accent: #be185d; --accent-dk: #9d174d; }
+
+/* Dark mode — re-targets surface tones plus pastel semantic chips so they
+   stay readable on a dark background. Accent stays whatever theme is set. */
+[data-mode="dark"] {
+  --bg:          #14171a;
+  --surface:     #1e2227;
+  --border:      #2d333a;
+  --text:        #e7eadf;
+  --muted:       #98a08b;
+  --accent-lt:   color-mix(in srgb, var(--accent) 28%, var(--surface));
+  --accent-text: color-mix(in srgb, var(--accent) 55%, white);
+  --green-lt:    #143a22;
+  --green-dk:    #5ce08a;
+  --green:       #5ce08a;
+  --red-lt:      #371a1d;
+  --red-text:    #fca5a5;
+  --red:         #fca5a5;
+  --amber-lt:    #392914;
+  --amber-dk:    #fbbf24;
+  --chip-bg:     #262b30;
+  --chip-text:   #b8c0aa;
+  --shadow-sm:   0 1px 2px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.25);
+  --shadow:      0 1px 3px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+  --shadow-lg:   0 8px 30px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.3);
+}
+
+html { color-scheme: light; }
+html[data-mode="dark"] { color-scheme: dark; }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -181,9 +232,9 @@ body {
   flex-shrink: 0;
 }
 .sc-savings { background: var(--green-lt); color: var(--green-dk); }
-.sc-current { background: var(--indigo-lt); color: var(--indigo-dk); }
-.sc-loans   { background: #fee2e2; color: #991b1b; }
-.sc-count   { background: #fef3c7; color: #92400e; }
+.sc-current { background: var(--accent-lt); color: var(--accent-text); }
+.sc-loans   { background: var(--red-lt); color: var(--red-text); }
+.sc-count   { background: var(--amber-lt); color: var(--amber-dk); }
 
 .sc-info { display: flex; flex-direction: column; gap: 2px; }
 .sc-label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
@@ -233,9 +284,9 @@ body {
   border-radius: 4px;
 }
 .badge-savings { background: var(--green-lt); color: var(--green-dk); }
-.badge-current { background: var(--indigo-lt); color: var(--indigo-dk); }
-.badge-loan    { background: #fee2e2; color: #991b1b; }
-.badge-subtype { background: #f1f5f9; color: #475569; margin-left: 6px; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.badge-current { background: var(--accent-lt); color: var(--accent-text); }
+.badge-loan    { background: var(--red-lt); color: var(--red-text); }
+.badge-subtype { background: var(--chip-bg); color: var(--chip-text); margin-left: 6px; text-transform: none; letter-spacing: 0; font-weight: 600; }
 
 .account-balance {
   font-size: 26px;
@@ -431,7 +482,7 @@ body {
 .field select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, .12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .field input[type="color"] {
@@ -770,4 +821,120 @@ body {
 @media (max-width: 460px) {
   .accounts-grid { grid-template-columns: 1fr; }
   .budget-grid   { grid-template-columns: 1fr; }
+}
+
+/* ─── Header icon buttons (settings / theme toggle) ──────────────────────────── */
+/* Subtle round buttons that sit beside the Sign Out / Add Account cluster.
+   They blend into the header surface, only lifting on hover so they don't
+   compete with the primary actions. */
+.header-icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.header-icon-btn:hover {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+}
+.header-icon-btn svg { display: block; }
+
+/* The two icons share the same button skeleton — show the sun in dark mode
+   so the toggle reads as "switch to light", and vice versa. */
+.theme-toggle .icon-sun  { display: none; }
+.theme-toggle .icon-moon { display: block; }
+[data-mode="dark"] .theme-toggle .icon-sun  { display: block; }
+[data-mode="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* ─── Settings modal — theme picker ──────────────────────────────────────────── */
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.theme-swatch {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 12px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color .14s, box-shadow .14s, transform .08s;
+  font-family: inherit;
+  text-align: left;
+}
+.theme-swatch:hover { border-color: var(--accent); }
+.theme-swatch.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.theme-swatch:active { transform: scale(.98); }
+
+.theme-swatch-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.theme-swatch-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Settings modal — a row that pairs a label with a control on the right. */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+.settings-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-row-title { font-size: 13.5px; font-weight: 500; color: var(--text); }
+.settings-row-hint  { font-size: 12px; color: var(--muted); }
+
+/* Compact pill toggle for light/dark inside the settings modal. */
+.mode-pill {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.mode-pill button {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.mode-pill button.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }

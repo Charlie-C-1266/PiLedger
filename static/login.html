@@ -7,6 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
+  <script>
+    // Apply cached theme/mode before paint to avoid a flash of the default.
+    // Written by the dashboard whenever the user changes settings.
+    try {
+      const t = localStorage.getItem('findash:theme');
+      const d = localStorage.getItem('findash:dark') === '1';
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      if (d) document.documentElement.setAttribute('data-mode', 'dark');
+    } catch {}
+  </script>
 </head>
 <body class="login-body">
 
@@ -14,7 +24,7 @@
 
     <div class="login-logo">
       <svg width="36" height="36" viewBox="0 0 28 28" fill="none">
-        <rect width="28" height="28" rx="8" fill="#6366f1"/>
+        <rect width="28" height="28" rx="8" fill="currentColor"/>
         <path d="M7 19l5-5 3 3 6-8" stroke="white" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>

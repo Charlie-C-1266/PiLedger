@@ -52,6 +52,8 @@ from schemas import (
     LoginIn,
     LoginOut,
     OkOut,
+    PrefsOut,
+    PrefsPatch,
     RegisterIn,
     RegisterOut,
     SummaryOut,
@@ -142,6 +144,39 @@ def get_me(uid: int = Depends(require_auth)) -> UserOut:
     if not user:
         raise HTTPException(404)
     return UserOut(id=user["id"], username=user["username"])
+
+
+# ─── User preferences ─────────────────────────────────────────────────────────
+
+@app.get("/api/prefs", response_model=PrefsOut)
+def get_prefs(uid: int = Depends(require_auth)) -> PrefsOut:
+    with db() as conn:
+        row = conn.execute(
+            "SELECT theme, dark_mode FROM users WHERE id=?", (uid,)
+        ).fetchone()
+    if not row:
+        raise HTTPException(404)
+    return PrefsOut(theme=row["theme"] or "olive", dark_mode=bool(row["dark_mode"]))
+
+
+@app.put("/api/prefs", response_model=PrefsOut)
+def update_prefs(
+    data: PrefsPatch,
+    uid: int = Depends(require_auth),
+) -> PrefsOut:
+    patch = data.model_dump(exclude_none=True)
+    if "dark_mode" in patch:
+        # SQLite has no native bool, store as 0/1
+        patch["dark_mode"] = int(patch["dark_mode"])
+    with db() as conn:
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*patch.values(), uid])
+            conn.commit()
+        row = conn.execute(
+            "SELECT theme, dark_mode FROM users WHERE id=?", (uid,)
+        ).fetchone()
+    return PrefsOut(theme=row["theme"] or "olive", dark_mode=bool(row["dark_mode"]))
 
 
 # ─── Accounts ─────────────────────────────────────────────────────────────────
