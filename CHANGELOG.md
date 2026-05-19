@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.2] — 2026-05-19
+
+### Docs
+
+**README + CLAUDE.md synced to current code.** The README dated from the 0.1.0 release and had drifted on every feature shipped since. This pass updates only the inaccurate facts; the document's structure and prose are unchanged.
+
+- `README.md` — Architecture + File Structure now reflect the 5-module backend split (`app.py`, `auth.py`, `db.py`, `constants.py`, `schemas.py`) introduced in commit `c180dbd`. Tree includes `tests/`, `pytest.ini`, `requirements-dev.txt`, `CHANGELOG.md`, `CLAUDE.md`, `.gitignore`.
+- `README.md` — Database Schema: `accounts.type` now lists `'loan'`; `balance_history.balance REAL` corrected to `balance_cents INTEGER`; the missing `budget_items` table added; the schema-migration paragraph expanded from 1 to 4 migrations (user_id, loan type widening, balance cents, budget amount cents).
+- `README.md` — Requirements table: R4 widened to include loans; new rows R12 (budget planning) and R13 (loan/debt tracking).
+- `README.md` — API Reference: added the entire Budget Planner section (`GET/POST/PUT/DELETE /api/budget`, `GET /api/budget/projection`); fixed `/api/summary` shape to include `total_loans` and to document `total` as net worth; added a Projection-calculation breakdown for the budget projection formula; added an Error-responses subsection documenting 400/401/404/409.
+- `README.md` — Frontend: documented the nav tabs, the Budget Planner view, the 4 summary cards (added Total Debt), the Budget chart, the 6 modals (was 4), and the expanded `state` object including budget fields.
+- `README.md` — Authentication: documented the `COOKIE_SECURE` env var and the opportunistic expired-session purge inside `make_session()`; added a subsection on the dummy-hash timing-attack mitigation in `verify_password`.
+- `README.md` — Building: setup command uses `pip install -r requirements.txt`; added `requirements-dev.txt` step; new Environment Variables table for `FINDASH_DB` and `COOKIE_SECURE`.
+- `README.md` — Testing: replaced the "No automated test suite is included" claim with a description of the actual 112-test pytest suite, including a per-file breakdown. The curl smoke-test recipes are retained under a new "Manual smoke tests" subsection.
+- `README.md` — Security Notes: HTTPS note now references `COOKIE_SECURE`; the "expired session rows are never purged" claim corrected to reflect `make_session`'s opportunistic cleanup.
+- `CLAUDE.md` — test count updated from 99 → 112.
+
+---
+
 ## [0.6.1] — 2026-05-19
 
 ### Fixed

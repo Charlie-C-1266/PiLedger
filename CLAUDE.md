@@ -26,7 +26,7 @@ Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. New version
 ## Running tests
 
 ```bash
-./venv/bin/pytest   # all 99 tests, isolated SQLite DB per test
+./venv/bin/pytest   # all 112 tests, isolated SQLite DB per test
 ```
 
 Tests must pass before any change is considered complete. If a code change causes a test failure, fix the test or the code — do not skip or delete tests.
