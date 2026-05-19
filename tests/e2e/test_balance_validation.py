@@ -15,8 +15,6 @@ beyond that should be rejected with a 400 that surfaces as an alert.
 """
 from __future__ import annotations
 
-import re
-
 import pytest
 from playwright.sync_api import Dialog, Page, expect
 
