@@ -5,6 +5,52 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.11.0] — 2026-05-19
+
+### Multi-currency accounts with a user-selected base for net-worth totals
+
+Until now FinDash assumed everything was in GBP — every balance, every chart, every summary tile hardcoded the `£` symbol. This release adds first-class support for holding accounts in different currencies, with each user picking a single "base" currency that totals and net-worth figures are reported in.
+
+#### Design — per-account currency + user base + manual rates
+
+Three design decisions shape the implementation:
+
+- **Currency lives on the account.** A new `accounts.currency` column means each account is denominated in one currency that never changes implicitly. Per-account balances always render in that currency in the UI — `$2,000` stays `$2,000` even after the base changes.
+- **A user-level base currency drives every aggregate.** `users.base_currency` is what `/api/summary`, the net-worth header, and the budget projection's net-worth line all report in. The frontend converts each account into the base on the fly when computing the doughnut distribution and the table's net-worth row, so a portfolio split across GBP / USD / EUR collapses to a single comparable number.
+- **Rates are manual, not fetched.** A new `exchange_rates(user_id, currency, rate)` table holds per-user manual rates; there is no outbound API call, no scheduled job, no API-key plumbing. Users maintain the table from Settings whenever it matters. Picked this over auto-fetched rates because (a) it has zero external dependencies and never breaks on rate-limit/quota issues, (b) tests stay deterministic with no network mocking, and (c) for a self-hosted personal dashboard the friction of re-entering a few rates monthly is lower than the friction of integrating an exchange-rate provider.
+
+A missing rate is not an error — `/api/summary` falls back to 1.0 so the total is never silently dropped, but it returns the missing currencies in a `missing_rates` array so the UI can warn (the net-worth label gains a `⚠` and a tooltip listing the affected currencies). The frontend mirrors the same fallback for client-side conversion (distribution doughnut, breakdown-table net-worth row).
+
+When the base currency changes via `PUT /api/prefs`, the rates table is recomputed in place: if you had `USD → GBP = 0.5` and switch base to USD, the row becomes `GBP → USD = 2.0`, and any third currency (e.g. EUR) is re-scaled by dividing its old rate by the pivot. If no pivot is available (e.g. switching to a base you'd never set a rate for) the table is cleared rather than producing nonsense — the user re-enters what they need.
+
+#### Storage
+
+All balances continue to be stored as integer 100ths of the major unit (the existing `balance_cents` column). For JPY (which has no minor unit), that means ¥1,000 is stored as 100000; the UI rounds to whole yen on display via `Intl.NumberFormat`'s `minimumFractionDigits: 0`. Keeping the storage scheme uniform across currencies means no migrations to any of the money columns and no per-currency precision logic in the cents/dollars conversion.
+
+#### Added
+
+**Backend**
+
+- `constants.py` — `Currency` literal (`GBP`, `USD`, `EUR`, `JPY`, `CAD`, `AUD`, `CHF`, `NZD`, `SEK`, `NOK`) plus the matching `SUPPORTED_CURRENCIES` set, `CURRENCY_INFO` metadata (symbol + decimals per code), and `MIN_RATE_FX` / `MAX_RATE_FX` bounds. `DEFAULT_CURRENCY = "GBP"` keeps backfilled rows behaving exactly as before.
+- `db.py` — `accounts.currency TEXT NOT NULL DEFAULT 'GBP'` column; `users.base_currency TEXT DEFAULT 'GBP'` column; new `exchange_rates(user_id, currency, rate, updated_at)` table keyed by `(user_id, currency)` with `ON DELETE CASCADE` so a user's rates evaporate when their account does. Additive migration blocks check `PRAGMA table_info` before each `ALTER TABLE` so existing `findash.db` instances upgrade cleanly without losing data.
+- `schemas.py` — `AccountIn`/`AccountPatch`/`AccountOut` gain a `currency: Currency` field; `PrefsOut`/`PrefsPatch` gain `base_currency`; `SummaryOut` gains `base_currency` + `missing_rates: list[Currency]`; new `RateIn`, `RateOut`, `RatesPut`, `RatesOut` model the new `/api/rates` endpoint.
+- `app.py` — `GET /api/rates` and `PUT /api/rates` for managing the manual table (PUT validates `currency != base_currency` and rejects duplicates before any write so a 400 never leaves a half-updated row). `_load_rates`, `_convert_to_base`, and `_rescale_rates` helpers centralise the conversion logic so summary, projections, and budget all share one implementation. `/api/summary` reads the user's base + rates and converts each account before adding to the relevant pot; `/api/budget/projection` computes per-account points in the account's native currency but converts to base when summing the net-worth line; `/api/history/all` and `/api/projections` carry `currency` through to the response so the frontend can format tooltips correctly.
+
+**Frontend**
+
+- `static/index.html` — Add-Account modal gains a Currency dropdown (defaults to the user's base). Settings modal grows two new sections: a Base Currency dropdown and an Exchange Rates table that only lists currencies actually held by the user. Static `£` symbols in modal labels are removed in favour of dynamic injection from the currently-selected currency.
+- `static/app.js` — `CURRENCIES` table (id → label, symbol, decimals) drives the dropdowns and `Intl.NumberFormat` calls. `fmt(value, code)` / `fmtSigned(value, code)` accept an optional currency override so per-account values format in their native currency while totals continue formatting in the base. Chart tooltips read `dataset._currency` so a mixed-currency history or budget chart renders each line in its own currency. The doughnut distribution converts each slice to the base before summing for the chart, but the tooltip still shows the native amount with an `(≈ X base)` suffix when they differ. `loadRates()` runs on boot alongside `loadPrefs()`; `onBaseCurrencyChange` calls `PUT /api/prefs` and refreshes the dashboard; `saveRatesFromTable` collects the rate inputs and PUTs the whole table. `renderSummary` reads `s.missing_rates` and toggles a `.nw-label--warn` class with a tooltip enumerating the affected currencies.
+- `static/style.css` — `.badge-currency` chip (sits next to type/subtype badges, only shown when the account's currency differs from the base); `.rates-table` + `.rate-row` styles for the Settings rates editor; `.nw-label--warn` adds amber colour and a trailing `⚠` to the Net Worth header when rates are missing.
+
+**Tests**
+
+- `tests/test_currency.py` — 20 new tests covering account currency defaults + validation, base-currency round-trip through `/api/prefs`, the `/api/rates` GET/PUT round-trip with replace semantics + duplicate/zero/self-base rejection, cross-user isolation, FX-aware `/api/summary` totals (including loans subtracting in base), missing-rate flagging, and the rate-rescaling behaviour when the base currency changes (with and without a pivot rate).
+- `tests/test_dashboard.py`, `tests/test_prefs.py` — updated three response-shape assertions to include the new `base_currency` / `missing_rates` keys.
+
+After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **158 passed** (138 existing + 20 new).
+
+---
+
 ## [0.10.0] — 2026-05-19
 
 ### Continuous integration via GitHub Actions

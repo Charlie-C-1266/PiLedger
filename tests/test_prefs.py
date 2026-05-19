@@ -12,7 +12,7 @@ the value as JSON booleans even though SQLite stores dark_mode as 0/1.
 def test_prefs_default_for_new_user(alice):
     r = alice.get("/api/prefs")
     assert r.status_code == 200
-    assert r.json() == {"theme": "olive", "dark_mode": False}
+    assert r.json() == {"theme": "olive", "dark_mode": False, "base_currency": "GBP"}
 
 
 def test_get_prefs_requires_auth(client):
@@ -42,7 +42,7 @@ def test_set_dark_mode(alice):
 
 def test_set_both_at_once(alice):
     r = alice.put("/api/prefs", json={"theme": "rose", "dark_mode": True})
-    assert r.json() == {"theme": "rose", "dark_mode": True}
+    assert r.json() == {"theme": "rose", "dark_mode": True, "base_currency": "GBP"}
 
 
 def test_partial_patch_leaves_other_field(alice):
@@ -50,13 +50,13 @@ def test_partial_patch_leaves_other_field(alice):
     # Patching just one should not reset the other.
     alice.put("/api/prefs", json={"dark_mode": False})
     body = alice.get("/api/prefs").json()
-    assert body == {"theme": "slate", "dark_mode": False}
+    assert body == {"theme": "slate", "dark_mode": False, "base_currency": "GBP"}
 
 
 def test_empty_patch_is_noop(alice):
     alice.put("/api/prefs", json={"theme": "rose"})
     alice.put("/api/prefs", json={})
-    assert alice.get("/api/prefs").json() == {"theme": "rose", "dark_mode": False}
+    assert alice.get("/api/prefs").json() == {"theme": "rose", "dark_mode": False, "base_currency": "GBP"}
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ def test_every_allowed_theme_accepted(alice):
 def test_alice_prefs_do_not_leak_to_bob(alice, bob):
     alice.put("/api/prefs", json={"theme": "rose", "dark_mode": True})
     # bob is a separate user — should still see defaults.
-    assert bob.get("/api/prefs").json() == {"theme": "olive", "dark_mode": False}
+    assert bob.get("/api/prefs").json() == {"theme": "olive", "dark_mode": False, "base_currency": "GBP"}
 
 
 def test_bob_cannot_overwrite_alice_prefs(alice, bob):

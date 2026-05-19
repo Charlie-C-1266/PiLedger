@@ -51,6 +51,39 @@ AccountSubtype = Literal[
 Theme = Literal["olive", "indigo", "slate", "rose"]
 DEFAULT_THEME: Theme = "olive"
 
+# Supported currencies. Curated shortlist — adding a new one means appending
+# here plus listing the symbol in CURRENCY_INFO below and the label in the
+# frontend CURRENCIES table.
+Currency = Literal[
+    "GBP", "USD", "EUR", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK",
+]
+DEFAULT_CURRENCY: Currency = "GBP"
+SUPPORTED_CURRENCIES: frozenset[str] = frozenset({
+    "GBP", "USD", "EUR", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK",
+})
+
+# Display metadata. `decimals` is what the frontend uses to round; the DB
+# still stores everything as integer 100ths of the major unit (see db.py)
+# regardless of currency precision, which keeps the storage model uniform.
+CURRENCY_INFO: dict[str, dict[str, object]] = {
+    "GBP": {"symbol": "£",   "name": "British Pound",    "decimals": 2},
+    "USD": {"symbol": "$",   "name": "US Dollar",        "decimals": 2},
+    "EUR": {"symbol": "€",   "name": "Euro",             "decimals": 2},
+    "JPY": {"symbol": "¥",   "name": "Japanese Yen",     "decimals": 0},
+    "CAD": {"symbol": "C$",  "name": "Canadian Dollar",  "decimals": 2},
+    "AUD": {"symbol": "A$",  "name": "Australian Dollar","decimals": 2},
+    "CHF": {"symbol": "Fr.", "name": "Swiss Franc",      "decimals": 2},
+    "NZD": {"symbol": "NZ$", "name": "New Zealand Dollar","decimals": 2},
+    "SEK": {"symbol": "kr",  "name": "Swedish Krona",    "decimals": 2},
+    "NOK": {"symbol": "kr",  "name": "Norwegian Krone",  "decimals": 2},
+}
+
+# Sanity bounds on an FX rate (X → base). Wide enough to cover any plausible
+# pair (e.g. 1 USD ≈ 150 JPY, 1 JPY ≈ 0.0067 USD), tight enough that an
+# accidental zero or absurd value is rejected.
+MIN_RATE_FX = 0.000_001
+MAX_RATE_FX = 1_000_000.0
+
 
 SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
     "current": frozenset({

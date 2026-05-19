@@ -54,6 +54,9 @@ from schemas import (
     OkOut,
     PrefsOut,
     PrefsPatch,
+    RateOut,
+    RatesOut,
+    RatesPut,
     RegisterIn,
     RegisterOut,
     SummaryOut,
@@ -148,15 +151,23 @@ def get_me(uid: int = Depends(require_auth)) -> UserOut:
 
 # ─── User preferences ─────────────────────────────────────────────────────────
 
+def _prefs_out(row: sqlite3.Row) -> PrefsOut:
+    return PrefsOut(
+        theme=row["theme"] or "olive",
+        dark_mode=bool(row["dark_mode"]),
+        base_currency=row["base_currency"] or "GBP",
+    )
+
+
 @app.get("/api/prefs", response_model=PrefsOut)
 def get_prefs(uid: int = Depends(require_auth)) -> PrefsOut:
     with db() as conn:
         row = conn.execute(
-            "SELECT theme, dark_mode FROM users WHERE id=?", (uid,)
+            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
     if not row:
         raise HTTPException(404)
-    return PrefsOut(theme=row["theme"] or "olive", dark_mode=bool(row["dark_mode"]))
+    return _prefs_out(row)
 
 
 @app.put("/api/prefs", response_model=PrefsOut)
@@ -169,14 +180,136 @@ def update_prefs(
         # SQLite has no native bool, store as 0/1
         patch["dark_mode"] = int(patch["dark_mode"])
     with db() as conn:
+        # Changing the base currency invalidates any prior rates (which were
+        # expressed against the previous base). Re-scale them so each stored
+        # rate continues to mean "1 unit of currency = rate units of base".
+        # Old base gains a row (its rate in the new base) unless it equals new
+        # base; new base itself never has a row (implicit 1.0).
+        if "base_currency" in patch:
+            old = conn.execute(
+                "SELECT base_currency FROM users WHERE id=?", (uid,)
+            ).fetchone()
+            old_base = (old["base_currency"] if old else None) or "GBP"
+            new_base = patch["base_currency"]
+            if new_base != old_base:
+                _rescale_rates(conn, uid, old_base, new_base)
         if patch:
             sets = ", ".join(f"{k}=?" for k in patch)
             conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*patch.values(), uid])
             conn.commit()
         row = conn.execute(
-            "SELECT theme, dark_mode FROM users WHERE id=?", (uid,)
+            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
-    return PrefsOut(theme=row["theme"] or "olive", dark_mode=bool(row["dark_mode"]))
+    return _prefs_out(row)
+
+
+# ─── Exchange rates ───────────────────────────────────────────────────────────
+
+def _load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
+    """Return {currency: rate_to_base} for a user. The base currency is omitted
+    (it is implicitly 1.0)."""
+    rows = conn.execute(
+        "SELECT currency, rate FROM exchange_rates WHERE user_id=?", (uid,)
+    ).fetchall()
+    return {r["currency"]: float(r["rate"]) for r in rows}
+
+
+def _rescale_rates(
+    conn: sqlite3.Connection, uid: int, old_base: str, new_base: str
+) -> None:
+    """Recompute the rates table so every stored rate is now expressed
+    against ``new_base`` instead of ``old_base``. Rates missing the pivot
+    are dropped — we can't infer them safely."""
+    existing = _load_rates(conn, uid)
+    pivot = existing.get(new_base)  # 1 new_base = pivot old_base
+    conn.execute("DELETE FROM exchange_rates WHERE user_id=?", (uid,))
+    if not pivot:
+        return  # no way to rescale; user will need to re-enter rates
+    now = utcnow_iso()
+    # Old base in the new world: 1 old_base = 1/pivot new_base.
+    conn.execute(
+        "INSERT INTO exchange_rates(user_id, currency, rate, updated_at) VALUES(?,?,?,?)",
+        (uid, old_base, 1.0 / pivot, now),
+    )
+    for cur, rate in existing.items():
+        if cur in (new_base, old_base):
+            continue
+        # 1 cur = rate old_base = rate/pivot new_base.
+        conn.execute(
+            "INSERT INTO exchange_rates(user_id, currency, rate, updated_at) VALUES(?,?,?,?)",
+            (uid, cur, rate / pivot, now),
+        )
+
+
+def _convert_to_base(amount: float, currency: str, base: str, rates: dict[str, float]) -> float:
+    """Convert ``amount`` of ``currency`` into ``base`` using the user's rates.
+    Missing rates fall back to 1.0 so the total is never silently dropped; the
+    /api/summary response flags the affected currencies so the UI can warn."""
+    if currency == base:
+        return amount
+    return amount * rates.get(currency, 1.0)
+
+
+@app.get("/api/rates", response_model=RatesOut)
+def get_rates(uid: int = Depends(require_auth)) -> RatesOut:
+    with db() as conn:
+        row = conn.execute(
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
+        ).fetchone()
+        rows = conn.execute(
+            "SELECT currency, rate, updated_at FROM exchange_rates"
+            " WHERE user_id=? ORDER BY currency",
+            (uid,),
+        ).fetchall()
+    base = (row["base_currency"] if row else None) or "GBP"
+    return RatesOut(
+        base_currency=base,
+        rates=[
+            RateOut(currency=r["currency"], rate=float(r["rate"]), updated_at=r["updated_at"])
+            for r in rows
+        ],
+    )
+
+
+@app.put("/api/rates", response_model=RatesOut)
+def put_rates(data: RatesPut, uid: int = Depends(require_auth)) -> RatesOut:
+    """Replace the user's full rates table. Rates against the user's own base
+    currency are rejected — base is implicitly 1.0 and storing it would create
+    ambiguity if the base is later changed."""
+    with db() as conn:
+        row = conn.execute(
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
+        ).fetchone()
+        base = (row["base_currency"] if row else None) or "GBP"
+        # Validate up-front so a partial write never happens.
+        seen: set[str] = set()
+        for r in data.rates:
+            if r.currency == base:
+                raise HTTPException(400, "Cannot set a rate against the base currency itself")
+            if r.currency in seen:
+                raise HTTPException(400, f"Duplicate rate for currency '{r.currency}'")
+            seen.add(r.currency)
+        conn.execute("DELETE FROM exchange_rates WHERE user_id=?", (uid,))
+        now = utcnow_iso()
+        for r in data.rates:
+            conn.execute(
+                "INSERT INTO exchange_rates(user_id, currency, rate, updated_at)"
+                " VALUES(?,?,?,?)",
+                (uid, r.currency, r.rate, now),
+            )
+        conn.commit()
+        rows = conn.execute(
+            "SELECT currency, rate, updated_at FROM exchange_rates"
+            " WHERE user_id=? ORDER BY currency",
+            (uid,),
+        ).fetchall()
+    return RatesOut(
+        base_currency=base,
+        rates=[
+            RateOut(currency=r["currency"], rate=float(r["rate"]), updated_at=r["updated_at"])
+            for r in rows
+        ],
+    )
 
 
 # ─── Accounts ─────────────────────────────────────────────────────────────────
@@ -188,6 +321,7 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         name=row["name"],
         type=row["type"],
         subtype=row["subtype"] or "general",
+        currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
@@ -218,9 +352,10 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
 def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> AccountOut:
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO accounts(user_id, name, type, subtype, interest_rate, color)"
-            " VALUES(?,?,?,?,?,?)",
-            (uid, data.name, data.type, data.subtype, data.interest_rate, data.color),
+            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color)"
+            " VALUES(?,?,?,?,?,?,?)",
+            (uid, data.name, data.type, data.subtype, data.currency,
+             data.interest_rate, data.color),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM accounts WHERE id=?", (cur.lastrowid,)).fetchone()
@@ -230,6 +365,7 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
         name=row["name"],
         type=row["type"],
         subtype=row["subtype"] or "general",
+        currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
@@ -270,6 +406,7 @@ def update_account(
         name=row["name"],
         type=row["type"],
         subtype=row["subtype"] or "general",
+        currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
@@ -343,8 +480,11 @@ def get_history(
 @app.get("/api/summary", response_model=SummaryOut)
 def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
     with db() as conn:
+        user = conn.execute(
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
+        ).fetchone()
         rows = conn.execute("""
-            SELECT a.type, b.balance_cents
+            SELECT a.type, a.currency, b.balance_cents
             FROM accounts a
             LEFT JOIN balance_history b ON b.id = (
                 SELECT id FROM balance_history WHERE account_id=a.id
@@ -352,16 +492,31 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
             )
             WHERE a.user_id = ?
         """, (uid,)).fetchall()
-    current_c = sum((r["balance_cents"] or 0) for r in rows if r["type"] == "current")
-    savings_c = sum((r["balance_cents"] or 0) for r in rows if r["type"] == "savings")
-    loans_c   = sum((r["balance_cents"] or 0) for r in rows if r["type"] == "loan")
+        rates = _load_rates(conn, uid)
+    base = (user["base_currency"] if user else None) or "GBP"
+    current_t = savings_t = loans_t = 0.0
+    missing: set[str] = set()
+    for r in rows:
+        cur = r["currency"] or "GBP"
+        amt = (r["balance_cents"] or 0) / 100
+        if cur != base and cur not in rates:
+            missing.add(cur)
+        converted = _convert_to_base(amt, cur, base, rates)
+        if r["type"] == "current":
+            current_t += converted
+        elif r["type"] == "savings":
+            savings_t += converted
+        elif r["type"] == "loan":
+            loans_t += converted
     return SummaryOut(
-        # Net worth: assets minus liabilities
-        total=(current_c + savings_c - loans_c) / 100,
-        total_current=current_c / 100,
-        total_savings=savings_c / 100,
-        total_loans=loans_c / 100,
+        # Net worth: assets minus liabilities, expressed in the user's base currency.
+        total=round(current_t + savings_t - loans_t, 2),
+        total_current=round(current_t, 2),
+        total_savings=round(savings_t, 2),
+        total_loans=round(loans_t, 2),
         account_count=len(rows),
+        base_currency=base,
+        missing_rates=sorted(missing),
     )
 
 
@@ -373,7 +528,7 @@ def all_history(
     with db() as conn:
         since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
         accounts = conn.execute(
-            "SELECT id, name, color, type FROM accounts WHERE user_id=?", (uid,)
+            "SELECT id, name, color, type, currency FROM accounts WHERE user_id=?", (uid,)
         ).fetchall()
         result: list[HistoryAccountOut] = []
         for a in accounts:
@@ -385,6 +540,7 @@ def all_history(
             if hist:
                 result.append(HistoryAccountOut(
                     id=a["id"], name=a["name"], color=a["color"], type=a["type"],
+                    currency=a["currency"] or "GBP",
                     history=[
                         HistoryPointOut(
                             balance=from_cents(h["balance_cents"]) or 0.0,
@@ -402,7 +558,7 @@ def get_projections(
 ) -> list[dict]:
     with db() as conn:
         rows = conn.execute("""
-            SELECT a.id, a.name, a.interest_rate, a.color, b.balance_cents
+            SELECT a.id, a.name, a.interest_rate, a.color, a.currency, b.balance_cents
             FROM accounts a
             LEFT JOIN balance_history b ON b.id = (
                 SELECT id FROM balance_history WHERE account_id=a.id
@@ -425,6 +581,7 @@ def get_projections(
         ]
         projections.append({
             "id": row["id"], "name": row["name"], "color": row["color"],
+            "currency": row["currency"] or "GBP",
             "initial_balance": bal,
             "interest_rate": row["interest_rate"],
             "1yr": round(bal * math.pow(1 + mr, 12), 2),
@@ -522,8 +679,11 @@ def budget_projection(
     if months not in (3, 6, 12):
         raise HTTPException(400, "months must be 3, 6, or 12")
     with db() as conn:
+        user = conn.execute(
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
+        ).fetchone()
         accounts = conn.execute("""
-            SELECT a.id, a.name, a.type, a.interest_rate, a.color,
+            SELECT a.id, a.name, a.type, a.interest_rate, a.color, a.currency,
                    b.balance_cents AS current_balance_cents
             FROM accounts a
             LEFT JOIN balance_history b ON b.id = (
@@ -538,6 +698,8 @@ def budget_projection(
             "SELECT account_id, amount_cents, frequency FROM budget_items WHERE user_id=?",
             (uid,),
         ).fetchall()
+        rates = _load_rates(conn, uid)
+    base = (user["base_currency"] if user else None) or "GBP"
 
     # Sum all budget items into a monthly net flow per account (in dollars).
     monthly_net: dict[int, float] = {}
@@ -568,23 +730,32 @@ def budget_projection(
             "name":            acc["name"],
             "type":            acc["type"],
             "color":           acc["color"],
+            "currency":        acc["currency"] or "GBP",
             "current_balance": from_cents(acc["current_balance_cents"]),
             "monthly_net":     round(net, 2),
             "points":          points,
             "final_balance":   points[-1]["balance"],
         })
 
-    # Net worth at each month: assets minus liabilities.
+    # Net worth at each month: assets minus liabilities, converted into the
+    # user's base currency so the line is meaningful across mixed-currency
+    # portfolios. Per-account points stay in their native currency above.
     net_worth: list[dict] = []
     for m in range(months + 1):
         nw = 0.0
         for acc in result:
-            v = acc["points"][m]["balance"]
+            native = acc["points"][m]["balance"]
+            v = _convert_to_base(native, acc["currency"], base, rates)
             nw += -v if acc["type"] == "loan" else v
         date = result[0]["points"][m]["date"] if result else now.strftime("%Y-%m-%d")
         net_worth.append({"month": m, "balance": round(nw, 2), "date": date})
 
-    return {"months": months, "accounts": result, "net_worth": net_worth}
+    return {
+        "months": months,
+        "accounts": result,
+        "net_worth": net_worth,
+        "base_currency": base,
+    }
 
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────

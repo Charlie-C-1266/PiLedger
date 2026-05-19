@@ -7,11 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from constants import (
     AccountSubtype,
     AccountType,
+    Currency,
     Frequency,
     HEX_COLOR_PATTERN,
     ISO_FMT,
     MAX_MONEY,
     MAX_RATE,
+    MAX_RATE_FX,
+    MIN_RATE_FX,
     SUBTYPES_BY_TYPE,
     Theme,
 )
@@ -46,6 +49,7 @@ class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
     subtype: AccountSubtype = "general"
+    currency: Currency = "GBP"
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
 
@@ -59,6 +63,7 @@ class AccountIn(_In):
 class AccountPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     subtype: Optional[AccountSubtype] = None
+    currency: Optional[Currency] = None
     interest_rate: Optional[float] = Field(default=None, ge=0, le=MAX_RATE, allow_inf_nan=False)
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
 
@@ -106,6 +111,18 @@ class PrefsPatch(_In):
     """Partial update — only fields present are written."""
     theme: Optional[Theme] = None
     dark_mode: Optional[bool] = None
+    base_currency: Optional[Currency] = None
+
+
+class RateIn(_In):
+    """Single FX rate: `1 unit of currency = rate units of the user's base currency`."""
+    currency: Currency
+    rate: Annotated[float, Field(ge=MIN_RATE_FX, le=MAX_RATE_FX, allow_inf_nan=False)]
+
+
+class RatesPut(_In):
+    """Bulk replace of the user's manual rates table."""
+    rates: list[RateIn] = Field(default_factory=list)
 
 
 # ─── Outbound schemas ─────────────────────────────────────────────────────────
@@ -118,6 +135,18 @@ class UserOut(BaseModel):
 class PrefsOut(BaseModel):
     theme: Theme
     dark_mode: bool
+    base_currency: Currency = "GBP"
+
+
+class RateOut(BaseModel):
+    currency: Currency
+    rate: float
+    updated_at: Optional[str] = None
+
+
+class RatesOut(BaseModel):
+    base_currency: Currency
+    rates: list[RateOut]
 
 
 class RegisterOut(BaseModel):
@@ -140,6 +169,7 @@ class AccountOut(BaseModel):
     name: str
     type: AccountType
     subtype: AccountSubtype = "general"
+    currency: Currency = "GBP"
     interest_rate: float
     color: str
     created_at: str
@@ -159,6 +189,11 @@ class SummaryOut(BaseModel):
     total_savings: float
     total_loans: float
     account_count: int
+    base_currency: Currency = "GBP"
+    # Currencies present on the user's accounts that have no rate set (excluding
+    # the base itself, which is implicitly 1.0). The frontend uses this to warn
+    # that the net-worth total may be missing accounts.
+    missing_rates: list[Currency] = Field(default_factory=list)
 
 
 class HistoryPointOut(BaseModel):
@@ -171,6 +206,7 @@ class HistoryAccountOut(BaseModel):
     name: str
     color: str
     type: AccountType
+    currency: Currency = "GBP"
     history: list[HistoryPointOut]
 
 

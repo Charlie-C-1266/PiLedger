@@ -56,6 +56,7 @@ def init() -> None:
                 password_hash TEXT NOT NULL,
                 theme         TEXT DEFAULT 'olive',
                 dark_mode     INTEGER DEFAULT 0,
+                base_currency TEXT DEFAULT 'GBP',
                 created_at    TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS sessions (
@@ -69,9 +70,17 @@ def init() -> None:
                 name          TEXT    NOT NULL,
                 type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
                 subtype       TEXT    DEFAULT 'general',
+                currency      TEXT    NOT NULL DEFAULT 'GBP',
                 interest_rate REAL    DEFAULT 0,
                 color         TEXT    DEFAULT '#6366f1',
                 created_at    TEXT    DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS exchange_rates (
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                currency   TEXT    NOT NULL,
+                rate       REAL    NOT NULL,
+                updated_at TEXT    DEFAULT (datetime('now')),
+                PRIMARY KEY (user_id, currency)
             );
             CREATE TABLE IF NOT EXISTS balance_history (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,6 +154,21 @@ def init() -> None:
                 "ALTER TABLE accounts ADD COLUMN subtype TEXT DEFAULT 'general'"
             )
             conn.execute("UPDATE accounts SET subtype='general' WHERE subtype IS NULL")
+            conn.commit()
+
+        # Migrate: add accounts.currency for pre-multi-currency schemas. Existing
+        # rows default to 'GBP', preserving the previous single-currency assumption.
+        if "currency" not in acc_cols:
+            conn.execute(
+                "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'GBP'"
+            )
+            conn.execute("UPDATE accounts SET currency='GBP' WHERE currency IS NULL OR currency=''")
+            conn.commit()
+
+        # Migrate: add users.base_currency for pre-multi-currency schemas.
+        if "base_currency" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT 'GBP'")
+            conn.execute("UPDATE users SET base_currency='GBP' WHERE base_currency IS NULL")
             conn.commit()
 
         # Migrate: balance_history.balance (REAL) → balance_cents (INTEGER).
