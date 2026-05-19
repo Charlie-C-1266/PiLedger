@@ -510,6 +510,7 @@ function openAddAccountModal() {
   document.getElementById('add-name').value = '';
   document.getElementById('add-type').value = 'current';
   document.getElementById('add-interest').value = '';
+  document.getElementById('add-min-payment').value = '';
   document.getElementById('add-balance').value = '';
   document.getElementById('add-color').value = '#6366f1';
   toggleAddInterest();
@@ -519,10 +520,16 @@ function openAddAccountModal() {
 
 function toggleAddInterest() {
   const t = document.getElementById('add-type').value;
-  const hasRate = (t === 'savings' || t === 'loan');
+  const isLoan  = t === 'loan';
+  const hasRate = (t === 'savings' || isLoan);
   document.getElementById('add-interest-group').style.display = hasRate ? '' : 'none';
   document.getElementById('add-interest-label').textContent =
-    t === 'loan' ? 'APR (%)' : 'Annual Interest Rate (%)';
+    isLoan ? 'APR (%)' : 'Annual Interest Rate (%)';
+  document.getElementById('add-min-payment-group').style.display = isLoan ? '' : 'none';
+  // For a loan, the "balance" is the amount owed — relabel so it reads as a liability.
+  document.getElementById('add-balance-label').innerHTML = isLoan
+    ? 'Amount Owed (£) <span class="field-hint">optional</span>'
+    : 'Opening Balance (£) <span class="field-hint">optional</span>';
 }
 
 async function submitAddAccount() {
@@ -531,11 +538,23 @@ async function submitAddAccount() {
   const interestRate = parseFloat(document.getElementById('add-interest').value) || 0;
   const color        = document.getElementById('add-color').value;
   const balStr       = document.getElementById('add-balance').value;
+  const minPayStr    = document.getElementById('add-min-payment').value;
   if (!name) { alert('Please enter an account name.'); return; }
   try {
     const account = await api.post('/api/accounts', { name, type, interest_rate: interestRate, color });
     if (balStr !== '' && !isNaN(parseFloat(balStr)))
       await api.post(`/api/accounts/${account.id}/balance`, { balance: parseFloat(balStr) });
+    if (type === 'loan' && minPayStr !== '' && !isNaN(parseFloat(minPayStr))) {
+      const minPay = parseFloat(minPayStr);
+      if (minPay > 0) {
+        await api.post('/api/budget', {
+          account_id: account.id,
+          name: 'Minimum monthly payment',
+          amount: -minPay,
+          frequency: 'monthly',
+        });
+      }
+    }
     closeModal('add-account-modal');
     await loadAll();
   } catch (e) { alert('Error: ' + e.message); }
@@ -621,9 +640,33 @@ function _populateAccountSelect(preselectId) {
   ).join('');
 }
 
+// Adapt the budget-item modal to the target account type. For loans the only
+// meaningful budget item is a monthly payment, so we hide direction + frequency
+// and reframe the amount field as "Minimum Monthly Payment".
+function _applyBudgetModalForAccount(accountId) {
+  const acc    = state.accounts.find(a => a.id === accountId);
+  const isLoan = acc?.type === 'loan';
+  document.getElementById('bim-direction-field').style.display = isLoan ? 'none' : '';
+  document.getElementById('bim-frequency-field').style.display = isLoan ? 'none' : '';
+  document.getElementById('bim-amount-label').textContent =
+    isLoan ? 'Minimum Monthly Payment (£)' : 'Amount (£)';
+  if (isLoan) {
+    setBiDir('out');                                          // a payment reduces the loan
+    document.getElementById('bim-frequency').value = 'monthly';
+    const nameInput = document.getElementById('bim-name');
+    if (!nameInput.value.trim()) nameInput.value = 'Minimum monthly payment';
+  }
+}
+
+function onBudgetAccountChange() {
+  const id = parseInt(document.getElementById('bim-account').value, 10);
+  _applyBudgetModalForAccount(id);
+}
+
 function openAddBudgetModal(accountId = null) {
   if (!state.accounts.length) { alert('Please add an account first.'); return; }
   state.editingBudgetId = null;
+  const preselect = accountId || state.accounts[0].id;
   document.getElementById('bim-title').textContent      = 'Add Budget Item';
   document.getElementById('bim-submit').textContent     = 'Add Item';
   document.getElementById('bim-account-field').style.display = '';
@@ -631,7 +674,8 @@ function openAddBudgetModal(accountId = null) {
   document.getElementById('bim-amount').value           = '';
   document.getElementById('bim-frequency').value        = 'monthly';
   setBiDir('out');
-  _populateAccountSelect(accountId || state.accounts[0].id);
+  _populateAccountSelect(preselect);
+  _applyBudgetModalForAccount(preselect);
   openModal('budget-item-modal');
   setTimeout(() => document.getElementById('bim-name').focus(), 50);
 }
@@ -646,6 +690,7 @@ function openEditBudgetModal(id) {
   document.getElementById('bim-amount').value           = Math.abs(item.amount);
   document.getElementById('bim-frequency').value        = item.frequency;
   setBiDir(item.amount >= 0 ? 'in' : 'out');
+  _applyBudgetModalForAccount(item.account_id);
   openModal('budget-item-modal');
   setTimeout(() => document.getElementById('bim-name').focus(), 50);
 }

@@ -208,12 +208,16 @@
           <label id="add-interest-label">Annual Interest Rate (%)</label>
           <input type="number" id="add-interest" placeholder="e.g. 4.5" step="0.01" min="0" max="100" />
         </div>
+        <div class="field" id="add-min-payment-group" style="display:none">
+          <label>Minimum Monthly Payment (£) <span class="field-hint">optional</span></label>
+          <input type="number" id="add-min-payment" placeholder="e.g. 350" step="0.01" min="0" />
+        </div>
         <div class="field">
           <label>Colour</label>
           <input type="color" id="add-color" value="#6366f1" />
         </div>
         <div class="field">
-          <label>Opening Balance (£) <span class="field-hint">optional</span></label>
+          <label id="add-balance-label">Opening Balance (£) <span class="field-hint">optional</span></label>
           <input type="number" id="add-balance" placeholder="0.00" step="0.01" min="0" />
         </div>
       </div>
@@ -307,13 +311,13 @@
       <div class="modal-body">
         <div class="field" id="bim-account-field">
           <label>Account</label>
-          <select id="bim-account"></select>
+          <select id="bim-account" onchange="onBudgetAccountChange()"></select>
         </div>
         <div class="field">
           <label>Description</label>
           <input type="text" id="bim-name" placeholder="e.g. Rent, Salary, Netflix" autocomplete="off" />
         </div>
-        <div class="field">
+        <div class="field" id="bim-direction-field">
           <label>Direction</label>
           <div class="dir-toggle">
             <button type="button" class="dir-btn active" id="dir-out" onclick="setBiDir('out')">Money out</button>
@@ -321,10 +325,10 @@
           </div>
         </div>
         <div class="field">
-          <label>Amount (£)</label>
+          <label id="bim-amount-label">Amount (£)</label>
           <input type="number" id="bim-amount" placeholder="0.00" step="0.01" min="0" />
         </div>
-        <div class="field">
+        <div class="field" id="bim-frequency-field">
           <label>Frequency</label>
           <select id="bim-frequency">
             <option value="weekly">Weekly</option>

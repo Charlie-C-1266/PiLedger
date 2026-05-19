@@ -18,6 +18,18 @@ The refactor that split `app.py` into `auth.py`, `db.py`, `constants.py`, and `s
 
 After both fixes: `./venv/bin/pytest` → **112 passed**.
 
+### Changed
+
+**Loan budget UX — minimum monthly payment**
+
+The budget section's "Money in / Money out" paradigm reads naturally for current and savings accounts but is counter-intuitive for loans, where the only useful budget concept is the monthly payment. This release reframes the loan flow without changing the underlying data model — loan payments are still stored as negative monthly `budget_items`, but the user never has to think in those terms.
+
+- `static/index.html` — **Add Account modal**: new optional `Minimum Monthly Payment (£)` field shown only when type=Loan. The existing "Opening Balance" label switches to **"Amount Owed"** for loans so the field reads as a liability rather than an asset.
+- `static/index.html` — **Budget Item modal**: the direction toggle and frequency dropdown are wrapped in fields with IDs (`bim-direction-field`, `bim-frequency-field`), and the amount label gained an id (`bim-amount-label`) so they can be hidden / relabeled per account type. The account `<select>` now fires `onBudgetAccountChange()` when the user picks a different account so the form adapts live.
+- `static/app.js` — `toggleAddInterest()` now also toggles the min-payment group and rewrites the balance label. `submitAddAccount()` creates the loan first, then issues a follow-up `POST /api/budget` with `amount = -minPay`, `frequency = 'monthly'`, `name = 'Minimum monthly payment'` when the min-payment field is populated.
+- `static/app.js` — new `_applyBudgetModalForAccount(accountId)` helper inspects the selected account's type; for loans it hides the direction toggle and frequency field, relabels the amount as "Minimum Monthly Payment (£)", forces direction to "out" and frequency to "monthly", and defaults the description to "Minimum monthly payment" if blank. Invoked from `openAddBudgetModal`, `openEditBudgetModal`, and `onBudgetAccountChange` so the modal adapts whether opened from the toolbar, a per-account card, an edit click, or a mid-edit account switch.
+- Backend untouched — `POST /api/budget`, the projection maths in `app.py`, and the existing tests in `tests/test_loans.py` all keep working because the on-disk representation of a loan payment is unchanged (negative amount, monthly frequency).
+
 ---
 
 ## [0.6.0] — 2026-05-18
