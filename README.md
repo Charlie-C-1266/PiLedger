@@ -6,17 +6,102 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 
 ## Table of Contents
 
-1. [Requirements](#requirements)
-2. [Architecture](#architecture)
-3. [File Structure](#file-structure)
-4. [Database Schema](#database-schema)
-5. [Backend — API Reference](#backend--api-reference)
-6. [Authentication System](#authentication-system)
-7. [Frontend](#frontend)
-8. [Building and Running](#building-and-running)
-9. [Network Access](#network-access)
-10. [Testing](#testing)
-11. [Security Notes](#security-notes)
+1. [Getting Started](#getting-started)
+2. [Requirements](#requirements)
+3. [Architecture](#architecture)
+4. [File Structure](#file-structure)
+5. [Database Schema](#database-schema)
+6. [Backend — API Reference](#backend--api-reference)
+7. [Authentication System](#authentication-system)
+8. [Frontend](#frontend)
+9. [Building and Running](#building-and-running)
+10. [Network Access](#network-access)
+11. [Testing](#testing)
+12. [Security Notes](#security-notes)
+
+---
+
+## Getting Started
+
+Pick the path that fits how you want to run FinDash. Docker Compose is the lowest-friction option for trying it out; the local Python flows are better if you want to hack on the code.
+
+| Path | Best for | Prereqs |
+|---|---|---|
+| [Docker Compose](#run-with-docker-compose) | Just trying it / self-hosting on a server you already use Docker on | Docker Engine + Compose v2 (`docker compose ...`) |
+| [Local — `uv`](#local-setup-with-uv-fast) | Developers who want the fastest possible install | Python 3.12, [uv](https://docs.astral.sh/uv/) |
+| [Local — `pip` + `venv`](#local-setup-with-pip--venv) | Developers without `uv`, or anyone who prefers the standard toolchain | Python 3.12 |
+
+Whichever path you pick, the dashboard ends up on **http://localhost:8080**. The first visit redirects to `/login`; click **Register** to create your first account.
+
+### Run with Docker Compose
+
+The repository ships a `Dockerfile` and `docker-compose.yml` that build a Python 3.12 image, run the app as a non-root user, and persist your SQLite database in a named volume so it survives rebuilds.
+
+```bash
+# From the project root
+docker compose up -d                # build the image and start the service in the background
+docker compose logs -f findash      # follow the application logs (Ctrl+C to detach)
+```
+
+Then open **http://localhost:8080**.
+
+To stop the container without losing data:
+
+```bash
+docker compose down                 # keeps the findash-data volume → your accounts persist
+```
+
+To wipe the database and start fresh:
+
+```bash
+docker compose down -v              # also drops the findash-data volume
+```
+
+To back up your data, copy the SQLite file out of the running container:
+
+```bash
+docker compose cp findash:/data/findash.db ./findash-backup.db
+```
+
+#### Configuration
+
+Override defaults via environment variables on the host before running `docker compose up`. The most useful are:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `COOKIE_SECURE` | unset | Set to `true` when fronting the container with an HTTPS-terminating proxy so session cookies only travel over TLS. |
+
+The host port (`8080`) is set in `docker-compose.yml`; change the left half of `"8080:8080"` if 8080 is already in use on your host. The container always serves on 8080 internally.
+
+### Local setup with `uv` (fast)
+
+[`uv`](https://docs.astral.sh/uv/) is a Rust-based Python package manager — typically 10–100× faster than `pip` for cold installs. The commands below assume `uv` is already on your `PATH` (install with `curl -LsSf https://astral.sh/uv/install.sh | sh` if not).
+
+```bash
+# From the project root
+uv venv venv                                 # create the venv/ directory
+uv pip install -r requirements.txt           # install runtime deps into venv/
+uv pip install -r requirements-dev.txt       # (optional) test + lint tools
+
+./start.sh                                   # serves on 0.0.0.0:8080
+```
+
+The repository's tooling (`start.sh`, the systemd snippet in [Building and Running](#building-and-running)) expects the virtualenv at `venv/`, which is why we pass that name to `uv venv` instead of the default `.venv`.
+
+### Local setup with `pip` + `venv`
+
+The standard-library flow — no extra tooling required beyond Python 3.12 itself.
+
+```bash
+# From the project root
+python3 -m venv venv                                 # create the virtual environment
+./venv/bin/pip install -r requirements.txt           # install runtime dependencies
+./venv/bin/pip install -r requirements-dev.txt       # (optional) test + lint tools
+
+./start.sh                                           # serves on 0.0.0.0:8080
+```
+
+The full operational reference — environment variables, running headless, the systemd service unit, firewall notes — lives in [Building and Running](#building-and-running) and [Network Access](#network-access) below.
 
 ---
 
@@ -80,6 +165,9 @@ findash/
 ├── requirements-dev.txt   Test dependencies (pytest, httpx)
 ├── pytest.ini             pytest config (testpaths = tests, pythonpath = .)
 ├── start.sh               Convenience wrapper: starts uvicorn on 0.0.0.0:8080
+├── Dockerfile             Container image definition — Python 3.12-slim, non-root user, healthcheck
+├── docker-compose.yml     One-service orchestration with a persistent named volume for the DB
+├── .dockerignore          Excludes venv, *.db, tests/, etc. from the image build context
 ├── findash.db             SQLite database (auto-created; gitignored)
 ├── CHANGELOG.md           Versioned change log (Keep a Changelog format)
 ├── CLAUDE.md              Project instructions for the Claude Code agent
@@ -380,25 +468,42 @@ After any write operation `loadAll()` (Overview) or `loadBudgetView()` (Budget) 
 
 ## Building and Running
 
+This section is the deeper reference for the local-Python flow. If you just want to try the app, the [Getting Started](#getting-started) section at the top has shorter recipes including the Docker Compose path.
+
 ### Prerequisites
 
-- Python 3.12 (installed at `/usr/bin/python3`)
+- Python 3.12
 - No other system-level dependencies
 
 ### First-time setup
 
-```bash
-cd /home/charlie/git/findash
+Two equivalent recipes — pick whichever package manager you prefer.
 
-# Create the virtual environment and install runtime dependencies
+**With `pip` + `venv` (standard library only):**
+
+```bash
+cd /path/to/findash
+
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
 
-# (Optional) install test dependencies for running the pytest suite
+# (Optional) test + lint dependencies
 ./venv/bin/pip install -r requirements-dev.txt
 ```
 
-The virtual environment and installed packages are already in place in this repository — the above only needs to be repeated if `venv/` is deleted.
+**With [`uv`](https://docs.astral.sh/uv/) (faster cold installs):**
+
+```bash
+cd /path/to/findash
+
+uv venv venv
+uv pip install -r requirements.txt
+
+# (Optional) test + lint dependencies
+uv pip install -r requirements-dev.txt
+```
+
+Both flows produce the same `venv/` layout, so `./start.sh`, the systemd snippet below, and `./venv/bin/pytest` all work identically regardless of which manager you used.
 
 ### Environment variables
 
