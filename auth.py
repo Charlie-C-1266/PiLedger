@@ -33,7 +33,7 @@ def dummy_hash() -> str:
     # whether a username exists.
     global _DUMMY_HASH
     if _DUMMY_HASH is None:
-        _DUMMY_HASH = hash_password("__findash_dummy__")
+        _DUMMY_HASH = hash_password("__piledger_dummy__")
     return _DUMMY_HASH
 
 

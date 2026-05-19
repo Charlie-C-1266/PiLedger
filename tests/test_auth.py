@@ -61,7 +61,7 @@ def test_login_success(client):
 def test_login_sets_session_cookie(client):
     client.post("/api/auth/register", json={"username": "alice", "password": "password123"})
     resp = client.post("/api/auth/login", json={"username": "alice", "password": "password123"})
-    assert "findash_session" in resp.cookies
+    assert "piledger_session" in resp.cookies
 
 
 def test_login_rejects_wrong_password(client):
@@ -94,7 +94,7 @@ def test_me_requires_authentication(client):
 
 
 def test_me_rejects_garbage_token(client):
-    client.cookies.set("findash_session", "notarealtoken")
+    client.cookies.set("piledger_session", "notarealtoken")
     assert client.get("/api/auth/me").status_code == 401
 
 
@@ -117,12 +117,12 @@ def test_logout_without_session_is_safe(client):
 def test_reused_token_after_logout_is_rejected(client):
     client.post("/api/auth/register", json={"username": "alice", "password": "password123"})
     login_resp = client.post("/api/auth/login", json={"username": "alice", "password": "password123"})
-    token = login_resp.cookies["findash_session"]
+    token = login_resp.cookies["piledger_session"]
 
     client.post("/api/auth/logout")
 
     # Re-inject the old token to simulate a client that cached it or a replay attack.
-    client.cookies.set("findash_session", token)
+    client.cookies.set("piledger_session", token)
     assert client.get("/api/auth/me").status_code == 401
 
 

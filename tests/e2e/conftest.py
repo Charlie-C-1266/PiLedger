@@ -10,13 +10,13 @@ Key design choices:
 * The server is **session-scoped** — booting Uvicorn for every test would push a
   10-test suite past a minute. State isolation between tests is achieved by
   registering a fresh user (random username) instead of sharing accounts.
-* The DB is a temp file pointed at via the `FINDASH_DB` env var, which
+* The DB is a temp file pointed at via the `PILEDGER_DB` env var, which
   `constants.DB` reads at import time. Lives for the whole pytest session and
   is removed in finalisation.
 * The port is picked dynamically (bind to :0, read back the assigned port) so
   the suite never collides with the dev server on :8080.
-* `headed` and `slow_mo` can be toggled with `FINDASH_E2E_HEADED=1` and
-  `FINDASH_E2E_SLOWMO=250` to debug a failing test visually.
+* `headed` and `slow_mo` can be toggled with `PILEDGER_E2E_HEADED=1` and
+  `PILEDGER_E2E_SLOWMO=250` to debug a failing test visually.
 """
 from __future__ import annotations
 
@@ -56,12 +56,12 @@ def _wait_for_http(url: str, timeout_s: float = 15.0) -> None:
 @pytest.fixture(scope="session")
 def live_server(tmp_path_factory):
     """Boot Uvicorn against a fresh temp DB; yield the base URL."""
-    db_path = tmp_path_factory.mktemp("findash-e2e") / "e2e.db"
+    db_path = tmp_path_factory.mktemp("piledger-e2e") / "e2e.db"
     port = _pick_free_port()
     base_url = f"http://127.0.0.1:{port}"
 
     env = os.environ.copy()
-    env["FINDASH_DB"] = str(db_path)
+    env["PILEDGER_DB"] = str(db_path)
     # Make sure the child process imports the repo's app, not a stray install.
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
 
@@ -147,11 +147,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session")
 def browser_type_launch_args(browser_type_launch_args):
-    """Honour FINDASH_E2E_HEADED / FINDASH_E2E_SLOWMO env vars for debugging."""
+    """Honour PILEDGER_E2E_HEADED / PILEDGER_E2E_SLOWMO env vars for debugging."""
     args = dict(browser_type_launch_args)
-    if os.environ.get("FINDASH_E2E_HEADED", "").lower() in ("1", "true", "yes"):
+    if os.environ.get("PILEDGER_E2E_HEADED", "").lower() in ("1", "true", "yes"):
         args["headless"] = False
-    slowmo = os.environ.get("FINDASH_E2E_SLOWMO")
+    slowmo = os.environ.get("PILEDGER_E2E_SLOWMO")
     if slowmo:
         args["slow_mo"] = int(slowmo)
     return args

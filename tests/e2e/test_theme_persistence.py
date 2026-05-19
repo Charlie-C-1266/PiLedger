@@ -39,7 +39,7 @@ def test_theme_change_updates_html_attribute_and_localstorage(signed_in_page: Pa
 
     expect(page.locator("html")).to_have_attribute("data-theme", "rose")
 
-    stored_theme = page.evaluate("() => localStorage.getItem('findash:theme')")
+    stored_theme = page.evaluate("() => localStorage.getItem('piledger:theme')")
     assert stored_theme == "rose"
 
 
@@ -51,7 +51,7 @@ def test_dark_mode_toggle_persists_attribute_and_localstorage(signed_in_page: Pa
     page.locator("#btn-toggle-mode").click()
     expect(page.locator("html")).to_have_attribute("data-mode", "dark")
 
-    stored_dark = page.evaluate("() => localStorage.getItem('findash:dark')")
+    stored_dark = page.evaluate("() => localStorage.getItem('piledger:dark')")
     assert stored_dark == "1"
 
 
@@ -107,8 +107,8 @@ def test_prefs_persist_across_sessions(page: Page, registered_user, live_server)
     expect(page.locator("html")).to_have_attribute("data-mode", "dark")
 
     # localStorage was re-populated by applyTheme on the way through.
-    stored_theme = page.evaluate("() => localStorage.getItem('findash:theme')")
-    stored_dark = page.evaluate("() => localStorage.getItem('findash:dark')")
+    stored_theme = page.evaluate("() => localStorage.getItem('piledger:theme')")
+    stored_dark = page.evaluate("() => localStorage.getItem('piledger:dark')")
     assert stored_theme == "indigo"
     assert stored_dark == "1"
 

@@ -69,8 +69,8 @@ function applyTheme() {
   // right theme before paint — avoids the dashboard flashing the olive default
   // for users who actually picked something else.
   try {
-    localStorage.setItem('findash:theme', prefs.theme);
-    localStorage.setItem('findash:dark',  prefs.dark_mode ? '1' : '0');
+    localStorage.setItem('piledger:theme', prefs.theme);
+    localStorage.setItem('piledger:dark',  prefs.dark_mode ? '1' : '0');
   } catch {}
   refreshChartDefaults();
 }

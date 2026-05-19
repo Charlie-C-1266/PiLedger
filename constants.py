@@ -1,4 +1,4 @@
-"""Module-level constants, type aliases, and bounds shared across FinDash."""
+"""Module-level constants, type aliases, and bounds shared across PiLedger."""
 import os
 from typing import Literal
 
@@ -6,10 +6,10 @@ from typing import Literal
 # ─── Paths / cookies ──────────────────────────────────────────────────────────
 
 DB: str = os.environ.get(
-    "FINDASH_DB",
-    os.path.join(os.path.dirname(__file__), "findash.db"),
+    "PILEDGER_DB",
+    os.path.join(os.path.dirname(__file__), "piledger.db"),
 )
-SESSION_COOKIE = "findash_session"
+SESSION_COOKIE = "piledger_session"
 SESSION_DAYS = 30
 # Set COOKIE_SECURE=true in production when serving over HTTPS
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")

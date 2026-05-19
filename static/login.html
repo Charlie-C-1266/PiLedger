@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FinDash – Sign in</title>
+  <title>PiLedger – Sign in</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
@@ -11,8 +11,8 @@
     // Apply cached theme/mode before paint to avoid a flash of the default.
     // Written by the dashboard whenever the user changes settings.
     try {
-      const t = localStorage.getItem('findash:theme');
-      const d = localStorage.getItem('findash:dark') === '1';
+      const t = localStorage.getItem('piledger:theme');
+      const d = localStorage.getItem('piledger:dark') === '1';
       if (t) document.documentElement.setAttribute('data-theme', t);
       if (d) document.documentElement.setAttribute('data-mode', 'dark');
     } catch {}
@@ -28,7 +28,7 @@
         <path d="M7 19l5-5 3 3 6-8" stroke="white" stroke-width="2.2"
               stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>FinDash</span>
+      <span>PiLedger</span>
     </div>
 
     <div class="login-tabs">
