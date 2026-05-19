@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.7.0] — 2026-05-19
+
+### UK Account Sub-types
+
+A second dropdown on the Add Account modal lets users record what kind of current / savings / loan account they're tracking. Until now the three-way type was the only categorisation, which forced an ISA, a regular saver, a SIPP and an instant-access pot into the same `savings` bucket — losing useful information at the point of entry. The default sub-type is `general`, so users who don't care about that level of detail are unaffected.
+
+#### Added
+
+**Backend**
+- `constants.py` — new `AccountSubtype` Literal covering UK-market account flavours: 6 current-account types (standard, joint, student, premier, basic, business), 11 savings types (cash ISA, stocks & shares ISA, lifetime ISA, junior ISA, regular saver, easy access, fixed-term bond, notice account, premium bonds, SIPP, workplace pension), and 7 loan types (bank loan, credit card, mortgage, student loan, car finance, overdraft, BNPL). Plus a `general` value valid for every parent type. A `SUBTYPES_BY_TYPE` mapping enforces which sub-types are valid for each parent type so the API can reject combos like `type=current, subtype=mortgage`.
+- `db.py` — `accounts.subtype` TEXT column added with default `'general'`. Additive `ALTER TABLE` migration so pre-existing rows pick up the default automatically; no recreation of the table needed.
+- `schemas.py` — `AccountIn` / `AccountOut` / `AccountPatch` carry a `subtype` field. `AccountIn` uses a `model_validator` so type/subtype combinations are validated at request time. `AccountPatch` cannot be validated by Pydantic alone (the parent `type` is not in the payload), so the app-level handler does that cross-check against the persisted row.
+- `app.py` — `POST /api/accounts` persists the chosen sub-type; `PUT /api/accounts/{id}` accepts a `subtype` patch and rejects 400 if the new value isn't valid for the existing row's type. The existing `RequestValidationError → 400` handler now coerces `ctx` values to strings so `ValueError`s raised by `model_validator` don't crash JSON serialisation.
+
+**Frontend**
+- `static/index.html` — Add Account modal gains an `Account Subtype` dropdown directly under the type selector. Edit Account modal gets the same dropdown so users can re-classify after the fact.
+- `static/app.js` — a `SUBTYPES` catalog provides display labels ("Cash ISA", "Stocks & Shares ISA", "SIPP (Self-Invested Pension)", "Buy Now, Pay Later", …) keyed by parent type and value. `populateSubtypeSelect` rebuilds the dropdown whenever the user switches the parent type, ensuring the available options are always valid. Account cards now show a secondary badge with the sub-type label when it is anything other than `general`.
+- `static/style.css` — `.badge-subtype` styling: a muted slate chip with mixed-case text so it reads as a sub-label next to the bold uppercase type badge.
+
+**Tests**
+- `tests/test_subtypes.py` — 13 new tests covering: default value, round-trip on list, per-type acceptance of every valid sub-type, the universal `general` value, cross-type rejection (mortgage on current, cash_isa on loan), unknown values rejected with 400, and PATCH semantics including the "PATCH without subtype leaves it unchanged" case.
+
+After all changes: `./venv/bin/pytest` → **125 passed** (112 → 125).
+
+---
+
 ## [0.6.2] — 2026-05-19
 
 ### Docs

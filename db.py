@@ -66,6 +66,7 @@ def init() -> None:
                 user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name          TEXT    NOT NULL,
                 type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
+                subtype       TEXT    DEFAULT 'general',
                 interest_rate REAL    DEFAULT 0,
                 color         TEXT    DEFAULT '#6366f1',
                 created_at    TEXT    DEFAULT (datetime('now'))
@@ -121,6 +122,16 @@ def init() -> None:
                 ALTER TABLE accounts_new RENAME TO accounts;
             """)
             conn.execute("PRAGMA foreign_keys = ON")
+            conn.commit()
+
+        # Migrate: add accounts.subtype column for pre-subtype schemas.
+        # Existing rows default to 'general' so behaviour is unchanged.
+        acc_cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+        if "subtype" not in acc_cols:
+            conn.execute(
+                "ALTER TABLE accounts ADD COLUMN subtype TEXT DEFAULT 'general'"
+            )
+            conn.execute("UPDATE accounts SET subtype='general' WHERE subtype IS NULL")
             conn.commit()
 
         # Migrate: balance_history.balance (REAL) → balance_cents (INTEGER).

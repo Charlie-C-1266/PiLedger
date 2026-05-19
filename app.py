@@ -27,6 +27,7 @@ from constants import (
     MAX_MONTHS,
     SESSION_COOKIE,
     SESSION_DAYS,
+    SUBTYPES_BY_TYPE,
 )
 from db import db, from_cents, init, to_cents, utcnow_iso
 from auth import (
@@ -67,7 +68,16 @@ init()
 # the documented status code.
 @app.exception_handler(RequestValidationError)
 def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONResponse:
-    return JSONResponse(status_code=400, content={"detail": exc.errors()})
+    # Pydantic puts the raw exception in `ctx` for model-level validators; that
+    # object is not JSON-serializable, so coerce ctx values to strings before
+    # returning.
+    safe = []
+    for err in exc.errors():
+        e = dict(err)
+        if "ctx" in e and isinstance(e["ctx"], dict):
+            e["ctx"] = {k: str(v) for k, v in e["ctx"].items()}
+        safe.append(e)
+    return JSONResponse(status_code=400, content={"detail": safe})
 
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
@@ -142,6 +152,7 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         user_id=row["user_id"],
         name=row["name"],
         type=row["type"],
+        subtype=row["subtype"] or "general",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
@@ -172,8 +183,9 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
 def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> AccountOut:
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO accounts(user_id, name, type, interest_rate, color) VALUES(?,?,?,?,?)",
-            (uid, data.name, data.type, data.interest_rate, data.color),
+            "INSERT INTO accounts(user_id, name, type, subtype, interest_rate, color)"
+            " VALUES(?,?,?,?,?,?)",
+            (uid, data.name, data.type, data.subtype, data.interest_rate, data.color),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM accounts WHERE id=?", (cur.lastrowid,)).fetchone()
@@ -182,6 +194,7 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
         user_id=row["user_id"],
         name=row["name"],
         type=row["type"],
+        subtype=row["subtype"] or "general",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
@@ -197,11 +210,20 @@ def update_account(
     uid: int = Depends(require_auth),
 ) -> AccountOut:
     with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
-        ).fetchone():
+        existing = conn.execute(
+            "SELECT type FROM accounts WHERE id=? AND user_id=?", (aid, uid)
+        ).fetchone()
+        if not existing:
             raise HTTPException(404, "Not found")
         updates = {k: v for k, v in data.model_dump().items() if v is not None}
+        # Cross-field check: subtype must be valid for the row's existing type.
+        # The Pydantic schema can't enforce this on a partial patch because
+        # `type` isn't in the payload.
+        if "subtype" in updates and updates["subtype"] not in SUBTYPES_BY_TYPE[existing["type"]]:
+            raise HTTPException(
+                400,
+                f"subtype '{updates['subtype']}' is not valid for type '{existing['type']}'",
+            )
         if updates:
             sets = ", ".join(f"{k}=?" for k in updates)
             conn.execute(f"UPDATE accounts SET {sets} WHERE id=?", [*updates.values(), aid])
@@ -212,6 +234,7 @@ def update_account(
         user_id=row["user_id"],
         name=row["name"],
         type=row["type"],
+        subtype=row["subtype"] or "general",
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],

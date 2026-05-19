@@ -235,6 +235,7 @@ body {
 .badge-savings { background: var(--green-lt); color: var(--green-dk); }
 .badge-current { background: var(--indigo-lt); color: var(--indigo-dk); }
 .badge-loan    { background: #fee2e2; color: #991b1b; }
+.badge-subtype { background: #f1f5f9; color: #475569; margin-left: 6px; text-transform: none; letter-spacing: 0; font-weight: 600; }
 
 .account-balance {
   font-size: 26px;
