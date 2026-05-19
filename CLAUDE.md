@@ -24,7 +24,7 @@ Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. New version
 1. **Create a topic branch from `main` before making changes.** Use short, descriptive kebab-case names (`fix-test-suite`, `loan-min-payment`, `update-readme`). `git checkout main && git checkout -b <branch-name>`.
 2. **Commit the work on the branch** following the existing commit-message style: imperative subject under ~70 characters, blank line, prose body explaining the *why*, `Co-Authored-By` trailer. If a single PR has two unrelated logical changes (e.g. a bug fix and a feature), split them into separate commits in dependency order.
 3. **Push the branch with `git push -u origin <branch-name>`** so it tracks the remote.
-4. **Open a PR targeting `main`.** Use `gh pr create --title ... --body ...` if `gh` is installed. If `gh` is not available, surface the PR-creation URL that `git push` prints (`https://github.com/Charlie-C-1266/piledger/pull/new/<branch-name>`) so the user can open it in the browser — do **not** consider the work delivered until that URL has been shared.
+4. **Open a PR targeting `main`.** Use `gh pr create --title ... --body ...` if `gh` is installed. If `gh` is not available, surface the PR-creation URL that `git push` prints (`https://github.com/Charlie-C-1266/PiLedger/pull/new/<branch-name>`) so the user can open it in the browser — do **not** consider the work delivered until that URL has been shared.
 5. **Do not merge the PR.** Leave it open for the user's review and merge — even if all tests pass and the diff looks trivial.
 
 PR titles should be short and imperative (<70 chars). PR bodies should include a 1-3 bullet summary of what changed and why, plus a test-plan checklist if applicable.
