@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.10.0] — 2026-05-19
+
+### Continuous integration via GitHub Actions
+
+Every push to `main` and every pull request now runs a CI pipeline in a fresh Ubuntu environment, so regressions and lint drift are caught before review instead of after merge. The pipeline has two parallel jobs:
+
+- **Lint** — installs [ruff](https://docs.astral.sh/ruff/) and runs `ruff check` against the whole repo. Ruff was picked over flake8/pylint because it's orders of magnitude faster (the entire repo lints in milliseconds), bundles the rules we'd otherwise pull in piecemeal, and needs no config to be useful. Output uses `--output-format=github` so violations annotate the offending lines inline on the PR diff.
+- **Tests** — installs `requirements.txt` + `requirements-dev.txt` against Python 3.12 and runs `pytest`. The existing `pytest.ini` already excludes `tests/e2e` from the default invocation, so the Playwright browser suite — which needs a Chromium download and system libs — is intentionally skipped in CI. The 138 unit/API tests do run.
+
+#### Added
+
+- `.github/workflows/ci.yml` — two-job workflow (`lint`, `test`) triggered by `push: branches: [main]` and `pull_request:`. The branch filter on `push` plus the unconstrained `pull_request` avoids the common double-trigger where a PR branch push fires both events; only `main` pushes and PR events run, which is enough to gate merges. The test job uses `actions/setup-python@v5`'s built-in `cache: pip` keyed off both requirements files so repeat runs reinstall from cache.
+- `requirements-dev.txt` — added `ruff>=0.6` so local dev environments use the same linter CI runs.
+
+#### Fixed
+
+- `tests/e2e/conftest.py`, `tests/e2e/test_balance_validation.py` — removed two unused imports (`sys`, `re`) flagged by `ruff check` (F401). These were the only lint violations in the codebase; fixing them lets the new lint job land green.
+
+After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **138 passed** (unchanged).
+
+---
+
 ## [0.9.0] — 2026-05-19
 
 ### Summary tiles double as account-grid filters
