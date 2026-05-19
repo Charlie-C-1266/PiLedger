@@ -54,6 +54,8 @@ def init() -> None:
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 password_hash TEXT NOT NULL,
+                theme         TEXT DEFAULT 'olive',
+                dark_mode     INTEGER DEFAULT 0,
                 created_at    TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS sessions (
@@ -122,6 +124,17 @@ def init() -> None:
                 ALTER TABLE accounts_new RENAME TO accounts;
             """)
             conn.execute("PRAGMA foreign_keys = ON")
+            conn.commit()
+
+        # Migrate: add users.theme + users.dark_mode for pre-prefs schemas.
+        user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "theme" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'olive'")
+            conn.execute("UPDATE users SET theme='olive' WHERE theme IS NULL")
+            conn.commit()
+        if "dark_mode" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN dark_mode INTEGER DEFAULT 0")
+            conn.execute("UPDATE users SET dark_mode=0 WHERE dark_mode IS NULL")
             conn.commit()
 
         # Migrate: add accounts.subtype column for pre-subtype schemas.

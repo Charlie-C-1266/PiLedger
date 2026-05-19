@@ -31,6 +31,35 @@ After all changes: `./venv/bin/pytest` → **125 passed** (112 → 125).
 
 ---
 
+## [0.8.0] — 2026-05-19
+
+### Appearance settings — olive theme, palette picker, light/dark mode
+
+A Settings modal (gear icon in the top-right header cluster) now lets each user pick a colour palette and toggle between light and dark mode. Olive is the new default. The picker offers four palettes (Olive, Indigo, Slate, Rose); preferences are stored per user so they follow across browsers / devices.
+
+#### Added
+
+**Backend**
+- `constants.py` — `Theme` Literal of allowed palette ids (`olive` / `indigo` / `slate` / `rose`) plus `DEFAULT_THEME`. The Pydantic schema relies on this so unknown values are rejected with 400 before they hit SQLite.
+- `db.py` — `users.theme` (TEXT, default `'olive'`) and `users.dark_mode` (INTEGER 0/1) columns. Additive `ALTER TABLE` migrations populate existing rows with the defaults so the upgrade is silent for pre-0.8.0 databases.
+- `schemas.py` — `PrefsOut` and `PrefsPatch` schemas. Partial PATCH semantics: omitted fields are left as-is, `extra="forbid"` rejects unknown keys.
+- `app.py` — `GET /api/prefs` and `PUT /api/prefs`. SQLite has no native bool so `dark_mode` is cast to `int` on write and back to `bool` on read.
+
+**Frontend**
+- `static/style.css` — full theme variables overhaul. Default `:root` switched from indigo (`#6366f1`) to olive (`#708238`). Alternative palettes are one-liners under `[data-theme="..."]` that just override the accent triplet; `--accent-lt` and `--accent-ring` use `color-mix(in srgb, ...)` so they regenerate themselves whenever either the theme or the surface (light/dark) changes. Dark mode lives under `[data-mode="dark"]` and re-targets surface tones, semantic pastels (green/red/amber chips), and shadow opacities. Replaced every hardcoded indigo / slate hex (`--indigo-lt`, `--indigo-dk`, `rgba(99,102,241,.12)` focus ring, the `#fee2e2` loan badge, etc.) with semantic variables so swapping themes restyles every accent-aware element automatically.
+- `static/style.css` — new styles for `.header-icon-btn` (round 34px subtle button used by both header icons), `.theme-toggle .icon-sun/.icon-moon` (so the icon flips automatically based on `[data-mode]`), `.theme-swatch` (palette picker tile with active border ring), and `.mode-pill` (compact pill for light/dark inside the settings modal).
+- `static/index.html` — added `theme-toggle` and `btn-open-settings` icon buttons in the header's top-right cluster, plus the Settings modal containing the Appearance row (light/dark pill) and the colour-theme grid. Logo SVG fill switched from hardcoded `#6366f1` to `currentColor` so it inherits the active accent.
+- `static/index.html` / `static/login.html` — inline pre-paint script that reads `findash:theme` / `findash:dark` from `localStorage` and stamps the `<html>` element with the right `data-theme` / `data-mode` before stylesheet eval, avoiding the flash-of-default-theme that would otherwise show on every page load.
+- `static/app.js` — `THEMES` catalog + `prefs` state, `applyTheme()` writes the DOM attributes and mirrors to localStorage, `loadPrefs()` is called at boot before `loadAll()`. Settings handlers (`setTheme`, `setDarkMode`, `toggleDarkMode`) optimistically apply, re-render charts, and PUT to `/api/prefs`. Chart text/grid colours now read from CSS variables via `cssVar('--muted')` / `cssVar('--border')` / `cssVar('--surface')` so re-rendering after a theme switch picks up the new palette without any per-chart configuration.
+- `static/login.html` — logo SVG fill swapped to `currentColor` so the login page inherits whatever palette is cached for this browser.
+
+**Tests**
+- `tests/test_prefs.py` — 13 new tests covering: defaults for new users, auth required on both GET + PUT, single-field and combined PUTs, partial PATCH semantics, empty-PATCH no-op, invalid theme rejected with 400, `extra="forbid"` enforcement, every allowed theme accepted, full cross-user isolation (alice's prefs don't leak to bob, and either user can change their own without affecting the other).
+
+After all changes: `./venv/bin/pytest` → **138 passed** (125 → 138).
+
+---
+
 ## [0.6.2] — 2026-05-19
 
 ### Docs

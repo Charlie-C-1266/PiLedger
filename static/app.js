@@ -17,6 +17,44 @@ const state = {
 
 const charts = { history: null, distribution: null, projection: null, budget: null };
 
+// ─── User prefs / theming ────────────────────────────────────────────────────
+// Available palettes — id must match the [data-theme] hooks in style.css and
+// the backend Theme literal. The swatch is what the user sees in the picker.
+const THEMES = [
+  { id: 'olive',  label: 'Olive',  swatch: '#708238' },
+  { id: 'indigo', label: 'Indigo', swatch: '#6366f1' },
+  { id: 'slate',  label: 'Slate',  swatch: '#475569' },
+  { id: 'rose',   label: 'Rose',   swatch: '#be185d' },
+];
+
+const prefs = { theme: 'olive', dark_mode: false };
+
+function applyTheme() {
+  const root = document.documentElement;
+  root.setAttribute('data-theme', prefs.theme);
+  if (prefs.dark_mode) root.setAttribute('data-mode', 'dark');
+  else                 root.removeAttribute('data-mode');
+  // Keep localStorage in sync so the next page load (incl. /login) picks the
+  // right theme before paint — avoids the dashboard flashing the olive default
+  // for users who actually picked something else.
+  try {
+    localStorage.setItem('findash:theme', prefs.theme);
+    localStorage.setItem('findash:dark',  prefs.dark_mode ? '1' : '0');
+  } catch {}
+  refreshChartDefaults();
+}
+
+// Pull the text + grid colours from CSS variables so charts follow whatever
+// theme + mode is active. Re-rendering existing charts picks the new values up.
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+function refreshChartDefaults() {
+  Chart.defaults.color = cssVar('--muted', '#64748b');
+}
+
 // UK-market account sub-types keyed by parent type. Order here is the order
 // they appear in the dropdown; the value must match the backend enum.
 const SUBTYPES = {
@@ -207,7 +245,7 @@ function renderAccounts(accounts) {
 
 // ─── Overview charts ──────────────────────────────────────────────────────────
 Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.color = '#64748b';
+refreshChartDefaults();
 
 const BASE_OPTS = {
   responsive: true,
@@ -254,7 +292,7 @@ function renderHistoryChart(data) {
       ...BASE_OPTS,
       scales: {
         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
-        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
       },
     },
   });
@@ -277,7 +315,7 @@ function renderDistributionChart(accounts) {
       datasets: [{
         data: with_bal.map(a => a.current_balance),
         backgroundColor: with_bal.map(a => a.color),
-        borderWidth: 2, borderColor: '#fff', hoverOffset: 4,
+        borderWidth: 2, borderColor: cssVar('--surface', '#fff'), hoverOffset: 4,
       }],
     },
     options: {
@@ -316,7 +354,7 @@ function renderProjectionChart(data, months) {
       ...BASE_OPTS,
       scales: {
         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
-        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
       },
     },
   });
@@ -342,7 +380,7 @@ function emptyChart(canvas, msg) {
       ...BASE_OPTS,
       plugins: {
         legend: { display: false }, tooltip: { enabled: false },
-        title: { display: true, text: msg, color: '#94a3b8', font: { size: 13 } },
+        title: { display: true, text: msg, color: cssVar('--muted', '#94a3b8'), font: { size: 13 } },
       },
       scales: { x: { display: false }, y: { display: false } },
     },
@@ -402,8 +440,8 @@ function renderBudgetChart(projection) {
     datasets.unshift({
       label: 'Net Worth',
       data: projection.net_worth.map(p => p.balance),
-      borderColor: '#1e293b',
-      backgroundColor: 'rgba(30, 41, 59, 0.04)',
+      borderColor: cssVar('--text', '#1e293b'),
+      backgroundColor: 'transparent',
       fill: false, tension: 0.3, borderWidth: 3,
       pointRadius: 0, pointHoverRadius: 5,
     });
@@ -437,7 +475,7 @@ function renderBudgetChart(projection) {
       },
       scales: {
         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
-        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
       },
     },
   });
@@ -803,5 +841,72 @@ document.addEventListener('keydown', e => {
   else if (id === 'budget-item-modal')      submitBudgetItem();
 });
 
+// ─── Settings modal ──────────────────────────────────────────────────────────
+function renderThemeGrid() {
+  const grid = document.getElementById('theme-grid');
+  grid.innerHTML = THEMES.map(t => `
+    <button type="button"
+            class="theme-swatch ${t.id === prefs.theme ? 'active' : ''}"
+            data-theme-id="${t.id}"
+            onclick="setTheme('${t.id}')">
+      <span class="theme-swatch-dot" style="background:${t.swatch}"></span>
+      <span class="theme-swatch-name">${esc(t.label)}</span>
+    </button>`).join('');
+}
+
+function renderModePill() {
+  document.querySelectorAll('#settings-mode-pill button').forEach(b =>
+    b.classList.toggle('active',
+      (b.dataset.mode === 'dark') === prefs.dark_mode)
+  );
+}
+
+function openSettingsModal() {
+  renderThemeGrid();
+  renderModePill();
+  openModal('settings-modal');
+}
+
+// Persist a pref change and reflect it everywhere immediately. We update the
+// local state and the DOM optimistically so the user sees the change without
+// waiting for the round-trip; the server call is fire-and-forget aside from
+// an alert on failure.
+async function _savePrefs(patch) {
+  Object.assign(prefs, patch);
+  applyTheme();
+  renderThemeGrid();
+  renderModePill();
+  // Re-render charts so they pick up the new --muted / --border / --surface
+  // values. Cheaper than a full reload, and avoids re-fetching the data.
+  await loadAll();
+  if (document.getElementById('view-budget').style.display !== 'none') {
+    await loadBudgetView();
+  }
+  try {
+    await api.put('/api/prefs', patch);
+  } catch (e) {
+    alert('Could not save preferences: ' + e.message);
+  }
+}
+
+function setTheme(themeId)   { _savePrefs({ theme: themeId }); }
+function setDarkMode(on)     { _savePrefs({ dark_mode: !!on }); }
+function toggleDarkMode()    { setDarkMode(!prefs.dark_mode); }
+
+async function loadPrefs() {
+  try {
+    const p = await api.get('/api/prefs');
+    prefs.theme     = p.theme;
+    prefs.dark_mode = !!p.dark_mode;
+  } catch {
+    // 401 is already handled by apiFetch (redirects to /login). Anything else,
+    // fall back to whatever localStorage primed pre-paint.
+  }
+  applyTheme();
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-loadAll();
+(async () => {
+  await loadPrefs();
+  await loadAll();
+})();

@@ -45,6 +45,13 @@ AccountSubtype = Literal[
 
 # Which sub-types each parent type accepts. Used by the API to reject
 # nonsense combos like type=current, subtype=mortgage.
+# Per-user UI preferences. Olive is the default colour palette; users can pick
+# an alternative from the Settings modal. Adding a new theme = adding a value
+# here plus matching CSS variables in static/style.css.
+Theme = Literal["olive", "indigo", "slate", "rose"]
+DEFAULT_THEME: Theme = "olive"
+
+
 SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
     "current": frozenset({
         "general", "standard", "joint", "student", "premier", "basic", "business",

@@ -13,6 +13,7 @@ from constants import (
     MAX_MONEY,
     MAX_RATE,
     SUBTYPES_BY_TYPE,
+    Theme,
 )
 
 
@@ -101,11 +102,22 @@ class BudgetItemPatch(_In):
     frequency: Optional[Frequency] = None
 
 
+class PrefsPatch(_In):
+    """Partial update — only fields present are written."""
+    theme: Optional[Theme] = None
+    dark_mode: Optional[bool] = None
+
+
 # ─── Outbound schemas ─────────────────────────────────────────────────────────
 
 class UserOut(BaseModel):
     id: int
     username: str
+
+
+class PrefsOut(BaseModel):
+    theme: Theme
+    dark_mode: bool
 
 
 class RegisterOut(BaseModel):
