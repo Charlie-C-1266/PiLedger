@@ -26,6 +26,40 @@ HEX_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
 AccountType = Literal["current", "savings", "loan"]
 Frequency = Literal["weekly", "monthly", "quarterly", "annually"]
 
+# UK-market account sub-types. "general" is the catch-all for users who don't
+# want to record this level of detail and is valid for every parent type.
+# Storing the enum value (snake_case) keeps the API stable; the frontend owns
+# the human-readable labels.
+AccountSubtype = Literal[
+    "general",
+    # Current
+    "standard", "joint", "student", "premier", "basic", "business",
+    # Savings
+    "cash_isa", "stocks_shares_isa", "lifetime_isa", "junior_isa",
+    "regular_saver", "easy_access", "fixed_term_bond", "notice_account",
+    "premium_bonds", "sipp", "workplace_pension",
+    # Loan
+    "bank_loan", "credit_card", "mortgage", "student_loan", "car_finance",
+    "overdraft", "bnpl",
+]
+
+# Which sub-types each parent type accepts. Used by the API to reject
+# nonsense combos like type=current, subtype=mortgage.
+SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
+    "current": frozenset({
+        "general", "standard", "joint", "student", "premier", "basic", "business",
+    }),
+    "savings": frozenset({
+        "general", "cash_isa", "stocks_shares_isa", "lifetime_isa", "junior_isa",
+        "regular_saver", "easy_access", "fixed_term_bond", "notice_account",
+        "premium_bonds", "sipp", "workplace_pension",
+    }),
+    "loan": frozenset({
+        "general", "bank_loan", "credit_card", "mortgage", "student_loan",
+        "car_finance", "overdraft", "bnpl",
+    }),
+}
+
 FREQ_TO_MONTHLY: dict[Frequency, float] = {
     "weekly":    52 / 12,
     "monthly":   1.0,

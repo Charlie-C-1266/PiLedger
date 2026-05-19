@@ -17,6 +17,57 @@ const state = {
 
 const charts = { history: null, distribution: null, projection: null, budget: null };
 
+// UK-market account sub-types keyed by parent type. Order here is the order
+// they appear in the dropdown; the value must match the backend enum.
+const SUBTYPES = {
+  current: [
+    ['general',   'General'],
+    ['standard',  'Standard Current'],
+    ['joint',     'Joint'],
+    ['student',   'Student'],
+    ['premier',   'Premier / Packaged'],
+    ['basic',     'Basic'],
+    ['business',  'Business'],
+  ],
+  savings: [
+    ['general',           'General'],
+    ['cash_isa',          'Cash ISA'],
+    ['stocks_shares_isa', 'Stocks & Shares ISA'],
+    ['lifetime_isa',      'Lifetime ISA'],
+    ['junior_isa',        'Junior ISA'],
+    ['regular_saver',     'Regular Saver'],
+    ['easy_access',       'Easy Access'],
+    ['fixed_term_bond',   'Fixed-term Bond'],
+    ['notice_account',    'Notice Account'],
+    ['premium_bonds',     'Premium Bonds'],
+    ['sipp',              'SIPP (Self-Invested Pension)'],
+    ['workplace_pension', 'Workplace Pension'],
+  ],
+  loan: [
+    ['general',      'General'],
+    ['bank_loan',    'Bank / Personal Loan'],
+    ['credit_card',  'Credit Card'],
+    ['mortgage',     'Mortgage'],
+    ['student_loan', 'Student Loan'],
+    ['car_finance',  'Car Finance'],
+    ['overdraft',    'Overdraft'],
+    ['bnpl',         'Buy Now, Pay Later'],
+  ],
+};
+
+function subtypeLabel(type, subtype) {
+  const list = SUBTYPES[type] || [];
+  const hit  = list.find(([v]) => v === subtype);
+  return hit ? hit[1] : (subtype || 'General');
+}
+
+function populateSubtypeSelect(selectEl, type, selected) {
+  const list = SUBTYPES[type] || [];
+  selectEl.innerHTML = list.map(([value, label]) =>
+    `<option value="${value}"${value === selected ? ' selected' : ''}>${esc(label)}</option>`
+  ).join('');
+}
+
 // ─── API helpers ──────────────────────────────────────────────────────────────
 async function apiFetch(method, url, body) {
   const opts = { method, headers: {} };
@@ -131,12 +182,16 @@ function renderAccounts(accounts) {
       </div>`;
     return;
   }
-  grid.innerHTML = accounts.map(a => `
+  grid.innerHTML = accounts.map(a => {
+    const sub = (a.subtype && a.subtype !== 'general')
+      ? `<span class="badge badge-subtype">${esc(subtypeLabel(a.type, a.subtype))}</span>`
+      : '';
+    return `
     <div class="card account-card" style="--accent-color:${esc(a.color)}">
       <div class="account-header">
         <div>
           <div class="account-name">${esc(a.name)}</div>
-          <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>
+          <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>${sub}
         </div>
         <button class="btn-icon" onclick="openEditModal(${a.id})" title="Edit">&#9998;</button>
       </div>
@@ -146,7 +201,8 @@ function renderAccounts(accounts) {
         ? `<div class="account-rate${a.type === 'loan' ? ' account-rate--loan' : ''}">${a.interest_rate}% ${a.type === 'loan' ? 'APR' : 'AER'}</div>`
         : ''}
       <button class="btn btn-primary btn-sm mt-8" onclick="openUpdateModal(${a.id})">Update Balance</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ─── Overview charts ──────────────────────────────────────────────────────────
@@ -522,6 +578,9 @@ function toggleAddInterest() {
   const t = document.getElementById('add-type').value;
   const isLoan  = t === 'loan';
   const hasRate = (t === 'savings' || isLoan);
+  // Repopulate the subtype dropdown — sub-types are scoped to the parent type,
+  // so switching type must reset the available options to a valid set.
+  populateSubtypeSelect(document.getElementById('add-subtype'), t, 'general');
   document.getElementById('add-interest-group').style.display = hasRate ? '' : 'none';
   document.getElementById('add-interest-label').textContent =
     isLoan ? 'APR (%)' : 'Annual Interest Rate (%)';
@@ -535,13 +594,14 @@ function toggleAddInterest() {
 async function submitAddAccount() {
   const name         = document.getElementById('add-name').value.trim();
   const type         = document.getElementById('add-type').value;
+  const subtype      = document.getElementById('add-subtype').value || 'general';
   const interestRate = parseFloat(document.getElementById('add-interest').value) || 0;
   const color        = document.getElementById('add-color').value;
   const balStr       = document.getElementById('add-balance').value;
   const minPayStr    = document.getElementById('add-min-payment').value;
   if (!name) { alert('Please enter an account name.'); return; }
   try {
-    const account = await api.post('/api/accounts', { name, type, interest_rate: interestRate, color });
+    const account = await api.post('/api/accounts', { name, type, subtype, interest_rate: interestRate, color });
     if (balStr !== '' && !isNaN(parseFloat(balStr)))
       await api.post(`/api/accounts/${account.id}/balance`, { balance: parseFloat(balStr) });
     if (type === 'loan' && minPayStr !== '' && !isNaN(parseFloat(minPayStr))) {
@@ -590,6 +650,7 @@ function openEditModal(id) {
   document.getElementById('edit-name').value     = a.name;
   document.getElementById('edit-interest').value = a.interest_rate;
   document.getElementById('edit-color').value    = a.color || '#6366f1';
+  populateSubtypeSelect(document.getElementById('edit-subtype'), a.type, a.subtype || 'general');
   document.getElementById('edit-interest-group').style.display = hasRate ? '' : 'none';
   document.getElementById('edit-interest-label').textContent =
     a.type === 'loan' ? 'APR (%)' : 'Annual Interest Rate (%)';
@@ -599,11 +660,12 @@ function openEditModal(id) {
 
 async function submitEditAccount() {
   const name         = document.getElementById('edit-name').value.trim();
+  const subtype      = document.getElementById('edit-subtype').value || 'general';
   const interestRate = parseFloat(document.getElementById('edit-interest').value) || 0;
   const color        = document.getElementById('edit-color').value;
   if (!name) { alert('Please enter an account name.'); return; }
   try {
-    await api.put(`/api/accounts/${state.editingId}`, { name, interest_rate: interestRate, color });
+    await api.put(`/api/accounts/${state.editingId}`, { name, subtype, interest_rate: interestRate, color });
     closeModal('edit-account-modal');
     await loadAll();
   } catch (e) { alert('Error: ' + e.message); }

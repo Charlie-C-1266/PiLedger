@@ -2,15 +2,17 @@
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from constants import (
+    AccountSubtype,
     AccountType,
     Frequency,
     HEX_COLOR_PATTERN,
     ISO_FMT,
     MAX_MONEY,
     MAX_RATE,
+    SUBTYPES_BY_TYPE,
 )
 
 
@@ -42,12 +44,20 @@ class RegisterIn(_In):
 class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
+    subtype: AccountSubtype = "general"
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
+
+    @model_validator(mode="after")
+    def _subtype_matches_type(self) -> "AccountIn":
+        if self.subtype not in SUBTYPES_BY_TYPE[self.type]:
+            raise ValueError(f"subtype '{self.subtype}' is not valid for type '{self.type}'")
+        return self
 
 
 class AccountPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    subtype: Optional[AccountSubtype] = None
     interest_rate: Optional[float] = Field(default=None, ge=0, le=MAX_RATE, allow_inf_nan=False)
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
 
@@ -117,6 +127,7 @@ class AccountOut(BaseModel):
     user_id: int
     name: str
     type: AccountType
+    subtype: AccountSubtype = "general"
     interest_rate: float
     color: str
     created_at: str
