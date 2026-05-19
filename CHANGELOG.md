@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.8.0] — 2026-05-19
+
+### Playwright end-to-end test suite
+
+The existing 138-test pytest suite covers the HTTP API exhaustively, but every test runs against `starlette.testclient.TestClient` — meaning regressions that only show up in a real browser (broken SVG icons, modals that don't open, dark-mode CSS that fails to swap, theme prefs that don't round-trip through the dashboard's `loadPrefs() → applyTheme()` boot sequence) could ship without anyone noticing. This release adds a Playwright suite that drives a real Chromium against a live Uvicorn instance.
+
+#### Added
+
+**Test infrastructure**
+- `tests/e2e/conftest.py` — session-scoped `live_server` fixture boots Uvicorn against an isolated temp DB (via the `FINDASH_DB` env var that `constants.DB` reads at import) on a dynamically-allocated port, so the suite never collides with the dev server on :8080. `signed_in_page` and `registered_user` fixtures handle the boilerplate of getting into the dashboard. `FINDASH_E2E_HEADED=1` and `FINDASH_E2E_SLOWMO=250` honoured for local debugging.
+- `pytest.ini` — registered an `e2e` marker and added `--ignore=tests/e2e` to default `addopts`. This keeps `./venv/bin/pytest` fast (138 unit/API tests, ~34s) and makes the browser suite explicit: `./venv/bin/pytest tests/e2e`.
+- `requirements-dev.txt` — added `pytest-playwright>=0.5`. The browser binary is installed via `./venv/bin/playwright install chromium`; system libraries via `sudo ./venv/bin/playwright install-deps chromium` (one-time).
+
+**Tests (27 total, all chromium-only)**
+- `tests/e2e/test_auth_flow.py` (5 tests) — unauthenticated `/` redirects to `/login`; the register-tab → auto-login → dashboard flow; mismatched passwords blocked client-side; wrong password surfaces the API error; sign-out clears the cookie so a subsequent `/` bounces back to `/login`.
+- `tests/e2e/test_icons_render.py` (5 tests) — every static SVG icon (header logo, theme toggle, settings cog, the four summary-card icons, the empty-state placeholder, the login-page logo) is asserted both `visible` *and* with a non-zero bounding box, so a CSS regression that hides or collapses an icon fails the test. Dark-mode toggle also verified to flip the moon/sun visibility pair driven by `[data-mode="dark"] .theme-toggle .icon-*`.
+- `tests/e2e/test_balance_validation.py` (6 tests, incl. 2 parametrised) — blank account name caught by the `submitAddAccount` alert path; negative balance flagged invalid by the `min=0` HTML5 constraint; balance exceeding `MAX_MONEY` (±£1T) rejected by the server's `BalanceIn.balance` Pydantic bound and surfaced as an `Error:` alert; non-numeric input caught by the `parseFloat` NaN path; out-of-range interest rate (-1, 1500%) rejected by `AccountIn.interest_rate` (`MAX_RATE=1000`).
+- `tests/e2e/test_theme_persistence.py` (4 tests) — switching theme updates `html[data-theme]` and `localStorage`; toggling dark mode updates `html[data-mode]` and `localStorage`; **the cross-session test** signs in, switches to indigo + dark, asserts `/api/prefs` reflects it, signs out, **clears localStorage**, signs back in, and asserts the dashboard re-hydrates the same theme from the API — proving persistence is server-side, not just browser-cached. The active-swatch test verifies the settings modal moves its `.active` highlight when the theme changes.
+- `tests/e2e/test_account_flows.py` (7 tests) — full add-account flow with summary cards updating; balance update with notes reflected in card + total; loan accounts classified into `#total-loans` not `#total-savings` and labelled APR not AER; the subtype dropdown repopulating to a valid set when the parent type changes (no submitting `current+mortgage`); rename via the edit modal; delete via the confirm-delete modal returning the empty state; view switcher between Overview and Budget Planner.
+
+After all changes: `./venv/bin/pytest` → **138 passed** (fast suite unchanged); `./venv/bin/pytest tests/e2e` → **27 passed** in ~27s.
+
+---
+
 ## [0.7.0] — 2026-05-19
 
 ### UK Account Sub-types
