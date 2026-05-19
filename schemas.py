@@ -1,4 +1,4 @@
-"""Pydantic request and response models for the FinDash API."""
+"""Pydantic request and response models for the PiLedger API."""
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 

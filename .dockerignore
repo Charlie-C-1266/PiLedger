@@ -1,6 +1,6 @@
 # Anything that doesn't belong in the runtime image. Keeps the build context
 # small (faster `docker build`) and prevents host-side artefacts from leaking
-# into the container — most importantly, the host's findash.db which would
+# into the container — most importantly, the host's piledger.db which would
 # otherwise embed real user data into the image layer cache.
 
 # ── Version control / CI ───────────────────────────────────────────────────────

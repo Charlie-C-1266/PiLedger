@@ -1,7 +1,44 @@
 # Changelog
 
-All notable changes to FinDash are documented here.  
+All notable changes to PiLedger are documented here.  
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+---
+
+## [0.13.0] — 2026-05-19
+
+### Rebranded from FinDash to PiLedger
+
+The project's prior name (FinDash) clashed with an existing commercial product in the same space, so the GitHub repository was renamed to `piledger` and every in-tree reference now reads "PiLedger" (display) / `piledger` (identifiers). This is purely a rebrand — every feature, the schema, and every API contract are unchanged.
+
+#### Why a single coordinated rename
+
+The two-layer alternative (rebrand the docs and display strings now, leave runtime identifiers for later) was explicitly rejected. Splitting the change would mean shipping a build where users see "PiLedger" in the browser title and header but find a `findash_session` cookie in their devtools and a `findash.db` file on disk — confusing for newcomers who're reading the README and seeing inconsistent names depending on where they look. One coordinated commit is jarring exactly once; a phased rebrand is jarring forever.
+
+The historical changelog entries below have been rewritten in-place to match — they originally described features by their then-current names (FINDASH_DB, FinDash, etc.). Leaving them unchanged would mean a reader trying to understand "when was the env var added?" would find `FINDASH_DB` in the history but `PILEDGER_DB` in the code with no breadcrumb between them. Since nothing about the substance of those past changes shifts, a verbatim rename keeps the history accurate against the current codebase.
+
+#### Migration for existing self-hosters
+
+The breaking changes are all renames — there are no removed features or schema migrations. Existing deployments need to update a handful of identifiers; afterwards everything behaves as before.
+
+| What was | What it is now | How to migrate |
+|---|---|---|
+| `FINDASH_DB` env var | `PILEDGER_DB` | Rename the variable in your shell profile / systemd unit / `.env` |
+| Default DB filename `findash.db` | `piledger.db` | Rename the file: `mv findash.db piledger.db` (if you used the default path), or pass the old path via `PILEDGER_DB=/path/to/findash.db` |
+| Session cookie `findash_session` | `piledger_session` | No action — users are logged out once and need to sign in again |
+| LocalStorage keys `findash:theme` / `findash:dark` | `piledger:theme` / `piledger:dark` | No action — themes are also stored server-side in `/api/prefs`, so refreshing the page repopulates localStorage from the API |
+| Dummy hash salt `__findash_dummy__` | `__piledger_dummy__` | No action — the dummy hash is regenerated on first login attempt |
+| Docker image / container / service / volume names `findash*` | `piledger*` | `docker compose down`, optionally `docker volume create piledger_piledger-data` and copy data from the old volume, then `docker compose up -d`. For a clean start: `docker compose down -v && docker compose up -d` |
+| Process / log / PID filenames (`findash.log`, `findash.pid`, `findash.service`) in the README's systemd snippet | `piledger.log`, `piledger.pid`, `piledger.service` | Rename your unit file and reload: `sudo systemctl daemon-reload` |
+
+#### Changed
+
+- **Display strings** — header logo, browser `<title>` on both `index.html` and `login.html`, FastAPI app title, module docstrings, README + CHANGELOG + CLAUDE.md all read "PiLedger".
+- **Code identifiers** — `constants.py` env var key (`PILEDGER_DB`), default DB filename (`piledger.db`), `SESSION_COOKIE = "piledger_session"`, `auth.py` dummy-hash salt (`__piledger_dummy__`), `static/app.js` + `static/index.html` + `static/login.html` use `piledger:theme` / `piledger:dark` localStorage keys.
+- **Docker resources** — `Dockerfile` non-root user is `piledger`, env var is `PILEDGER_DB=/data/piledger.db`. `docker-compose.yml` service / `container_name` / `image` are `piledger`, named volume is `piledger-data`.
+- **Tests** — `tests/test_auth.py` cookie assertions reference `piledger_session`. `tests/e2e/conftest.py` reads `PILEDGER_DB`, `PILEDGER_E2E_HEADED`, `PILEDGER_E2E_SLOWMO`. `tests/e2e/test_theme_persistence.py` asserts on the new localStorage keys.
+
+After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **158 passed** (no behavioural changes; only identifier names moved).
 
 ---
 
@@ -9,13 +46,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### One-command setup with Docker Compose + uv-friendly install instructions
 
-Up to now the only documented way to run FinDash was the `python3 -m venv venv && pip install ...` dance, which is fine for the existing developer but adds friction for anyone trying the project for the first time. This release ships a containerised setup path and a top-level `Getting Started` section in the README so the on-ramp is clear regardless of how someone prefers to run Python services.
+Up to now the only documented way to run PiLedger was the `python3 -m venv venv && pip install ...` dance, which is fine for the existing developer but adds friction for anyone trying the project for the first time. This release ships a containerised setup path and a top-level `Getting Started` section in the README so the on-ramp is clear regardless of how someone prefers to run Python services.
 
 #### Design — Docker layout
 
 - **Slim base, multi-layer cache.** The `Dockerfile` uses `python:3.12-slim` and copies `requirements.txt` *before* the application source, so editing `app.py` doesn't bust the dependency layer on every rebuild. `pip install --no-cache-dir` keeps the image lean.
-- **Non-root by default.** A dedicated `findash` system user (UID 10001) owns `/app` and `/data`. The container has no shell entrypoint, no sudo, and no need for privileged mounts — running it as root would have been a one-line shortcut that wasn't worth the security regression.
-- **Data lives in a named volume.** `docker-compose.yml` mounts `findash-data` at `/data` inside the container and sets `FINDASH_DB=/data/findash.db` in the environment. `docker compose down` keeps user data; `docker compose down -v` wipes it. This means image rebuilds (e.g. after `git pull`) never destroy user accounts or balance history — a property the old "edit `findash.db` in place" workflow didn't even need to think about because there was no rebuild step.
+- **Non-root by default.** A dedicated `piledger` system user (UID 10001) owns `/app` and `/data`. The container has no shell entrypoint, no sudo, and no need for privileged mounts — running it as root would have been a one-line shortcut that wasn't worth the security regression.
+- **Data lives in a named volume.** `docker-compose.yml` mounts `piledger-data` at `/data` inside the container and sets `PILEDGER_DB=/data/piledger.db` in the environment. `docker compose down` keeps user data; `docker compose down -v` wipes it. This means image rebuilds (e.g. after `git pull`) never destroy user accounts or balance history — a property the old "edit `piledger.db` in place" workflow didn't even need to think about because there was no rebuild step.
 - **Built-in health check.** Both the `Dockerfile` `HEALTHCHECK` and the compose-level `healthcheck` hit `GET /login`, which returns 200 unauthenticated. Plain `GET /` returns a 302 redirect to `/login` which makes for a noisier check; `/login` is the most direct "is the SPA wired up" probe we can make without a session cookie.
 
 #### Design — README Getting Started
@@ -26,9 +63,9 @@ The new section sits at the top of the README and presents three equally-support
 
 #### Added
 
-- `Dockerfile` — Python 3.12-slim image, dependency layer cached separately from source, `findash` non-root user, writable `/data` for the SQLite volume, `HEALTHCHECK` against `/login`, CMD `uvicorn app:app --host 0.0.0.0 --port 8080`.
-- `docker-compose.yml` — single `findash` service, `restart: unless-stopped`, `8080:8080` port mapping (host-side configurable), `FINDASH_DB` pinned to `/data/findash.db`, `COOKIE_SECURE` passed through from the host env, named `findash-data` volume, healthcheck mirroring the Dockerfile probe.
-- `.dockerignore` — excludes `venv/`, `.git/`, `*.db` (most importantly the host's `findash.db` — keeps user data out of the image), `tests/`, `__pycache__/`, `.ruff_cache/`, `.pytest_cache/`, `.env*`, `.claude/`, and editor/OS noise. Keeps the build context small and prevents host-side artefacts from leaking into layers.
+- `Dockerfile` — Python 3.12-slim image, dependency layer cached separately from source, `piledger` non-root user, writable `/data` for the SQLite volume, `HEALTHCHECK` against `/login`, CMD `uvicorn app:app --host 0.0.0.0 --port 8080`.
+- `docker-compose.yml` — single `piledger` service, `restart: unless-stopped`, `8080:8080` port mapping (host-side configurable), `PILEDGER_DB` pinned to `/data/piledger.db`, `COOKIE_SECURE` passed through from the host env, named `piledger-data` volume, healthcheck mirroring the Dockerfile probe.
+- `.dockerignore` — excludes `venv/`, `.git/`, `*.db` (most importantly the host's `piledger.db` — keeps user data out of the image), `tests/`, `__pycache__/`, `.ruff_cache/`, `.pytest_cache/`, `.env*`, `.claude/`, and editor/OS noise. Keeps the build context small and prevents host-side artefacts from leaking into layers.
 - `README.md` — new top-level `Getting Started` section with a three-row decision table (Docker / uv / pip + venv), full Docker workflow including `down`/`down -v`/`cp` data-backup recipes, parallel pip and uv recipes for local dev. The existing `Building and Running` section is updated to acknowledge both pip and uv as supported and now cross-references `Getting Started` for the Docker path. The `File Structure` table grows entries for `Dockerfile`, `docker-compose.yml`, and `.dockerignore`. The Table of Contents is renumbered to include the new section.
 
 After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **158 passed** (no changes to application code).
@@ -39,7 +76,7 @@ After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/
 
 ### Multi-currency accounts with a user-selected base for net-worth totals
 
-Until now FinDash assumed everything was in GBP — every balance, every chart, every summary tile hardcoded the `£` symbol. This release adds first-class support for holding accounts in different currencies, with each user picking a single "base" currency that totals and net-worth figures are reported in.
+Until now PiLedger assumed everything was in GBP — every balance, every chart, every summary tile hardcoded the `£` symbol. This release adds first-class support for holding accounts in different currencies, with each user picking a single "base" currency that totals and net-worth figures are reported in.
 
 #### Design — per-account currency + user base + manual rates
 
@@ -62,7 +99,7 @@ All balances continue to be stored as integer 100ths of the major unit (the exis
 **Backend**
 
 - `constants.py` — `Currency` literal (`GBP`, `USD`, `EUR`, `JPY`, `CAD`, `AUD`, `CHF`, `NZD`, `SEK`, `NOK`) plus the matching `SUPPORTED_CURRENCIES` set, `CURRENCY_INFO` metadata (symbol + decimals per code), and `MIN_RATE_FX` / `MAX_RATE_FX` bounds. `DEFAULT_CURRENCY = "GBP"` keeps backfilled rows behaving exactly as before.
-- `db.py` — `accounts.currency TEXT NOT NULL DEFAULT 'GBP'` column; `users.base_currency TEXT DEFAULT 'GBP'` column; new `exchange_rates(user_id, currency, rate, updated_at)` table keyed by `(user_id, currency)` with `ON DELETE CASCADE` so a user's rates evaporate when their account does. Additive migration blocks check `PRAGMA table_info` before each `ALTER TABLE` so existing `findash.db` instances upgrade cleanly without losing data.
+- `db.py` — `accounts.currency TEXT NOT NULL DEFAULT 'GBP'` column; `users.base_currency TEXT DEFAULT 'GBP'` column; new `exchange_rates(user_id, currency, rate, updated_at)` table keyed by `(user_id, currency)` with `ON DELETE CASCADE` so a user's rates evaporate when their account does. Additive migration blocks check `PRAGMA table_info` before each `ALTER TABLE` so existing `piledger.db` instances upgrade cleanly without losing data.
 - `schemas.py` — `AccountIn`/`AccountPatch`/`AccountOut` gain a `currency: Currency` field; `PrefsOut`/`PrefsPatch` gain `base_currency`; `SummaryOut` gains `base_currency` + `missing_rates: list[Currency]`; new `RateIn`, `RateOut`, `RatesPut`, `RatesOut` model the new `/api/rates` endpoint.
 - `app.py` — `GET /api/rates` and `PUT /api/rates` for managing the manual table (PUT validates `currency != base_currency` and rejects duplicates before any write so a 400 never leaves a half-updated row). `_load_rates`, `_convert_to_base`, and `_rescale_rates` helpers centralise the conversion logic so summary, projections, and budget all share one implementation. `/api/summary` reads the user's base + rates and converts each account before adding to the relevant pot; `/api/budget/projection` computes per-account points in the account's native currency but converts to base when summing the net-worth line; `/api/history/all` and `/api/projections` carry `currency` through to the response so the frontend can format tooltips correctly.
 
@@ -135,7 +172,7 @@ The existing 138-test pytest suite covers the HTTP API exhaustively, but every t
 #### Added
 
 **Test infrastructure**
-- `tests/e2e/conftest.py` — session-scoped `live_server` fixture boots Uvicorn against an isolated temp DB (via the `FINDASH_DB` env var that `constants.DB` reads at import) on a dynamically-allocated port, so the suite never collides with the dev server on :8080. `signed_in_page` and `registered_user` fixtures handle the boilerplate of getting into the dashboard. `FINDASH_E2E_HEADED=1` and `FINDASH_E2E_SLOWMO=250` honoured for local debugging.
+- `tests/e2e/conftest.py` — session-scoped `live_server` fixture boots Uvicorn against an isolated temp DB (via the `PILEDGER_DB` env var that `constants.DB` reads at import) on a dynamically-allocated port, so the suite never collides with the dev server on :8080. `signed_in_page` and `registered_user` fixtures handle the boilerplate of getting into the dashboard. `PILEDGER_E2E_HEADED=1` and `PILEDGER_E2E_SLOWMO=250` honoured for local debugging.
 - `pytest.ini` — registered an `e2e` marker and added `--ignore=tests/e2e` to default `addopts`. This keeps `./venv/bin/pytest` fast (138 unit/API tests, ~34s) and makes the browser suite explicit: `./venv/bin/pytest tests/e2e`.
 - `requirements-dev.txt` — added `pytest-playwright>=0.5`. The browser binary is installed via `./venv/bin/playwright install chromium`; system libraries via `sudo ./venv/bin/playwright install-deps chromium` (one-time).
 
@@ -194,7 +231,7 @@ A Settings modal (gear icon in the top-right header cluster) now lets each user 
 - `static/style.css` — full theme variables overhaul. Default `:root` switched from indigo (`#6366f1`) to olive (`#708238`). Alternative palettes are one-liners under `[data-theme="..."]` that just override the accent triplet; `--accent-lt` and `--accent-ring` use `color-mix(in srgb, ...)` so they regenerate themselves whenever either the theme or the surface (light/dark) changes. Dark mode lives under `[data-mode="dark"]` and re-targets surface tones, semantic pastels (green/red/amber chips), and shadow opacities. Replaced every hardcoded indigo / slate hex (`--indigo-lt`, `--indigo-dk`, `rgba(99,102,241,.12)` focus ring, the `#fee2e2` loan badge, etc.) with semantic variables so swapping themes restyles every accent-aware element automatically.
 - `static/style.css` — new styles for `.header-icon-btn` (round 34px subtle button used by both header icons), `.theme-toggle .icon-sun/.icon-moon` (so the icon flips automatically based on `[data-mode]`), `.theme-swatch` (palette picker tile with active border ring), and `.mode-pill` (compact pill for light/dark inside the settings modal).
 - `static/index.html` — added `theme-toggle` and `btn-open-settings` icon buttons in the header's top-right cluster, plus the Settings modal containing the Appearance row (light/dark pill) and the colour-theme grid. Logo SVG fill switched from hardcoded `#6366f1` to `currentColor` so it inherits the active accent.
-- `static/index.html` / `static/login.html` — inline pre-paint script that reads `findash:theme` / `findash:dark` from `localStorage` and stamps the `<html>` element with the right `data-theme` / `data-mode` before stylesheet eval, avoiding the flash-of-default-theme that would otherwise show on every page load.
+- `static/index.html` / `static/login.html` — inline pre-paint script that reads `piledger:theme` / `piledger:dark` from `localStorage` and stamps the `<html>` element with the right `data-theme` / `data-mode` before stylesheet eval, avoiding the flash-of-default-theme that would otherwise show on every page load.
 - `static/app.js` — `THEMES` catalog + `prefs` state, `applyTheme()` writes the DOM attributes and mirrors to localStorage, `loadPrefs()` is called at boot before `loadAll()`. Settings handlers (`setTheme`, `setDarkMode`, `toggleDarkMode`) optimistically apply, re-render charts, and PUT to `/api/prefs`. Chart text/grid colours now read from CSS variables via `cssVar('--muted')` / `cssVar('--border')` / `cssVar('--surface')` so re-rendering after a theme switch picks up the new palette without any per-chart configuration.
 - `static/login.html` — logo SVG fill swapped to `currentColor` so the login page inherits whatever palette is cached for this browser.
 
@@ -217,7 +254,7 @@ After all changes: `./venv/bin/pytest` → **138 passed** (125 → 138).
 - `README.md` — API Reference: added the entire Budget Planner section (`GET/POST/PUT/DELETE /api/budget`, `GET /api/budget/projection`); fixed `/api/summary` shape to include `total_loans` and to document `total` as net worth; added a Projection-calculation breakdown for the budget projection formula; added an Error-responses subsection documenting 400/401/404/409.
 - `README.md` — Frontend: documented the nav tabs, the Budget Planner view, the 4 summary cards (added Total Debt), the Budget chart, the 6 modals (was 4), and the expanded `state` object including budget fields.
 - `README.md` — Authentication: documented the `COOKIE_SECURE` env var and the opportunistic expired-session purge inside `make_session()`; added a subsection on the dummy-hash timing-attack mitigation in `verify_password`.
-- `README.md` — Building: setup command uses `pip install -r requirements.txt`; added `requirements-dev.txt` step; new Environment Variables table for `FINDASH_DB` and `COOKIE_SECURE`.
+- `README.md` — Building: setup command uses `pip install -r requirements.txt`; added `requirements-dev.txt` step; new Environment Variables table for `PILEDGER_DB` and `COOKIE_SECURE`.
 - `README.md` — Testing: replaced the "No automated test suite is included" claim with a description of the actual 112-test pytest suite, including a per-file breakdown. The curl smoke-test recipes are retained under a new "Manual smoke tests" subsection.
 - `README.md` — Security Notes: HTTPS note now references `COOKIE_SECURE`; the "expired session rows are never purged" claim corrected to reflect `make_session`'s opportunistic cleanup.
 - `CLAUDE.md` — test count updated from 99 → 112.
@@ -283,7 +320,7 @@ The budget section's "Money in / Money out" paradigm reads naturally for current
 
 ### Security
 
-- **`FINDASH_DB` environment variable** — the database path is now read from `FINDASH_DB` if set, falling back to `findash.db` alongside `app.py`. Prevents the path from being baked into committed code and makes it easy to point different environments at different databases without editing source.
+- **`PILEDGER_DB` environment variable** — the database path is now read from `PILEDGER_DB` if set, falling back to `piledger.db` alongside `app.py`. Prevents the path from being baked into committed code and makes it easy to point different environments at different databases without editing source.
 - **`COOKIE_SECURE` environment variable** — the session cookie now sets `Secure=True` when `COOKIE_SECURE=true` (or `1` / `yes`) is present in the environment. Defaults to `False` for plain HTTP, but should be enabled whenever the app is served over HTTPS.
 - **`.gitignore`** — added to exclude `*.db` (user credentials and financial data), `venv/`, `__pycache__/`, `.pytest_cache/`, `.env` files, and `.claude/settings.local.json` (per-developer Claude Code permission allowlists). Nothing sensitive is included in the initial commit.
 
@@ -385,7 +422,7 @@ A complete automated test suite was introduced covering all application behaviou
 - `verify_password` — timing-safe comparison via `secrets.compare_digest`.
 - `make_session` — generates a token, stores it with an expiry 30 days from now.
 - `session_uid` — validates a token against the database and checks expiry.
-- `require_auth` FastAPI dependency — reads the `findash_session` cookie and raises `HTTP 401` if missing or expired; injects `user_id` into all protected routes.
+- `require_auth` FastAPI dependency — reads the `piledger_session` cookie and raises `HTTP 401` if missing or expired; injects `user_id` into all protected routes.
 - `POST /api/auth/register` — validates minimum lengths (username ≥ 2 chars, password ≥ 8 chars), returns `409` on duplicate username.
 - `POST /api/auth/login` — verifies credentials, sets an `HttpOnly; SameSite=Lax; Max-Age=2592000` session cookie.
 - `POST /api/auth/logout` — deletes the session row from the database and clears the cookie; idempotent (safe to call without a session).
@@ -410,7 +447,7 @@ A complete automated test suite was introduced covering all application behaviou
 
 **Backend (`app.py`)**
 - FastAPI application served by Uvicorn, binding to `0.0.0.0` for LAN access.
-- SQLite database (`findash.db`) auto-created on first run via `init()` using `CREATE TABLE IF NOT EXISTS`.
+- SQLite database (`piledger.db`) auto-created on first run via `init()` using `CREATE TABLE IF NOT EXISTS`.
 - `accounts` table — `name`, `type` (`current` / `savings`), `interest_rate`, `color`, `created_at`.
 - `balance_history` table — immutable log of balance snapshots: `account_id`, `balance`, `notes`, `recorded_at`; cascade-deleted when the parent account is removed.
 - `GET /api/accounts` — lists all accounts joined with their latest balance entry.

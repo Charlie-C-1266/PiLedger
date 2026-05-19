@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
-# ── FinDash runtime image ─────────────────────────────────────────────────────
+# ── PiLedger runtime image ────────────────────────────────────────────────────
 # Slim Python 3.12 base. Multi-stage isn't worth the complexity here — the only
 # build output is wheels installed into site-packages, which slim already has
 # the toolchain to handle. Image size is dominated by Python + FastAPI, not the
@@ -22,19 +22,19 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Application source. The compose file mounts a named volume at /data for the
-# SQLite file, and FINDASH_DB points at that path so user data survives image
+# SQLite file, and PILEDGER_DB points at that path so user data survives image
 # rebuilds and container recreation.
 COPY app.py auth.py constants.py db.py schemas.py ./
 COPY static ./static
 
 # Run as an unprivileged user. /data is writable so SQLite can create and
 # fsync the DB file inside the mounted volume; /app is read-only at runtime.
-RUN useradd --system --uid 10001 --home /home/findash --create-home findash \
+RUN useradd --system --uid 10001 --home /home/piledger --create-home piledger \
     && mkdir -p /data \
-    && chown -R findash:findash /data /app
-USER findash
+    && chown -R piledger:piledger /data /app
+USER piledger
 
-ENV FINDASH_DB=/data/findash.db
+ENV PILEDGER_DB=/data/piledger.db
 
 EXPOSE 8080
 

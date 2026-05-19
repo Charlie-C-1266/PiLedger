@@ -1,22 +1,22 @@
-# FinDash — Docker Compose orchestration.
+# PiLedger — Docker Compose orchestration.
 #
 # Run `docker compose up -d` from the project root. The first build takes a
 # minute or two while Python and FastAPI download; subsequent runs reuse the
 # cached layer and start in seconds.
 #
-# User data lives in a named volume (`findash-data`) mounted at /data inside
-# the container, with the SQLite file at /data/findash.db. Recreating the
+# User data lives in a named volume (`piledger-data`) mounted at /data inside
+# the container, with the SQLite file at /data/piledger.db. Recreating the
 # container — `docker compose down && docker compose up -d` — keeps that
 # volume, so user accounts and balances survive rebuilds. Remove the volume
 # explicitly with `docker compose down -v` to start from scratch.
 
 services:
-  findash:
+  piledger:
     build:
       context: .
       dockerfile: Dockerfile
-    image: findash:latest
-    container_name: findash
+    image: piledger:latest
+    container_name: piledger
     restart: unless-stopped
     ports:
       # Host:container. Change the left half (e.g. "9000:8080") if 8080 is in
@@ -26,12 +26,12 @@ services:
       # SQLite path inside the container — must point at the mounted volume so
       # data persists. Override anything in this block via a `.env` file if you
       # want to customise without editing this file.
-      FINDASH_DB: /data/findash.db
+      PILEDGER_DB: /data/piledger.db
       # Set COOKIE_SECURE=true when the app sits behind an HTTPS-terminating
       # proxy. Leaving it unset is safe for plain-HTTP local use.
       COOKIE_SECURE: ${COOKIE_SECURE:-}
     volumes:
-      - findash-data:/data
+      - piledger-data:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/login', timeout=3).status == 200 else 1)"]
       interval: 30s
@@ -40,7 +40,7 @@ services:
       start_period: 5s
 
 volumes:
-  findash-data:
+  piledger-data:
     # Named volume managed by Docker. Inspect it with `docker volume inspect
-    # findash_findash-data`; back it up by copying /data/findash.db out of the
-    # running container with `docker compose cp findash:/data/findash.db ./`.
+    # piledger_piledger-data`; back it up by copying /data/piledger.db out of
+    # the running container with `docker compose cp piledger:/data/piledger.db ./`.

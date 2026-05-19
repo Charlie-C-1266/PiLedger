@@ -1,4 +1,4 @@
-# FinDash
+# PiLedger
 
 A self-hosted personal finance dashboard for tracking current, savings, and loan/debt accounts — including historical balance trends, compound-interest projections on savings, monthly budget planning, and net-worth tracking against liabilities.
 
@@ -23,7 +23,7 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 
 ## Getting Started
 
-Pick the path that fits how you want to run FinDash. Docker Compose is the lowest-friction option for trying it out; the local Python flows are better if you want to hack on the code.
+Pick the path that fits how you want to run PiLedger. Docker Compose is the lowest-friction option for trying it out; the local Python flows are better if you want to hack on the code.
 
 | Path | Best for | Prereqs |
 |---|---|---|
@@ -40,7 +40,7 @@ The repository ships a `Dockerfile` and `docker-compose.yml` that build a Python
 ```bash
 # From the project root
 docker compose up -d                # build the image and start the service in the background
-docker compose logs -f findash      # follow the application logs (Ctrl+C to detach)
+docker compose logs -f piledger      # follow the application logs (Ctrl+C to detach)
 ```
 
 Then open **http://localhost:8080**.
@@ -48,19 +48,19 @@ Then open **http://localhost:8080**.
 To stop the container without losing data:
 
 ```bash
-docker compose down                 # keeps the findash-data volume → your accounts persist
+docker compose down                 # keeps the piledger-data volume → your accounts persist
 ```
 
 To wipe the database and start fresh:
 
 ```bash
-docker compose down -v              # also drops the findash-data volume
+docker compose down -v              # also drops the piledger-data volume
 ```
 
 To back up your data, copy the SQLite file out of the running container:
 
 ```bash
-docker compose cp findash:/data/findash.db ./findash-backup.db
+docker compose cp piledger:/data/piledger.db ./piledger-backup.db
 ```
 
 #### Configuration
@@ -135,7 +135,7 @@ Browser  ──HTTP──►  FastAPI (app.py)  ──┬──►  schemas.py  
                          │              ├──►  db.py       (connection + init/migrations)
                          │              └──►  constants.py (DB path, cookie flags, bounds)
                          │                     │
-                         │                     └──SQL──►  SQLite (findash.db)
+                         │                     └──SQL──►  SQLite (piledger.db)
                          │
                     static/  (served by StaticFiles mount)
                     ├── index.html   (dashboard SPA — Overview + Budget views)
@@ -148,14 +148,14 @@ Browser  ──HTTP──►  FastAPI (app.py)  ──┬──►  schemas.py  
 
 **Frontend:** Vanilla JavaScript (no framework), Chart.js 4.4 loaded from CDN, Inter font from Google Fonts. The SPA has two views — Overview and Budget Planner — switched via a sticky nav tab inside the header. No build step is required.
 
-**Database:** A single SQLite file. Defaults to `findash.db` alongside `app.py`; can be overridden via the `FINDASH_DB` environment variable. Money is stored as integer cents inside the database; the JSON API exposes plain floating-point pounds.
+**Database:** A single SQLite file. Defaults to `piledger.db` alongside `app.py`; can be overridden via the `PILEDGER_DB` environment variable. Money is stored as integer cents inside the database; the JSON API exposes plain floating-point pounds.
 
 ---
 
 ## File Structure
 
 ```
-findash/
+piledger/
 ├── app.py                 Backend — FastAPI routes
 ├── auth.py                Password hashing, session lifecycle, require_auth dependency
 ├── db.py                  SQLite connection, init() + migrations, cents↔pounds helpers
@@ -168,7 +168,7 @@ findash/
 ├── Dockerfile             Container image definition — Python 3.12-slim, non-root user, healthcheck
 ├── docker-compose.yml     One-service orchestration with a persistent named volume for the DB
 ├── .dockerignore          Excludes venv, *.db, tests/, etc. from the image build context
-├── findash.db             SQLite database (auto-created; gitignored)
+├── piledger.db             SQLite database (auto-created; gitignored)
 ├── CHANGELOG.md           Versioned change log (Keep a Changelog format)
 ├── CLAUDE.md              Project instructions for the Claude Code agent
 ├── .gitignore             Excludes *.db, venv/, __pycache__/, .env, etc.
@@ -368,7 +368,7 @@ After a successful login the server:
 1. Generates a 64-character hex token (`secrets.token_hex(32)`) — 256 bits of entropy.
 2. Purges any session rows whose `expires_at` is in the past (cheap housekeeping on every login).
 3. Writes `(token, user_id, expires_at)` to the `sessions` table. Expiry is 30 days from now.
-4. Sets an `HttpOnly; SameSite=Lax` cookie named `findash_session` with `Max-Age=2592000`. The `Secure` flag is also set when the `COOKIE_SECURE` environment variable is `true` / `1` / `yes` — turn this on whenever the app is served over HTTPS.
+4. Sets an `HttpOnly; SameSite=Lax` cookie named `piledger_session` with `Max-Age=2592000`. The `Secure` flag is also set when the `COOKIE_SECURE` environment variable is `true` / `1` / `yes` — turn this on whenever the app is served over HTTPS.
 
 `HttpOnly` means JavaScript cannot read the cookie, which prevents token theft via XSS. `SameSite=Lax` provides CSRF protection for state-changing requests.
 
@@ -482,7 +482,7 @@ Two equivalent recipes — pick whichever package manager you prefer.
 **With `pip` + `venv` (standard library only):**
 
 ```bash
-cd /path/to/findash
+cd /path/to/piledger
 
 python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
@@ -494,7 +494,7 @@ python3 -m venv venv
 **With [`uv`](https://docs.astral.sh/uv/) (faster cold installs):**
 
 ```bash
-cd /path/to/findash
+cd /path/to/piledger
 
 uv venv venv
 uv pip install -r requirements.txt
@@ -509,7 +509,7 @@ Both flows produce the same `venv/` layout, so `./start.sh`, the systemd snippet
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FINDASH_DB` | `findash.db` alongside `app.py` | Absolute or relative path to the SQLite database file. Useful for pointing different environments (dev / staging / prod) at different databases without editing source. |
+| `PILEDGER_DB` | `piledger.db` alongside `app.py` | Absolute or relative path to the SQLite database file. Useful for pointing different environments (dev / staging / prod) at different databases without editing source. |
 | `COOKIE_SECURE` | `false` | When set to `true` / `1` / `yes`, the session cookie is issued with the `Secure` flag so it is only transmitted over HTTPS. Enable this whenever you front the app with a TLS-terminating proxy. |
 
 ### Running the server
@@ -524,7 +524,7 @@ This is equivalent to:
 ./venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
 ```
 
-The server starts, creates `findash.db` on first run, and begins serving on port 8080. The terminal will display one log line per request.
+The server starts, creates `piledger.db` on first run, and begins serving on port 8080. The terminal will display one log line per request.
 
 To stop the server press `Ctrl+C`.
 
@@ -538,31 +538,31 @@ Edit `start.sh` and replace `--port 8080` with any available port. If the port i
 
 ### Running in the background (persistent)
 
-To keep FinDash running after you close your terminal, use a process manager or `nohup`:
+To keep PiLedger running after you close your terminal, use a process manager or `nohup`:
 
 ```bash
-nohup ./start.sh > findash.log 2>&1 &
-echo $! > findash.pid   # save the PID to stop it later
+nohup ./start.sh > piledger.log 2>&1 &
+echo $! > piledger.pid   # save the PID to stop it later
 ```
 
 To stop it:
 
 ```bash
-kill $(cat findash.pid)
+kill $(cat piledger.pid)
 ```
 
 For a more robust setup, create a systemd service:
 
 ```ini
-# /etc/systemd/system/findash.service
+# /etc/systemd/system/piledger.service
 [Unit]
-Description=FinDash Finance Dashboard
+Description=PiLedger Finance Dashboard
 After=network.target
 
 [Service]
 User=charlie
-WorkingDirectory=/home/charlie/git/findash
-ExecStart=/home/charlie/git/findash/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
+WorkingDirectory=/home/charlie/git/piledger
+ExecStart=/home/charlie/git/piledger/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
 Restart=on-failure
 
 [Install]
@@ -570,7 +570,7 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo systemctl enable --now findash
+sudo systemctl enable --now piledger
 ```
 
 ---
@@ -681,7 +681,7 @@ COOKIE_JAR=$(mktemp)
 curl -s -c "$COOKIE_JAR" -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","password":"hunter99!"}'
-TOKEN=$(grep findash_session "$COOKIE_JAR" | awk '{print $NF}')
+TOKEN=$(grep piledger_session "$COOKIE_JAR" | awk '{print $NF}')
 # Expected response body: {"ok":true,"username":"alice"}
 # Expected: TOKEN is a 64-character hex string
 ```
@@ -697,15 +697,15 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 
 **Authenticated request to `/api/auth/me`**
 ```bash
-curl -s http://localhost:8080/api/auth/me -H "Cookie: findash_session=$TOKEN"
+curl -s http://localhost:8080/api/auth/me -H "Cookie: piledger_session=$TOKEN"
 # Expected: {"id":1,"username":"alice"}
 ```
 
 **Logout invalidates the token**
 ```bash
-curl -s -X POST http://localhost:8080/api/auth/logout -H "Cookie: findash_session=$TOKEN"
+curl -s -X POST http://localhost:8080/api/auth/logout -H "Cookie: piledger_session=$TOKEN"
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/accounts \
-  -H "Cookie: findash_session=$TOKEN"
+  -H "Cookie: piledger_session=$TOKEN"
 # Expected second request: 401
 ```
 
@@ -721,13 +721,13 @@ curl -s -X POST http://localhost:8080/api/auth/register \
 # Login as alice, create an account
 curl -s -X POST http://localhost:8080/api/auth/login ... # (capture ALICE_TOKEN)
 curl -s -X POST http://localhost:8080/api/accounts \
-  -H "Cookie: findash_session=$ALICE_TOKEN" \
+  -H "Cookie: piledger_session=$ALICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Alice Savings","type":"savings","interest_rate":4.0}'
 
 # Login as bob, list accounts — must be empty
 curl -s -X POST http://localhost:8080/api/auth/login ... # (capture BOB_TOKEN)
-curl -s http://localhost:8080/api/accounts -H "Cookie: findash_session=$BOB_TOKEN"
+curl -s http://localhost:8080/api/accounts -H "Cookie: piledger_session=$BOB_TOKEN"
 # Expected: []
 ```
 
@@ -736,7 +736,7 @@ curl -s http://localhost:8080/api/accounts -H "Cookie: findash_session=$BOB_TOKE
 # Attempt to update alice's account (id=1) as bob
 curl -s -o /dev/null -w "%{http_code}\n" \
   -X PUT http://localhost:8080/api/accounts/1 \
-  -H "Cookie: findash_session=$BOB_TOKEN" \
+  -H "Cookie: piledger_session=$BOB_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Stolen"}'
 # Expected: 404
@@ -747,24 +747,24 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 **Create account, record balance, verify summary**
 ```bash
 ACC=$(curl -s -X POST http://localhost:8080/api/accounts \
-  -H "Cookie: findash_session=$TOKEN" \
+  -H "Cookie: piledger_session=$TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Monzo","type":"current","color":"#f97316"}')
 AID=$(echo $ACC | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 curl -s -X POST http://localhost:8080/api/accounts/$AID/balance \
-  -H "Cookie: findash_session=$TOKEN" \
+  -H "Cookie: piledger_session=$TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"balance":1500.00}'
 
-curl -s http://localhost:8080/api/summary -H "Cookie: findash_session=$TOKEN"
+curl -s http://localhost:8080/api/summary -H "Cookie: piledger_session=$TOKEN"
 # Expected: {"total":1500.0,"total_current":1500.0,"total_savings":0.0,"account_count":1}
 ```
 
 **Compound interest projection**
 ```bash
 curl -s "http://localhost:8080/api/projections?months=12" \
-  -H "Cookie: findash_session=$TOKEN"
+  -H "Cookie: piledger_session=$TOKEN"
 # For a savings account with £8000 at 4.1% AER:
 # Expected 1yr ≈ £8334.23  (8000 × (1 + 0.041/12)^12)
 ```

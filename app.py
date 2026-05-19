@@ -1,4 +1,4 @@
-"""FinDash — self-hosted finance dashboard.
+"""PiLedger — self-hosted finance dashboard.
 
 Money is stored as integer cents in SQLite; the JSON API exposes plain
 floating-point dollars to keep the frontend contract unchanged.
@@ -64,7 +64,7 @@ from schemas import (
 )
 
 
-app = FastAPI(title="FinDash")
+app = FastAPI(title="PiLedger")
 init()
 
 
