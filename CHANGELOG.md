@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.1] — 2026-05-19
+
+### Fixed
+
+**Test suite broken by auth/db refactor**
+
+The refactor that split `app.py` into `auth.py`, `db.py`, `constants.py`, and `schemas.py` (commit `c180dbd`) regressed two things that the test suite caught only after rerun:
+
+- `tests/conftest.py` was still monkeypatching `app.DB`, but the `DB` constant had moved to `constants.py` (`db.db()` reads `constants.DB` at call time). Every test errored out at fixture setup with `AttributeError: module 'app' has no attribute 'DB'`. Fixed by patching `constants.DB` instead — one-line change, plus a docstring update describing the new attachment point.
+- Bad-input validation that previously raised `HTTPException(400, ...)` inline was moved into Pydantic `_In` schemas in `schemas.py`. Pydantic's default failure code is `422`, so the public contract documented in `README.md` (lines 145, 441-447) and the 0.6.0 CHANGELOG entry ("returns `400` for anything else") silently drifted. Added a `RequestValidationError` handler in `app.py` that returns `400` with the Pydantic error payload, restoring the documented status code without losing the structured error detail.
+
+After both fixes: `./venv/bin/pytest` → **112 passed**.
+
+---
+
 ## [0.6.0] — 2026-05-18
 
 ### Loans & Debt Tracking

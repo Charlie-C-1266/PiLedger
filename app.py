@@ -14,8 +14,9 @@ from typing import Annotated, Optional
 import math
 import sqlite3
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Response
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from constants import (
@@ -59,6 +60,14 @@ from schemas import (
 
 app = FastAPI(title="FinDash")
 init()
+
+
+# Pydantic validation failures default to 422, but the public contract documented
+# in README + CHANGELOG returns 400 for bad input. Translate them so callers see
+# the documented status code.
+@app.exception_handler(RequestValidationError)
+def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.errors()})
 
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
