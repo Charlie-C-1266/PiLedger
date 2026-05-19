@@ -29,7 +29,36 @@ const THEMES = [
   { id: 'rose',   label: 'Rose',   swatch: '#be185d' },
 ];
 
-const prefs = { theme: 'olive', dark_mode: false };
+const prefs = { theme: 'olive', dark_mode: false, base_currency: 'GBP' };
+
+// Supported currencies — id must match the backend Currency literal in
+// constants.py. `dec` is what Intl.NumberFormat uses for minimumFractionDigits
+// (JPY has no minor unit and would otherwise render fractional yen).
+const CURRENCIES = [
+  { id: 'GBP', label: 'GBP — British Pound',     symbol: '£',   dec: 2 },
+  { id: 'USD', label: 'USD — US Dollar',         symbol: '$',   dec: 2 },
+  { id: 'EUR', label: 'EUR — Euro',              symbol: '€',   dec: 2 },
+  { id: 'JPY', label: 'JPY — Japanese Yen',      symbol: '¥',   dec: 0 },
+  { id: 'CAD', label: 'CAD — Canadian Dollar',   symbol: 'C$',  dec: 2 },
+  { id: 'AUD', label: 'AUD — Australian Dollar', symbol: 'A$',  dec: 2 },
+  { id: 'CHF', label: 'CHF — Swiss Franc',       symbol: 'Fr.', dec: 2 },
+  { id: 'NZD', label: 'NZD — New Zealand Dollar',symbol: 'NZ$', dec: 2 },
+  { id: 'SEK', label: 'SEK — Swedish Krona',     symbol: 'kr',  dec: 2 },
+  { id: 'NOK', label: 'NOK — Norwegian Krone',   symbol: 'kr',  dec: 2 },
+];
+
+function currencyMeta(code) {
+  return CURRENCIES.find(c => c.id === code) || CURRENCIES[0];
+}
+
+function currencySymbol(code) {
+  return currencyMeta(code).symbol;
+}
+
+// User's manual FX table. Loaded from /api/rates on boot and after edits.
+// `rates` is keyed by currency code; the user's base currency is not included
+// (it is implicitly 1.0).
+const fxState = { base: 'GBP', rates: {} };
 
 function applyTheme() {
   const root = document.documentElement;
@@ -108,6 +137,13 @@ function populateSubtypeSelect(selectEl, type, selected) {
   ).join('');
 }
 
+function populateCurrencySelect(selectEl, selected) {
+  const sel = selected || prefs.base_currency || 'GBP';
+  selectEl.innerHTML = CURRENCIES.map(c =>
+    `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(c.label)}</option>`
+  ).join('');
+}
+
 // ─── API helpers ──────────────────────────────────────────────────────────────
 async function apiFetch(method, url, body) {
   const opts = { method, headers: {} };
@@ -137,14 +173,25 @@ const api = {
 };
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
-function fmt(v) {
+// Currency-aware formatters. The optional `code` overrides the user's base
+// currency — pass the account's own currency when rendering account-level
+// values (balances, history points), and omit it for portfolio-wide totals
+// (net worth, summary tiles) so they format in the base currency.
+function fmt(v, code) {
   if (v == null) return '—';
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(v);
+  const c = code || prefs.base_currency || 'GBP';
+  const dec = currencyMeta(c).dec;
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: c,
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  }).format(v);
 }
 
-function fmtSigned(v) {
+function fmtSigned(v, code) {
   if (v == null) return '—';
-  const s = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(Math.abs(v));
+  const s = fmt(Math.abs(v), code);
   return (v >= 0 ? '+' : '−') + s;
 }
 
@@ -201,11 +248,28 @@ async function loadAll() {
 }
 
 function renderSummary(s) {
-  document.getElementById('total-amount').textContent   = fmt(s.total);
-  document.getElementById('total-savings').textContent  = fmt(s.total_savings);
-  document.getElementById('total-current').textContent  = fmt(s.total_current);
-  document.getElementById('total-loans').textContent    = fmt(s.total_loans || 0);
+  // Summary totals always render in the user's base currency. Server returns
+  // both the base and any missing-rate currencies so we can warn explicitly.
+  const base = s.base_currency || prefs.base_currency;
+  document.getElementById('total-amount').textContent   = fmt(s.total, base);
+  document.getElementById('total-savings').textContent  = fmt(s.total_savings, base);
+  document.getElementById('total-current').textContent  = fmt(s.total_current, base);
+  document.getElementById('total-loans').textContent    = fmt(s.total_loans || 0, base);
   document.getElementById('account-count').textContent  = s.account_count;
+
+  // Warn once via the net-worth label tooltip when a non-base currency has
+  // no rate set — those accounts contribute as if the rate were 1.0.
+  const nwLabel = document.querySelector('.nw-label');
+  if (nwLabel) {
+    const missing = (s.missing_rates || []).filter(c => c !== base);
+    if (missing.length) {
+      nwLabel.title = `Missing FX rates for: ${missing.join(', ')}. Set them in Settings for an accurate total.`;
+      nwLabel.classList.add('nw-label--warn');
+    } else {
+      nwLabel.title = '';
+      nwLabel.classList.remove('nw-label--warn');
+    }
+  }
 }
 
 // Clicking a summary tile narrows the Accounts grid to that type. Clicking
@@ -255,16 +319,22 @@ function renderAccounts(accounts) {
     const sub = (a.subtype && a.subtype !== 'general')
       ? `<span class="badge badge-subtype">${esc(subtypeLabel(a.type, a.subtype))}</span>`
       : '';
+    // Show the currency badge only when it differs from the base — keeps
+    // single-currency users from seeing redundant GBP/GBP/GBP tags.
+    const cur = a.currency || 'GBP';
+    const curBadge = cur !== prefs.base_currency
+      ? `<span class="badge badge-currency">${esc(cur)}</span>`
+      : '';
     return `
     <div class="card account-card" style="--accent-color:${esc(a.color)}">
       <div class="account-header">
         <div>
           <div class="account-name">${esc(a.name)}</div>
-          <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>${sub}
+          <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>${sub}${curBadge}
         </div>
         <button class="btn-icon" onclick="openEditModal(${a.id})" title="Edit">&#9998;</button>
       </div>
-      <div class="account-balance">${fmt(a.current_balance)}</div>
+      <div class="account-balance">${fmt(a.current_balance, cur)}</div>
       <div class="account-updated">${a.type === 'loan' ? 'Owed · ' : 'Updated: '}${fmtDate(a.last_updated)}</div>
       ${a.interest_rate > 0 && (a.type === 'savings' || a.type === 'loan')
         ? `<div class="account-rate${a.type === 'loan' ? ' account-rate--loan' : ''}">${a.interest_rate}% ${a.type === 'loan' ? 'APR' : 'AER'}</div>`
@@ -283,9 +353,25 @@ const BASE_OPTS = {
   maintainAspectRatio: false,
   plugins: {
     legend: { position: 'top', labels: { boxWidth: 12, padding: 14, font: { size: 12 } } },
-    tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y ?? ctx.parsed)}` } },
+    // Tooltips honour each dataset's own currency (stashed on `_currency`) so
+    // a mixed-currency chart formats USD lines in USD, JPY in yen, etc.
+    tooltip: { callbacks: { label: ctx => {
+      const cur = ctx.dataset._currency;
+      return ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y ?? ctx.parsed, cur)}`;
+    } } },
   },
 };
+
+// Convert a native-currency amount to the user's base using the cached FX
+// table. Missing rates fall back to 1.0 — matches server semantics and keeps
+// the chart honest about what we don't know.
+function toBase(amount, currency) {
+  if (amount == null) return amount;
+  const base = prefs.base_currency || 'GBP';
+  if (currency === base) return amount;
+  const rate = fxState.rates[currency];
+  return rate != null ? amount * rate : amount;
+}
 
 async function loadHistoryChart() {
   const days = document.getElementById('history-days').value;
@@ -314,6 +400,7 @@ function renderHistoryChart(data) {
       borderColor: a.color,
       backgroundColor: hexToRgba(a.color, 0.08),
       fill: true, stepped: true, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
+      _currency: a.currency || 'GBP',
     };
   });
 
@@ -339,13 +426,24 @@ function renderDistributionChart(accounts) {
   );
   if (!with_bal.length) { charts.distribution = emptyChart(canvas, 'No asset balances yet'); return; }
 
+  // Convert each slice to the base currency so the doughnut compares like with
+  // like. Hover tooltip still shows the original native amount.
+  const base = prefs.base_currency || 'GBP';
+  const slices = with_bal.map(a => ({
+    name: a.name,
+    color: a.color,
+    native: a.current_balance,
+    currency: a.currency || base,
+    converted: toBase(a.current_balance, a.currency || base),
+  }));
+
   charts.distribution = new Chart(canvas, {
     type: 'doughnut',
     data: {
-      labels: with_bal.map(a => a.name),
+      labels: slices.map(s => s.name),
       datasets: [{
-        data: with_bal.map(a => a.current_balance),
-        backgroundColor: with_bal.map(a => a.color),
+        data: slices.map(s => s.converted),
+        backgroundColor: slices.map(s => s.color),
         borderWidth: 2, borderColor: cssVar('--surface', '#fff'), hoverOffset: 4,
       }],
     },
@@ -353,7 +451,13 @@ function renderDistributionChart(accounts) {
       ...BASE_OPTS, cutout: '62%',
       plugins: {
         ...BASE_OPTS.plugins,
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.parsed)}` } },
+        tooltip: { callbacks: { label: ctx => {
+          const s = slices[ctx.dataIndex];
+          // Show native value first; append converted only if currencies differ.
+          return s.currency === base
+            ? ` ${s.name}: ${fmt(s.native, s.currency)}`
+            : ` ${s.name}: ${fmt(s.native, s.currency)} (≈ ${fmt(s.converted, base)})`;
+        } } },
       },
     },
   });
@@ -377,6 +481,7 @@ function renderProjectionChart(data, months) {
     label: a.name, data: a.points.map(p => p.balance),
     borderColor: a.color, backgroundColor: hexToRgba(a.color, 0.06),
     fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
+    _currency: a.currency || 'GBP',
   }));
 
   charts.projection = new Chart(canvas, {
@@ -390,17 +495,20 @@ function renderProjectionChart(data, months) {
     },
   });
 
-  document.getElementById('projection-stats').innerHTML = data.map(a => `
+  document.getElementById('projection-stats').innerHTML = data.map(a => {
+    const cur = a.currency || 'GBP';
+    return `
     <div class="card projection-card" style="--accent-color:${esc(a.color)}">
       <div class="proj-name">${esc(a.name)}</div>
       <div class="proj-rate">${a.interest_rate}% AER (monthly compounding)</div>
       <div class="proj-rows">
-        <div class="proj-row"><span>Now</span><span class="proj-value">${fmt(a.initial_balance)}</span><span></span></div>
-        <div class="proj-row"><span>1 year</span><span class="proj-value">${fmt(a['1yr'])}</span><span class="proj-interest">+${fmt(a['1yr'] - a.initial_balance)}</span></div>
-        <div class="proj-row"><span>2 years</span><span class="proj-value">${fmt(a['2yr'])}</span><span class="proj-interest">+${fmt(a['2yr'] - a.initial_balance)}</span></div>
-        <div class="proj-row"><span>5 years</span><span class="proj-value">${fmt(a['5yr'])}</span><span class="proj-interest">+${fmt(a['5yr'] - a.initial_balance)}</span></div>
+        <div class="proj-row"><span>Now</span><span class="proj-value">${fmt(a.initial_balance, cur)}</span><span></span></div>
+        <div class="proj-row"><span>1 year</span><span class="proj-value">${fmt(a['1yr'], cur)}</span><span class="proj-interest">+${fmt(a['1yr'] - a.initial_balance, cur)}</span></div>
+        <div class="proj-row"><span>2 years</span><span class="proj-value">${fmt(a['2yr'], cur)}</span><span class="proj-interest">+${fmt(a['2yr'] - a.initial_balance, cur)}</span></div>
+        <div class="proj-row"><span>5 years</span><span class="proj-value">${fmt(a['5yr'], cur)}</span><span class="proj-interest">+${fmt(a['5yr'] - a.initial_balance, cur)}</span></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function emptyChart(canvas, msg) {
@@ -464,6 +572,7 @@ function renderBudgetChart(projection) {
     // rather than being confused with an asset losing value.
     borderDash: a.type === 'loan' ? [6, 4] : [],
     pointRadius: 0, pointHoverRadius: 4,
+    _currency: a.currency || 'GBP',
   }));
 
   // Bold net-worth line — the single most useful read of where things are heading
@@ -475,6 +584,7 @@ function renderBudgetChart(projection) {
       backgroundColor: 'transparent',
       fill: false, tension: 0.3, borderWidth: 3,
       pointRadius: 0, pointHoverRadius: 5,
+      _currency: projection.base_currency || prefs.base_currency,
     });
   }
 
@@ -536,9 +646,10 @@ function renderBudgetItems(items, projection) {
     const accItems = byAccount[acc.id] || [];
     const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : 'neutral';
     const netLabel = acc.monthly_net !== 0
-      ? fmtSigned(acc.monthly_net) + '/mo'
+      ? fmtSigned(acc.monthly_net, acc.currency || 'GBP') + '/mo'
       : 'No items';
 
+    const accCur = acc.currency || 'GBP';
     const rows = accItems.map(item => {
       const isOut = item.amount < 0;
       return `
@@ -547,7 +658,7 @@ function renderBudgetItems(items, projection) {
             <span class="bi-name">${esc(item.name)}</span>
             <span class="bi-freq">${freqLabel[item.frequency]}</span>
           </div>
-          <span class="bi-amount ${isOut ? 'outflow' : 'inflow'}">${fmtSigned(item.amount)}</span>
+          <span class="bi-amount ${isOut ? 'outflow' : 'inflow'}">${fmtSigned(item.amount, accCur)}</span>
           <button class="btn-icon" onclick="openEditBudgetModal(${item.id})" title="Edit">&#9998;</button>
           <button class="btn-icon" onclick="openDeleteBudgetConfirm(${item.id})" title="Remove">&#10005;</button>
         </div>`;
@@ -589,30 +700,36 @@ function renderBreakdownTable(projection) {
   </tr></thead><tbody>`;
 
   accounts.forEach(acc => {
+    const accCur = acc.currency || 'GBP';
     const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : '';
-    const netStr   = acc.monthly_net !== 0 ? fmtSigned(acc.monthly_net) : '—';
+    const netStr   = acc.monthly_net !== 0 ? fmtSigned(acc.monthly_net, accCur) : '—';
     html += `<tr>
       <td>
         <span class="td-dot" style="background:${esc(acc.color)}"></span>${esc(acc.name)}
       </td>
       <td class="td-net ${netClass}">${netStr}</td>
-      ${acc.points.map(p => `<td class="td-bal${p.balance < 0 ? ' negative' : ''}">${fmt(p.balance)}</td>`).join('')}
+      ${acc.points.map(p => `<td class="td-bal${p.balance < 0 ? ' negative' : ''}">${fmt(p.balance, accCur)}</td>`).join('')}
     </tr>`;
   });
 
-  // Net-worth totals row — assets minus liabilities.
+  // Net-worth totals row — assets minus liabilities, in the user's base currency.
   // For monthly_net: a payment on a loan (e.g. -£1,200) *improves* net worth by +£1,200,
-  // so we flip the sign for loan accounts before summing.
-  const totalNet = accounts.reduce((s, a) =>
-    s + (a.type === 'loan' ? -a.monthly_net : a.monthly_net), 0);
+  // so we flip the sign for loan accounts before summing. Per-account nets are
+  // converted to base before being added together so the total is meaningful
+  // across mixed currencies.
+  const base = projection.base_currency || prefs.base_currency || 'GBP';
+  const totalNet = accounts.reduce((s, a) => {
+    const v = toBase(a.monthly_net, a.currency || base);
+    return s + (a.type === 'loan' ? -v : v);
+  }, 0);
   const netClass = totalNet > 0 ? 'positive' : totalNet < 0 ? 'negative' : '';
   html += `<tr class="tr-total">
     <td>Net worth</td>
-    <td class="td-net ${netClass}">${totalNet !== 0 ? fmtSigned(totalNet) : '—'}</td>`;
+    <td class="td-net ${netClass}">${totalNet !== 0 ? fmtSigned(totalNet, base) : '—'}</td>`;
   const netWorthPoints = projection.net_worth || [];
   for (let m = 0; m <= months; m++) {
     const total = netWorthPoints[m]?.balance ?? 0;
-    html += `<td class="td-bal${total < 0 ? ' negative' : ''}">${fmt(total)}</td>`;
+    html += `<td class="td-bal${total < 0 ? ' negative' : ''}">${fmt(total, base)}</td>`;
   }
   html += '</tr></tbody>';
   table.innerHTML = html;
@@ -638,6 +755,7 @@ function openAddAccountModal() {
   document.getElementById('add-min-payment').value = '';
   document.getElementById('add-balance').value = '';
   document.getElementById('add-color').value = '#6366f1';
+  populateCurrencySelect(document.getElementById('add-currency'), prefs.base_currency);
   toggleAddInterest();
   openModal('add-account-modal');
   setTimeout(() => document.getElementById('add-name').focus(), 50);
@@ -647,6 +765,8 @@ function toggleAddInterest() {
   const t = document.getElementById('add-type').value;
   const isLoan  = t === 'loan';
   const hasRate = (t === 'savings' || isLoan);
+  const cur = document.getElementById('add-currency').value || prefs.base_currency;
+  const sym = currencySymbol(cur);
   // Repopulate the subtype dropdown — sub-types are scoped to the parent type,
   // so switching type must reset the available options to a valid set.
   populateSubtypeSelect(document.getElementById('add-subtype'), t, 'general');
@@ -654,23 +774,26 @@ function toggleAddInterest() {
   document.getElementById('add-interest-label').textContent =
     isLoan ? 'APR (%)' : 'Annual Interest Rate (%)';
   document.getElementById('add-min-payment-group').style.display = isLoan ? '' : 'none';
+  document.getElementById('add-min-payment-label').innerHTML =
+    `Minimum Monthly Payment (${esc(sym)}) <span class="field-hint">optional</span>`;
   // For a loan, the "balance" is the amount owed — relabel so it reads as a liability.
   document.getElementById('add-balance-label').innerHTML = isLoan
-    ? 'Amount Owed (£) <span class="field-hint">optional</span>'
-    : 'Opening Balance (£) <span class="field-hint">optional</span>';
+    ? `Amount Owed (${esc(sym)}) <span class="field-hint">optional</span>`
+    : `Opening Balance (${esc(sym)}) <span class="field-hint">optional</span>`;
 }
 
 async function submitAddAccount() {
   const name         = document.getElementById('add-name').value.trim();
   const type         = document.getElementById('add-type').value;
   const subtype      = document.getElementById('add-subtype').value || 'general';
+  const currency     = document.getElementById('add-currency').value || prefs.base_currency;
   const interestRate = parseFloat(document.getElementById('add-interest').value) || 0;
   const color        = document.getElementById('add-color').value;
   const balStr       = document.getElementById('add-balance').value;
   const minPayStr    = document.getElementById('add-min-payment').value;
   if (!name) { alert('Please enter an account name.'); return; }
   try {
-    const account = await api.post('/api/accounts', { name, type, subtype, interest_rate: interestRate, color });
+    const account = await api.post('/api/accounts', { name, type, subtype, currency, interest_rate: interestRate, color });
     if (balStr !== '' && !isNaN(parseFloat(balStr)))
       await api.post(`/api/accounts/${account.id}/balance`, { balance: parseFloat(balStr) });
     if (type === 'loan' && minPayStr !== '' && !isNaN(parseFloat(minPayStr))) {
@@ -693,7 +816,9 @@ async function submitAddAccount() {
 function openUpdateModal(id) {
   state.updatingId = id;
   const a = state.accounts.find(a => a.id === id);
+  const sym = currencySymbol(a.currency || prefs.base_currency);
   document.getElementById('update-balance-title').textContent = a.name;
+  document.getElementById('update-balance-label').textContent = `New Balance (${sym})`;
   document.getElementById('update-balance-amount').value = a.current_balance ?? '';
   document.getElementById('update-balance-notes').value = '';
   openModal('update-balance-modal');
@@ -777,10 +902,11 @@ function _populateAccountSelect(preselectId) {
 function _applyBudgetModalForAccount(accountId) {
   const acc    = state.accounts.find(a => a.id === accountId);
   const isLoan = acc?.type === 'loan';
+  const sym    = currencySymbol(acc?.currency || prefs.base_currency);
   document.getElementById('bim-direction-field').style.display = isLoan ? 'none' : '';
   document.getElementById('bim-frequency-field').style.display = isLoan ? 'none' : '';
   document.getElementById('bim-amount-label').textContent =
-    isLoan ? 'Minimum Monthly Payment (£)' : 'Amount (£)';
+    isLoan ? `Minimum Monthly Payment (${sym})` : `Amount (${sym})`;
   if (isLoan) {
     setBiDir('out');                                          // a payment reduces the loan
     document.getElementById('bim-frequency').value = 'monthly';
@@ -895,7 +1021,113 @@ function renderModePill() {
 function openSettingsModal() {
   renderThemeGrid();
   renderModePill();
+  renderCurrencySettings();
   openModal('settings-modal');
+}
+
+// ─── Currency settings ───────────────────────────────────────────────────────
+// The settings modal exposes (1) the user's base currency and (2) a manual FX
+// table. The rates table only shows currencies that are actually in use on the
+// user's accounts (plus the base) — there's no point asking for a NOK rate if
+// they don't hold NOK. The base itself is implicit and not editable as a row.
+
+function _usedCurrencies() {
+  const set = new Set([prefs.base_currency || 'GBP']);
+  state.accounts.forEach(a => set.add(a.currency || 'GBP'));
+  return [...set];
+}
+
+function renderCurrencySettings() {
+  populateCurrencySelect(
+    document.getElementById('settings-base-currency'),
+    prefs.base_currency,
+  );
+  document.getElementById('rates-base-label').textContent = prefs.base_currency;
+  renderRatesTable();
+}
+
+function renderRatesTable() {
+  const base = prefs.base_currency || 'GBP';
+  const rows = _usedCurrencies()
+    .filter(c => c !== base)
+    .sort();
+  const table = document.getElementById('rates-table');
+  const note  = document.getElementById('rates-note');
+  const saveBtn = document.getElementById('rates-save-btn');
+
+  if (!rows.length) {
+    table.innerHTML = '';
+    note.textContent = 'Add an account in another currency to manage exchange rates here.';
+    saveBtn.style.display = 'none';
+    return;
+  }
+
+  saveBtn.style.display = '';
+  note.textContent = 'Rates are how the dashboard converts to your base currency for net-worth totals.';
+  table.innerHTML = rows.map(c => {
+    const m = currencyMeta(c);
+    const r = fxState.rates[c];
+    const value = r != null ? r : '';
+    return `
+      <div class="rate-row" data-currency="${c}">
+        <span class="rate-from">1 ${esc(c)}</span>
+        <span class="rate-eq">=</span>
+        <input type="number" class="rate-input" data-currency="${c}"
+               step="0.0001" min="0" placeholder="—"
+               value="${value}" />
+        <span class="rate-to">${esc(base)}</span>
+        <span class="rate-name">${esc(m.label.replace(/^[A-Z]+ — /, ''))}</span>
+      </div>`;
+  }).join('');
+}
+
+async function saveRatesFromTable() {
+  const inputs = document.querySelectorAll('#rates-table .rate-input');
+  const rates = [];
+  for (const inp of inputs) {
+    const v = inp.value.trim();
+    if (v === '') continue;                    // blank = no rate set
+    const num = parseFloat(v);
+    if (!isFinite(num) || num <= 0) {
+      alert(`Invalid rate for ${inp.dataset.currency}.`);
+      return;
+    }
+    rates.push({ currency: inp.dataset.currency, rate: num });
+  }
+  try {
+    const body = await api.put('/api/rates', { rates });
+    fxState.base = body.base_currency;
+    fxState.rates = Object.fromEntries(body.rates.map(r => [r.currency, r.rate]));
+    renderRatesTable();
+    await loadAll();
+  } catch (e) {
+    alert('Could not save rates: ' + e.message);
+  }
+}
+
+async function onBaseCurrencyChange(newBase) {
+  if (newBase === prefs.base_currency) return;
+  // Server re-scales the rates table if possible; if it can't, the user will
+  // see blanks and re-enter what's missing.
+  try {
+    const updated = await api.put('/api/prefs', { base_currency: newBase });
+    prefs.base_currency = updated.base_currency;
+    await loadRates();
+    renderCurrencySettings();
+    await loadAll();
+  } catch (e) {
+    alert('Could not change base currency: ' + e.message);
+  }
+}
+
+async function loadRates() {
+  try {
+    const body = await api.get('/api/rates');
+    fxState.base = body.base_currency;
+    fxState.rates = Object.fromEntries(body.rates.map(r => [r.currency, r.rate]));
+  } catch {
+    // 401 already handled by apiFetch; otherwise leave the table empty.
+  }
 }
 
 // Persist a pref change and reflect it everywhere immediately. We update the
@@ -927,8 +1159,9 @@ function toggleDarkMode()    { setDarkMode(!prefs.dark_mode); }
 async function loadPrefs() {
   try {
     const p = await api.get('/api/prefs');
-    prefs.theme     = p.theme;
-    prefs.dark_mode = !!p.dark_mode;
+    prefs.theme         = p.theme;
+    prefs.dark_mode     = !!p.dark_mode;
+    prefs.base_currency = p.base_currency || 'GBP';
   } catch {
     // 401 is already handled by apiFetch (redirects to /login). Anything else,
     // fall back to whatever localStorage primed pre-paint.
@@ -939,5 +1172,6 @@ async function loadPrefs() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 (async () => {
   await loadPrefs();
+  await loadRates();
   await loadAll();
 })();

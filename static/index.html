@@ -250,12 +250,16 @@
           <label>Account Subtype</label>
           <select id="add-subtype"></select>
         </div>
+        <div class="field">
+          <label>Currency</label>
+          <select id="add-currency" onchange="toggleAddInterest()"></select>
+        </div>
         <div class="field" id="add-interest-group" style="display:none">
           <label id="add-interest-label">Annual Interest Rate (%)</label>
           <input type="number" id="add-interest" placeholder="e.g. 4.5" step="0.01" min="0" max="100" />
         </div>
         <div class="field" id="add-min-payment-group" style="display:none">
-          <label>Minimum Monthly Payment (£) <span class="field-hint">optional</span></label>
+          <label id="add-min-payment-label">Minimum Monthly Payment <span class="field-hint">optional</span></label>
           <input type="number" id="add-min-payment" placeholder="e.g. 350" step="0.01" min="0" />
         </div>
         <div class="field">
@@ -263,7 +267,7 @@
           <input type="color" id="add-color" value="#6366f1" />
         </div>
         <div class="field">
-          <label id="add-balance-label">Opening Balance (£) <span class="field-hint">optional</span></label>
+          <label id="add-balance-label">Opening Balance <span class="field-hint">optional</span></label>
           <input type="number" id="add-balance" placeholder="0.00" step="0.01" min="0" />
         </div>
       </div>
@@ -284,7 +288,7 @@
       <div class="modal-body">
         <p class="modal-sub" id="update-balance-title"></p>
         <div class="field">
-          <label>New Balance (£)</label>
+          <label id="update-balance-label">New Balance</label>
           <input type="number" id="update-balance-amount" placeholder="0.00" step="0.01" min="0" />
         </div>
         <div class="field">
@@ -375,7 +379,7 @@
           </div>
         </div>
         <div class="field">
-          <label id="bim-amount-label">Amount (£)</label>
+          <label id="bim-amount-label">Amount</label>
           <input type="number" id="bim-amount" placeholder="0.00" step="0.01" min="0" />
         </div>
         <div class="field" id="bim-frequency-field">
@@ -417,9 +421,24 @@
           <label>Colour Theme</label>
           <div class="theme-grid" id="theme-grid"></div>
         </div>
+        <div class="settings-row">
+          <div class="settings-row-label">
+            <span class="settings-row-title">Base Currency</span>
+            <span class="settings-row-hint">Net-worth totals are reported in this currency. Per-account balances stay in their own currency.</span>
+          </div>
+          <select id="settings-base-currency" onchange="onBaseCurrencyChange(this.value)"></select>
+        </div>
+        <div class="field" id="settings-rates-field">
+          <label>Exchange Rates <span class="field-hint">1 unit = <span id="rates-base-label">GBP</span></span></label>
+          <div class="rates-table" id="rates-table"></div>
+          <p class="rates-note" id="rates-note"></p>
+        </div>
       </div>
-      <div class="modal-footer modal-footer--end">
-        <button class="btn btn-primary" onclick="closeModal('settings-modal')">Done</button>
+      <div class="modal-footer modal-footer--split">
+        <button class="btn btn-ghost" id="rates-save-btn" onclick="saveRatesFromTable()" style="display:none">Save Rates</button>
+        <div class="modal-footer-right">
+          <button class="btn btn-primary" onclick="closeModal('settings-modal')">Done</button>
+        </div>
       </div>
     </div>
   </div>
