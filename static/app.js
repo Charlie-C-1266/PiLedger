@@ -7,6 +7,8 @@ const state = {
   editingId:  null,
   updatingId: null,
   deletingId: null,
+  // null = show every account; otherwise an AccountType ('savings'|'current'|'loan')
+  accountFilter: null,
   // Budget
   budgetPeriod:     6,
   budgetItems:      [],
@@ -206,6 +208,21 @@ function renderSummary(s) {
   document.getElementById('account-count').textContent  = s.account_count;
 }
 
+// Clicking a summary tile narrows the Accounts grid to that type. Clicking
+// the active tile again, or the 'all' tile at any time, clears the filter.
+// Charts stay global on purpose — you don't lose context when drilling in.
+function setAccountFilter(type) {
+  const next = (type === 'all' || state.accountFilter === type) ? null : type;
+  state.accountFilter = next;
+  // Reflect the new state on every tile (aria-pressed drives the CSS).
+  document.querySelectorAll('.summary-card[data-filter]').forEach(btn => {
+    const f = btn.dataset.filter;
+    const active = (next === null && f === 'all') || (next !== null && f === next);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  renderAccounts(state.accounts);
+}
+
 function renderAccounts(accounts) {
   const grid = document.getElementById('accounts-grid');
   if (!accounts.length) {
@@ -220,7 +237,21 @@ function renderAccounts(accounts) {
       </div>`;
     return;
   }
-  grid.innerHTML = accounts.map(a => {
+  // Narrow to the active type filter (if any). The summary tiles each map to
+  // one AccountType; the 'all' tile is represented internally as null.
+  const visible = state.accountFilter
+    ? accounts.filter(a => a.type === state.accountFilter)
+    : accounts;
+  if (!visible.length) {
+    const labels = { savings: 'savings', current: 'current', loan: 'loan' };
+    grid.innerHTML = `
+      <div class="empty-state">
+        <p>No ${esc(labels[state.accountFilter] || '')} accounts to show.
+           <button type="button" class="btn btn-ghost btn-sm" onclick="setAccountFilter('all')">Show all</button></p>
+      </div>`;
+    return;
+  }
+  grid.innerHTML = visible.map(a => {
     const sub = (a.subtype && a.subtype !== 'general')
       ? `<span class="badge badge-subtype">${esc(subtypeLabel(a.type, a.subtype))}</span>`
       : '';

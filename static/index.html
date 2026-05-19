@@ -76,9 +76,11 @@
     <!-- ════════════════════ OVERVIEW VIEW ════════════════════ -->
     <div id="view-overview">
 
-      <!-- Summary cards -->
+      <!-- Summary cards (double as type filters for the Accounts grid) -->
       <div class="summary-row">
-        <div class="card summary-card">
+        <button type="button" class="card summary-card" data-filter="savings"
+                aria-pressed="false" onclick="setAccountFilter('savings')"
+                title="Show savings accounts only">
           <div class="sc-icon sc-savings">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 3v2m0 6v2m-3-5h5.5a1.5 1.5 0 010 3H7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -88,8 +90,10 @@
             <span class="sc-label">Total Savings</span>
             <span class="sc-value" id="total-savings">£0.00</span>
           </div>
-        </div>
-        <div class="card summary-card">
+        </button>
+        <button type="button" class="card summary-card" data-filter="current"
+                aria-pressed="false" onclick="setAccountFilter('current')"
+                title="Show current accounts only">
           <div class="sc-icon sc-current">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <rect x="2" y="5" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"/>
@@ -101,8 +105,10 @@
             <span class="sc-label">Current Accounts</span>
             <span class="sc-value" id="total-current">£0.00</span>
           </div>
-        </div>
-        <div class="card summary-card">
+        </button>
+        <button type="button" class="card summary-card" data-filter="loan"
+                aria-pressed="false" onclick="setAccountFilter('loan')"
+                title="Show loan / debt accounts only">
           <div class="sc-icon sc-loans">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <path d="M3 7l7-4 7 4v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
@@ -113,8 +119,10 @@
             <span class="sc-label">Total Debt</span>
             <span class="sc-value" id="total-loans">£0.00</span>
           </div>
-        </div>
-        <div class="card summary-card">
+        </button>
+        <button type="button" class="card summary-card" data-filter="all"
+                aria-pressed="true" onclick="setAccountFilter('all')"
+                title="Show all accounts">
           <div class="sc-icon sc-count">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
               <circle cx="7" cy="8" r="3" stroke="currentColor" stroke-width="1.6"/>
@@ -126,7 +134,7 @@
             <span class="sc-label">Accounts</span>
             <span class="sc-value" id="account-count">0</span>
           </div>
-        </div>
+        </button>
       </div>
 
       <!-- Accounts grid -->
