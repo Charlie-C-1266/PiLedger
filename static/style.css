@@ -220,6 +220,28 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
+  /* When the tile is a <button> (filter mode), reset the UA styling so it
+     reads as a card, not a chrome button. */
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.summary-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+.summary-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Active filter — visible accent ring + matching shadow so it's obvious which
+   filter narrowed the grid. */
+.summary-card[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
 }
 
 .sc-icon {

@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.9.0] — 2026-05-19
+
+### Summary tiles double as account-grid filters
+
+The four tiles along the top of the Overview (Total Savings, Current Accounts, Total Debt, Accounts) used to be display-only. They now act as type filters for the Accounts grid below: click Savings to see only savings cards, click Current to swap to current, etc. The cards below narrow but the dashboard-wide totals, charts, and Distribution stay global so you don't lose context when drilling in.
+
+#### Added
+
+**Frontend**
+- `static/index.html` — each summary tile is now a `<button type="button" class="card summary-card" data-filter="…" aria-pressed="…">`. `data-filter` is one of `savings`, `current`, `loan`, `all`; `aria-pressed` reflects the active tile. The 'Accounts' (count) tile starts as the active "all" filter. Inner DOM (icon + label + value) unchanged, so every existing selector keeps working.
+- `static/app.js` — `state.accountFilter` (null = show all). `setAccountFilter(type)` toggles when re-clicking the active filter, special-cases `'all'` as a clear, updates `aria-pressed` on every tile, and re-renders the grid. `renderAccounts` narrows by `state.accountFilter` before render, and shows a friendly empty state with a "Show all" escape hatch when a filter matches zero accounts. The filter survives `loadAll()` re-renders (e.g. after updating a balance) because the state lives at module scope, not on the DOM.
+- `static/style.css` — `.summary-card` resets native button styling (text-align, font, color, width, cursor), gains a subtle hover lift + `:focus-visible` ring, and `[aria-pressed="true"]` renders an accent border + ring so the active filter is unmistakable.
+
+#### Why filter the grid only, not the charts
+The summary numbers ("£3,250 across 3 accounts") describe your whole financial picture, not your current view. If clicking Savings rewrote them, the user would lose the very context they're trying to drill into. Same logic for Balance History and Distribution — they show how your money is split *because* you want to compare types, so filtering them away from the same click defeats the chart's purpose.
+
+**Tests**
+- `tests/e2e/test_account_filters.py` (7 tests, all chromium) — default state shows all 3 accounts with the count tile active; clicking Savings narrows to one card; clicking Current swaps filter; clicking the active filter again clears; the count tile always clears; an empty result shows the "No X accounts" empty state with a "Show all" button; **filter survives balance update** (loadAll re-render doesn't snap the user back to the full list).
+
+After all changes: `./venv/bin/pytest` → **138 passed** (unchanged); `./venv/bin/pytest tests/e2e` → **34 passed** (27 → 34).
+
+---
+
 ## [0.8.0] — 2026-05-19
 
 ### Playwright end-to-end test suite
