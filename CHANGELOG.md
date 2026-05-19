@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.12.0] — 2026-05-19
+
+### One-command setup with Docker Compose + uv-friendly install instructions
+
+Up to now the only documented way to run FinDash was the `python3 -m venv venv && pip install ...` dance, which is fine for the existing developer but adds friction for anyone trying the project for the first time. This release ships a containerised setup path and a top-level `Getting Started` section in the README so the on-ramp is clear regardless of how someone prefers to run Python services.
+
+#### Design — Docker layout
+
+- **Slim base, multi-layer cache.** The `Dockerfile` uses `python:3.12-slim` and copies `requirements.txt` *before* the application source, so editing `app.py` doesn't bust the dependency layer on every rebuild. `pip install --no-cache-dir` keeps the image lean.
+- **Non-root by default.** A dedicated `findash` system user (UID 10001) owns `/app` and `/data`. The container has no shell entrypoint, no sudo, and no need for privileged mounts — running it as root would have been a one-line shortcut that wasn't worth the security regression.
+- **Data lives in a named volume.** `docker-compose.yml` mounts `findash-data` at `/data` inside the container and sets `FINDASH_DB=/data/findash.db` in the environment. `docker compose down` keeps user data; `docker compose down -v` wipes it. This means image rebuilds (e.g. after `git pull`) never destroy user accounts or balance history — a property the old "edit `findash.db` in place" workflow didn't even need to think about because there was no rebuild step.
+- **Built-in health check.** Both the `Dockerfile` `HEALTHCHECK` and the compose-level `healthcheck` hit `GET /login`, which returns 200 unauthenticated. Plain `GET /` returns a 302 redirect to `/login` which makes for a noisier check; `/login` is the most direct "is the SPA wired up" probe we can make without a session cookie.
+
+#### Design — README Getting Started
+
+The new section sits at the top of the README and presents three equally-supported install paths (Docker, `uv`, `pip` + `venv`) in a single decision table. The existing `Building and Running` section stays as the deep reference for systemd, headless deployment, and firewall config — newcomers find the short recipe up top without losing the operational notes lower down.
+
+`uv` got first-class treatment in addition to `pip` because installing the runtime + dev dependencies via `pip` takes 20–30 seconds even on a fast connection, while `uv pip install -r requirements.txt` is usually under two. Using `uv venv venv` (rather than the default `.venv`) keeps the layout identical to the pip flow so `start.sh`, the systemd unit, and `./venv/bin/pytest` all work unchanged.
+
+#### Added
+
+- `Dockerfile` — Python 3.12-slim image, dependency layer cached separately from source, `findash` non-root user, writable `/data` for the SQLite volume, `HEALTHCHECK` against `/login`, CMD `uvicorn app:app --host 0.0.0.0 --port 8080`.
+- `docker-compose.yml` — single `findash` service, `restart: unless-stopped`, `8080:8080` port mapping (host-side configurable), `FINDASH_DB` pinned to `/data/findash.db`, `COOKIE_SECURE` passed through from the host env, named `findash-data` volume, healthcheck mirroring the Dockerfile probe.
+- `.dockerignore` — excludes `venv/`, `.git/`, `*.db` (most importantly the host's `findash.db` — keeps user data out of the image), `tests/`, `__pycache__/`, `.ruff_cache/`, `.pytest_cache/`, `.env*`, `.claude/`, and editor/OS noise. Keeps the build context small and prevents host-side artefacts from leaking into layers.
+- `README.md` — new top-level `Getting Started` section with a three-row decision table (Docker / uv / pip + venv), full Docker workflow including `down`/`down -v`/`cp` data-backup recipes, parallel pip and uv recipes for local dev. The existing `Building and Running` section is updated to acknowledge both pip and uv as supported and now cross-references `Getting Started` for the Docker path. The `File Structure` table grows entries for `Dockerfile`, `docker-compose.yml`, and `.dockerignore`. The Table of Contents is renumbered to include the new section.
+
+After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **158 passed** (no changes to application code).
+
+---
+
 ## [0.11.0] — 2026-05-19
 
 ### Multi-currency accounts with a user-selected base for net-worth totals

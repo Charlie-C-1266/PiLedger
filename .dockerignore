@@ -1,0 +1,58 @@
+# Anything that doesn't belong in the runtime image. Keeps the build context
+# small (faster `docker build`) and prevents host-side artefacts from leaking
+# into the container — most importantly, the host's findash.db which would
+# otherwise embed real user data into the image layer cache.
+
+# ── Version control / CI ───────────────────────────────────────────────────────
+.git
+.github
+.gitignore
+
+# ── Local virtual environments ────────────────────────────────────────────────
+venv/
+.venv/
+
+# ── Python build / cache artefacts ────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# ── Databases (never bake user data into the image) ───────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Tests aren't shipped to the runtime image ─────────────────────────────────
+tests/
+pytest.ini
+requirements-dev.txt
+
+# ── Local secrets / env files ─────────────────────────────────────────────────
+.env
+.env.*
+
+# ── Docs + meta — not needed at runtime ───────────────────────────────────────
+README.md
+CHANGELOG.md
+CLAUDE.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# ── Editor / OS noise ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Claude Code per-developer settings ────────────────────────────────────────
+.claude/
