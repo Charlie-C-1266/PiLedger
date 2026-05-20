@@ -4,20 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PiLedger</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="/static/theme-bootstrap.js"></script>
+  <script src="/static/vendor/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/vendor/inter/inter.css" />
   <link rel="stylesheet" href="/static/style.css" />
-  <script>
-    // Apply cached theme/mode before paint to avoid a flash of the default.
-    // /api/prefs is fetched after boot and overrides this if it differs.
-    try {
-      const t = localStorage.getItem('piledger:theme');
-      const d = localStorage.getItem('piledger:dark') === '1';
-      if (t) document.documentElement.setAttribute('data-theme', t);
-      if (d) document.documentElement.setAttribute('data-mode', 'dark');
-    } catch {}
-  </script>
 </head>
 <body>
 
@@ -37,10 +27,10 @@
       </div>
       <div class="header-user">
         <span id="header-username" class="header-username"></span>
-        <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+        <button class="btn btn-ghost btn-sm" data-action="logout">Sign out</button>
       </div>
       <button class="header-icon-btn theme-toggle" id="btn-toggle-mode"
-              onclick="toggleDarkMode()"
+              data-action="toggleDarkMode"
               title="Toggle light/dark"
               aria-label="Toggle light/dark mode">
         <svg class="icon-moon" width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -54,7 +44,7 @@
         </svg>
       </button>
       <button class="header-icon-btn" id="btn-open-settings"
-              onclick="openSettingsModal()"
+              data-action="openSettingsModal"
               title="Settings"
               aria-label="Open settings">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -63,14 +53,14 @@
           <circle cx="10" cy="10" r="2.4" stroke="currentColor" stroke-width="1.4"/>
         </svg>
       </button>
-      <button class="btn btn-primary" id="btn-add-account" onclick="openAddAccountModal()">
+      <button class="btn btn-primary" id="btn-add-account" data-action="openAddAccountModal">
         <span aria-hidden="true">+</span><span class="btn-label"> Add Account</span>
         <span class="sr-only">Add Account</span>
       </button>
     </div>
     <nav class="nav-bar">
-      <button class="nav-tab active" data-view="overview" onclick="showView('overview')">Overview</button>
-      <button class="nav-tab" data-view="budget" onclick="showView('budget')">Budget Planner</button>
+      <button class="nav-tab active" data-view="overview" data-action="showView" data-arg="overview">Overview</button>
+      <button class="nav-tab" data-view="budget" data-action="showView" data-arg="budget">Budget Planner</button>
     </nav>
   </header>
 
@@ -82,7 +72,7 @@
       <!-- Summary cards (double as type filters for the Accounts grid) -->
       <div class="summary-row">
         <button type="button" class="card summary-card" data-filter="savings"
-                aria-pressed="false" onclick="setAccountFilter('savings')"
+                aria-pressed="false" data-action="setAccountFilter" data-arg="savings"
                 title="Show savings accounts only">
           <div class="sc-icon sc-savings">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -95,7 +85,7 @@
           </div>
         </button>
         <button type="button" class="card summary-card" data-filter="current"
-                aria-pressed="false" onclick="setAccountFilter('current')"
+                aria-pressed="false" data-action="setAccountFilter" data-arg="current"
                 title="Show current accounts only">
           <div class="sc-icon sc-current">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -110,7 +100,7 @@
           </div>
         </button>
         <button type="button" class="card summary-card" data-filter="loan"
-                aria-pressed="false" onclick="setAccountFilter('loan')"
+                aria-pressed="false" data-action="setAccountFilter" data-arg="loan"
                 title="Show loan / debt accounts only">
           <div class="sc-icon sc-loans">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -124,7 +114,7 @@
           </div>
         </button>
         <button type="button" class="card summary-card" data-filter="all"
-                aria-pressed="true" onclick="setAccountFilter('all')"
+                aria-pressed="true" data-action="setAccountFilter" data-arg="all"
                 title="Show all accounts">
           <div class="sc-icon sc-count">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -151,7 +141,7 @@
         <div class="card chart-card">
           <div class="chart-header">
             <h3>Balance History</h3>
-            <select id="history-days" onchange="loadHistoryChart()">
+            <select id="history-days" data-action-change="loadHistoryChart">
               <option value="30">30 days</option>
               <option value="90" selected>90 days</option>
               <option value="180">6 months</option>
@@ -172,7 +162,7 @@
         <div class="card chart-card chart-card--full">
           <div class="chart-header">
             <h3>Projected Growth (compound interest)</h3>
-            <select id="projection-months" onchange="loadProjectionChart()">
+            <select id="projection-months" data-action-change="loadProjectionChart">
               <option value="12">1 year</option>
               <option value="24" selected>2 years</option>
               <option value="60">5 years</option>
@@ -191,11 +181,11 @@
       <!-- Toolbar: period selector + add item button -->
       <div class="budget-toolbar">
         <div class="period-group">
-          <button class="period-btn active" data-months="3"  onclick="setBudgetPeriod(3)">3 months</button>
-          <button class="period-btn"        data-months="6"  onclick="setBudgetPeriod(6)">6 months</button>
-          <button class="period-btn"        data-months="12" onclick="setBudgetPeriod(12)">12 months</button>
+          <button class="period-btn active" data-months="3"  data-action="setBudgetPeriod" data-arg="3">3 months</button>
+          <button class="period-btn"        data-months="6"  data-action="setBudgetPeriod" data-arg="6">6 months</button>
+          <button class="period-btn"        data-months="12" data-action="setBudgetPeriod" data-arg="12">12 months</button>
         </div>
-        <button class="btn btn-primary" onclick="openAddBudgetModal()">+ Add Budget Item</button>
+        <button class="btn btn-primary" data-action="openAddBudgetModal">+ Add Budget Item</button>
       </div>
 
       <!-- Projection chart -->
@@ -234,7 +224,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Add Account</h3>
-        <button class="modal-close" onclick="closeModal('add-account-modal')">&#215;</button>
+        <button class="modal-close" data-action="closeModal" data-arg="add-account-modal">&#215;</button>
       </div>
       <div class="modal-body">
         <div class="field">
@@ -243,7 +233,7 @@
         </div>
         <div class="field">
           <label>Type</label>
-          <select id="add-type" onchange="toggleAddInterest()">
+          <select id="add-type" data-action-change="toggleAddInterest">
             <option value="current">Current</option>
             <option value="savings">Savings</option>
             <option value="loan">Loan / Debt</option>
@@ -255,7 +245,7 @@
         </div>
         <div class="field">
           <label>Currency</label>
-          <select id="add-currency" onchange="toggleAddInterest()"></select>
+          <select id="add-currency" data-action-change="toggleAddInterest"></select>
         </div>
         <div class="field" id="add-interest-group" style="display:none">
           <label id="add-interest-label">Annual Interest Rate (%)</label>
@@ -275,8 +265,8 @@
         </div>
       </div>
       <div class="modal-footer modal-footer--end">
-        <button class="btn btn-ghost" onclick="closeModal('add-account-modal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitAddAccount()">Add Account</button>
+        <button class="btn btn-ghost" data-action="closeModal" data-arg="add-account-modal">Cancel</button>
+        <button class="btn btn-primary" data-action="submitAddAccount">Add Account</button>
       </div>
     </div>
   </div>
@@ -286,7 +276,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Update Balance</h3>
-        <button class="modal-close" onclick="closeModal('update-balance-modal')">&#215;</button>
+        <button class="modal-close" data-action="closeModal" data-arg="update-balance-modal">&#215;</button>
       </div>
       <div class="modal-body">
         <p class="modal-sub" id="update-balance-title"></p>
@@ -300,8 +290,8 @@
         </div>
       </div>
       <div class="modal-footer modal-footer--end">
-        <button class="btn btn-ghost" onclick="closeModal('update-balance-modal')">Cancel</button>
-        <button class="btn btn-primary" onclick="submitUpdateBalance()">Save</button>
+        <button class="btn btn-ghost" data-action="closeModal" data-arg="update-balance-modal">Cancel</button>
+        <button class="btn btn-primary" data-action="submitUpdateBalance">Save</button>
       </div>
     </div>
   </div>
@@ -311,7 +301,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Edit Account</h3>
-        <button class="modal-close" onclick="closeModal('edit-account-modal')">&#215;</button>
+        <button class="modal-close" data-action="closeModal" data-arg="edit-account-modal">&#215;</button>
       </div>
       <div class="modal-body">
         <div class="field">
@@ -332,10 +322,10 @@
         </div>
       </div>
       <div class="modal-footer modal-footer--split">
-        <button class="btn btn-danger" onclick="openDeleteConfirm()">Delete Account</button>
+        <button class="btn btn-danger" data-action="openDeleteConfirm">Delete Account</button>
         <div class="modal-footer-right">
-          <button class="btn btn-ghost" onclick="closeModal('edit-account-modal')">Cancel</button>
-          <button class="btn btn-primary" onclick="submitEditAccount()">Save</button>
+          <button class="btn btn-ghost" data-action="closeModal" data-arg="edit-account-modal">Cancel</button>
+          <button class="btn btn-primary" data-action="submitEditAccount">Save</button>
         </div>
       </div>
     </div>
@@ -352,8 +342,8 @@
            All balance history will be permanently removed.</p>
       </div>
       <div class="modal-footer modal-footer--end">
-        <button class="btn btn-ghost" onclick="closeModal('confirm-delete-modal')">Cancel</button>
-        <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+        <button class="btn btn-ghost" data-action="closeModal" data-arg="confirm-delete-modal">Cancel</button>
+        <button class="btn btn-danger" data-action="confirmDelete">Delete</button>
       </div>
     </div>
   </div>
@@ -363,12 +353,12 @@
     <div class="modal">
       <div class="modal-header">
         <h3 id="bim-title">Add Budget Item</h3>
-        <button class="modal-close" onclick="closeModal('budget-item-modal')">&#215;</button>
+        <button class="modal-close" data-action="closeModal" data-arg="budget-item-modal">&#215;</button>
       </div>
       <div class="modal-body">
         <div class="field" id="bim-account-field">
           <label>Account</label>
-          <select id="bim-account" onchange="onBudgetAccountChange()"></select>
+          <select id="bim-account" data-action-change="onBudgetAccountChange"></select>
         </div>
         <div class="field">
           <label>Description</label>
@@ -377,8 +367,8 @@
         <div class="field" id="bim-direction-field">
           <label>Direction</label>
           <div class="dir-toggle">
-            <button type="button" class="dir-btn active" id="dir-out" onclick="setBiDir('out')">Money out</button>
-            <button type="button" class="dir-btn" id="dir-in" onclick="setBiDir('in')">Money in</button>
+            <button type="button" class="dir-btn active" id="dir-out" data-action="setBiDir" data-arg="out">Money out</button>
+            <button type="button" class="dir-btn" id="dir-in" data-action="setBiDir" data-arg="in">Money in</button>
           </div>
         </div>
         <div class="field">
@@ -396,8 +386,8 @@
         </div>
       </div>
       <div class="modal-footer modal-footer--end">
-        <button class="btn btn-ghost" onclick="closeModal('budget-item-modal')">Cancel</button>
-        <button class="btn btn-primary" id="bim-submit" onclick="submitBudgetItem()">Add Item</button>
+        <button class="btn btn-ghost" data-action="closeModal" data-arg="budget-item-modal">Cancel</button>
+        <button class="btn btn-primary" id="bim-submit" data-action="submitBudgetItem">Add Item</button>
       </div>
     </div>
   </div>
@@ -407,7 +397,7 @@
     <div class="modal">
       <div class="modal-header">
         <h3>Settings</h3>
-        <button class="modal-close" onclick="closeModal('settings-modal')">&#215;</button>
+        <button class="modal-close" data-action="closeModal" data-arg="settings-modal">&#215;</button>
       </div>
       <div class="modal-body">
         <div class="settings-row">
@@ -416,8 +406,8 @@
             <span class="settings-row-hint">Choose between light and dark mode.</span>
           </div>
           <div class="mode-pill" id="settings-mode-pill" role="tablist">
-            <button type="button" data-mode="light" onclick="setDarkMode(false)">Light</button>
-            <button type="button" data-mode="dark"  onclick="setDarkMode(true)">Dark</button>
+            <button type="button" data-mode="light" data-action="setDarkMode" data-arg="false">Light</button>
+            <button type="button" data-mode="dark"  data-action="setDarkMode" data-arg="true">Dark</button>
           </div>
         </div>
         <div class="field">
@@ -429,7 +419,7 @@
             <span class="settings-row-title">Base Currency</span>
             <span class="settings-row-hint">Net-worth totals are reported in this currency. Per-account balances stay in their own currency.</span>
           </div>
-          <select id="settings-base-currency" onchange="onBaseCurrencyChange(this.value)"></select>
+          <select id="settings-base-currency" data-action-change="onBaseCurrencyChange" data-pass-value></select>
         </div>
         <div class="field" id="settings-rates-field">
           <label>Exchange Rates <span class="field-hint">1 unit = <span id="rates-base-label">GBP</span></span></label>
@@ -438,9 +428,9 @@
         </div>
       </div>
       <div class="modal-footer modal-footer--split">
-        <button class="btn btn-ghost" id="rates-save-btn" onclick="saveRatesFromTable()" style="display:none">Save Rates</button>
+        <button class="btn btn-ghost" id="rates-save-btn" data-action="saveRatesFromTable" style="display:none">Save Rates</button>
         <div class="modal-footer-right">
-          <button class="btn btn-primary" onclick="closeModal('settings-modal')">Done</button>
+          <button class="btn btn-primary" data-action="closeModal" data-arg="settings-modal">Done</button>
         </div>
       </div>
     </div>
@@ -456,8 +446,8 @@
         <p>Remove <strong id="dbi-name"></strong> from your budget?</p>
       </div>
       <div class="modal-footer modal-footer--end">
-        <button class="btn btn-ghost" onclick="closeModal('confirm-delete-budget-modal')">Cancel</button>
-        <button class="btn btn-danger" onclick="confirmDeleteBudgetItem()">Remove</button>
+        <button class="btn btn-ghost" data-action="closeModal" data-arg="confirm-delete-budget-modal">Cancel</button>
+        <button class="btn btn-danger" data-action="confirmDeleteBudgetItem">Remove</button>
       </div>
     </div>
   </div>

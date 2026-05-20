@@ -4,19 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PiLedger – Sign in</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="/static/theme-bootstrap.js"></script>
+  <link rel="stylesheet" href="/static/vendor/inter/inter.css" />
   <link rel="stylesheet" href="/static/style.css" />
-  <script>
-    // Apply cached theme/mode before paint to avoid a flash of the default.
-    // Written by the dashboard whenever the user changes settings.
-    try {
-      const t = localStorage.getItem('piledger:theme');
-      const d = localStorage.getItem('piledger:dark') === '1';
-      if (t) document.documentElement.setAttribute('data-theme', t);
-      if (d) document.documentElement.setAttribute('data-mode', 'dark');
-    } catch {}
-  </script>
 </head>
 <body class="login-body">
 
@@ -32,12 +22,12 @@
     </div>
 
     <div class="login-tabs">
-      <button class="login-tab active" id="tab-login"    onclick="showTab('login')">Sign in</button>
-      <button class="login-tab"        id="tab-register" onclick="showTab('register')">Register</button>
+      <button class="login-tab active" id="tab-login"    data-action="showTab" data-arg="login">Sign in</button>
+      <button class="login-tab"        id="tab-register" data-action="showTab" data-arg="register">Register</button>
     </div>
 
     <!-- Sign in form -->
-    <form id="form-login" onsubmit="submitLogin(event)" novalidate>
+    <form id="form-login" data-action-submit="submitLogin" novalidate>
       <div class="field">
         <label for="login-username">Username</label>
         <input type="text" id="login-username" autocomplete="username"
@@ -52,7 +42,7 @@
     </form>
 
     <!-- Register form -->
-    <form id="form-register" onsubmit="submitRegister(event)" novalidate style="display:none">
+    <form id="form-register" data-action-submit="submitRegister" novalidate style="display:none">
       <div class="field">
         <label for="reg-username">Username</label>
         <input type="text" id="reg-username" autocomplete="username"
@@ -72,86 +62,6 @@
 
   </div>
 
-  <script>
-    function showTab(name) {
-      const isLogin = name === 'login';
-      document.getElementById('form-login').style.display    = isLogin ? '' : 'none';
-      document.getElementById('form-register').style.display = isLogin ? 'none' : '';
-      document.getElementById('tab-login').classList.toggle('active', isLogin);
-      document.getElementById('tab-register').classList.toggle('active', !isLogin);
-      document.getElementById('login-error').textContent = '';
-      document.getElementById('reg-error').textContent   = '';
-      // Focus first field
-      const first = isLogin ? 'login-username' : 'reg-username';
-      setTimeout(() => document.getElementById(first).focus(), 50);
-    }
-
-    function setLoading(btnId, loading) {
-      const btn = document.getElementById(btnId);
-      btn.disabled = loading;
-      btn.textContent = loading
-        ? (btnId === 'login-btn' ? 'Signing in…' : 'Creating account…')
-        : (btnId === 'login-btn' ? 'Sign in' : 'Create account');
-    }
-
-    async function submitLogin(e) {
-      e.preventDefault();
-      const errEl   = document.getElementById('login-error');
-      const username = document.getElementById('login-username').value.trim();
-      const password = document.getElementById('login-password').value;
-      errEl.textContent = '';
-      setLoading('login-btn', true);
-      try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) { errEl.textContent = data.detail || 'Login failed'; return; }
-        window.location.href = '/';
-      } catch {
-        errEl.textContent = 'Network error — please try again.';
-      } finally {
-        setLoading('login-btn', false);
-      }
-    }
-
-    async function submitRegister(e) {
-      e.preventDefault();
-      const errEl    = document.getElementById('reg-error');
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const confirm  = document.getElementById('reg-confirm').value;
-      errEl.textContent = '';
-      if (password !== confirm) { errEl.textContent = 'Passwords do not match'; return; }
-      setLoading('reg-btn', true);
-      try {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        const data = await res.json();
-        if (!res.ok) { errEl.textContent = data.detail || 'Registration failed'; return; }
-        // Auto-login after successful registration
-        const loginRes = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-        });
-        if (loginRes.ok) {
-          window.location.href = '/';
-        } else {
-          showTab('login');
-          document.getElementById('login-username').value = username;
-        }
-      } catch {
-        errEl.textContent = 'Network error — please try again.';
-      } finally {
-        setLoading('reg-btn', false);
-      }
-    }
-  </script>
+  <script src="/static/login.js"></script>
 </body>
 </html>
