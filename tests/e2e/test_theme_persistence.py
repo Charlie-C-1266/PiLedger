@@ -84,7 +84,9 @@ def test_prefs_persist_across_sessions(page: Page, registered_user, live_server)
         timeout=5,
     )
     assert r.status_code == 200
-    assert r.json() == {"theme": "indigo", "dark_mode": True}
+    # Subset check: prefs response also carries base_currency (added in v0.11);
+    # this test only cares about theme + dark_mode persistence here.
+    assert {"theme": "indigo", "dark_mode": True}.items() <= r.json().items()
 
     page.get_by_role("button", name="Sign out").click()
     page.wait_for_url(re.compile(r".*/login$"))
