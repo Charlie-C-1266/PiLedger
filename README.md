@@ -18,6 +18,7 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 10. [Network Access](#network-access)
 11. [Testing](#testing)
 12. [Security Notes](#security-notes)
+13. [License](#license)
 
 ---
 
@@ -796,3 +797,11 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/login
 - There is no rate limiting on login attempts. A password can be brute-forced over the network. This is acceptable for a home LAN but should be addressed (e.g. via nginx `limit_req`) before exposing the service to the public internet.
 - There is no account lockout or two-factor authentication.
 - Expired session rows are opportunistically purged inside `make_session()` (every successful login deletes any session whose `expires_at` is in the past), so the `sessions` table self-trims as long as users keep logging in. There is no scheduled cleanup for the case where no one logs in for a long time.
+
+---
+
+## License
+
+PiLedger is distributed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). The full license text is in the [`LICENSE`](LICENSE) file at the root of this repository.
+
+The AGPL adds one obligation on top of the GPL: if you run a modified version of PiLedger as a network service that other people interact with, you must offer those users the corresponding source code of your modified version. For self-hosted personal use this changes nothing in practice; it matters only if you intend to operate PiLedger as a hosted service for third parties.

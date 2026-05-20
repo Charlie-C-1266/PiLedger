@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.14.0] — 2026-05-20
+
+### Added
+
+- **AGPL-3.0 license.** The repository now carries an explicit `LICENSE` file containing the verbatim GNU Affero General Public License v3.0 text (fetched from GitHub's canonical licenses API). Until now the project had no license declared, which under default copyright law meant "all rights reserved" — no one but the author was legally permitted to fork, modify, or redistribute the code, which is a poor fit for a self-hosted project that has been public on GitHub since its first commit. AGPL-3.0 was chosen to match the licensing of the closest comparable self-hosted finance projects (Firefly III, Actual Budget, Maybe Finance), so contributors moving between them find familiar terms, and because the AGPL's network-use clause is the right default for a project people will self-host as a service: it permits personal use and modification but requires anyone running a modified version as a public-facing service to share their changes back. Affected files: `LICENSE` (new, 662 lines, full AGPL-3.0 text), `README.md` (new top-level "License" section after "Security Notes" plus a matching Table of Contents entry).
+
+---
+
 ## [0.13.1] — 2026-05-20
 
 ### Fixed
