@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.13.1] — 2026-05-20
+
+### Fixed
+
+- **Settings header icon now renders as a gear instead of a sun.** The SVG for the settings button was a near-duplicate of the light-mode toggle icon (a circle with eight radial spokes), so the gear/cog the button claimed to represent never appeared. Replaced the path with a proper cog outline + inner circle. Affected: `static/index.html`.
+- **Mobile rendering of the header and modals.** On viewports below ~500px the header tried to fit six items (logo, net worth, username, sign-out, theme toggle, settings, "+ Add Account") on a single 64px row, pushing controls offscreen or squashing the net-worth value. The header now wraps, the redundant username is hidden, net worth moves to its own row on the narrowest screens, and "+ Add Account" collapses to just "+". Charts also drop slightly in height so they don't dominate the viewport, and the settings modal stacks its label/control pairs to stop them being squashed. Affected: `static/style.css`, `static/index.html`.
+
+---
+
 ## [0.13.0] — 2026-05-19
 
 ### Rebranded from FinDash to PiLedger
