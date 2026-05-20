@@ -18,11 +18,18 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def app(tmp_path, monkeypatch):
-    """Return the FastAPI app pointed at a fresh, empty test database."""
+    """Return the FastAPI app pointed at a fresh, empty test database.
+
+    The login rate limiter is disabled by default so the suite — including
+    fixtures that log in repeatedly — does not trip the production 5/min
+    cap. Tests that specifically exercise rate limiting re-enable it; see
+    ``tests/test_rate_limit.py``.
+    """
     import app as app_module
     import constants
 
     monkeypatch.setattr(constants, "DB", str(tmp_path / "test.db"))
+    monkeypatch.setattr(app_module.limiter, "enabled", False)
     app_module.init()
     return app_module.app
 

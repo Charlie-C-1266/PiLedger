@@ -14,6 +14,13 @@ SESSION_DAYS = 30
 # Set COOKIE_SECURE=true in production when serving over HTTPS
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
 
+# Rate limit applied to POST /api/auth/login. Keyed by the socket peer IP, so
+# behind a reverse proxy every client shares one bucket — the proxy should do
+# real per-client rate limiting (nginx `limit_req`, Caddy `rate_limit`) and
+# this remains a defence-in-depth backstop. See README "Security Notes".
+# Override via env, slowapi-style string ("N/period").
+LOGIN_RATE_LIMIT = os.environ.get("PILEDGER_LOGIN_RATE_LIMIT", "5/minute")
+
 
 # ─── Formats / patterns ───────────────────────────────────────────────────────
 

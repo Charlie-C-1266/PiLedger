@@ -62,6 +62,12 @@ def live_server(tmp_path_factory):
 
     env = os.environ.copy()
     env["PILEDGER_DB"] = str(db_path)
+    # The production login rate limit (5/min/IP) would cap a session-scoped
+    # suite that registers + signs in for every test — every login attempt
+    # comes from 127.0.0.1, so the whole suite shares one bucket. Loosen it
+    # for the e2e subprocess; the rate-limit behaviour itself is covered by
+    # tests/test_rate_limit.py against the in-process TestClient.
+    env["PILEDGER_LOGIN_RATE_LIMIT"] = "10000/minute"
     # Make sure the child process imports the repo's app, not a stray install.
     env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
 
