@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.14.1] — 2026-05-20
+
+### Changed
+
+- **`CLAUDE.md` now mandates running both test suites before committing.** The previous instructions documented only the default `./venv/bin/pytest` invocation, which `pytest.ini` runs with `--ignore=tests/e2e`. As a result the Playwright e2e suite (excluded from CI for the same reason) was easy to miss during local verification, and at least one stale assertion (`test_prefs_persist_across_sessions`, broken since v0.11 added `base_currency` to the prefs response) reached the working tree unnoticed. The updated "Running tests" section now lists both invocations (`./venv/bin/pytest` plus `./venv/bin/pytest tests/e2e`), spells out why the e2e suite is opt-in by default, names the one-time `playwright install chromium` setup step, and requires both suites to pass before a change is considered complete. The stale "112 tests" count is also removed — the unit/API suite has grown past that, and pinning a number in instructions just creates drift. Affected files: `CLAUDE.md`.
+
+---
+
 ## [0.14.0] — 2026-05-20
 
 ### Added
