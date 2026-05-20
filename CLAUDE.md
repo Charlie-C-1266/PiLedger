@@ -39,11 +39,16 @@ Exceptions: none by default. If a change genuinely needs to go straight to `main
 
 ## Running tests
 
+PiLedger has two test suites:
+
 ```bash
-./venv/bin/pytest   # all 112 tests, isolated SQLite DB per test
+./venv/bin/pytest              # unit + API suite (isolated SQLite DB per test, runs in seconds)
+./venv/bin/pytest tests/e2e    # end-to-end browser suite (Playwright + Chromium, ~30s)
 ```
 
-Tests must pass before any change is considered complete. If a code change causes a test failure, fix the test or the code — do not skip or delete tests.
+The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. **Always run both suites before committing and raising a PR.** The e2e suite is excluded from CI, so a regression there will not block merge — a broken e2e test has slipped past review in the past for exactly this reason, and that should not happen again. If Playwright's browser is missing, install it once with `./venv/bin/playwright install chromium`.
+
+Both suites must pass before any change is considered complete. If a code change causes a test failure in either suite, fix the test or the code — do not skip or delete tests.
 
 ## Stack
 
