@@ -311,7 +311,7 @@ function renderAccounts(accounts) {
     grid.innerHTML = `
       <div class="empty-state">
         <p>No ${esc(labels[state.accountFilter] || '')} accounts to show.
-           <button type="button" class="btn btn-ghost btn-sm" onclick="setAccountFilter('all')">Show all</button></p>
+           <button type="button" class="btn btn-ghost btn-sm" data-action="setAccountFilter" data-arg="all">Show all</button></p>
       </div>`;
     return;
   }
@@ -332,14 +332,14 @@ function renderAccounts(accounts) {
           <div class="account-name">${esc(a.name)}</div>
           <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>${sub}${curBadge}
         </div>
-        <button class="btn-icon" onclick="openEditModal(${a.id})" title="Edit">&#9998;</button>
+        <button class="btn-icon" data-action="openEditModal" data-arg="${a.id}" title="Edit">&#9998;</button>
       </div>
       <div class="account-balance">${fmt(a.current_balance, cur)}</div>
       <div class="account-updated">${a.type === 'loan' ? 'Owed · ' : 'Updated: '}${fmtDate(a.last_updated)}</div>
       ${a.interest_rate > 0 && (a.type === 'savings' || a.type === 'loan')
         ? `<div class="account-rate${a.type === 'loan' ? ' account-rate--loan' : ''}">${a.interest_rate}% ${a.type === 'loan' ? 'APR' : 'AER'}</div>`
         : ''}
-      <button class="btn btn-primary btn-sm mt-8" onclick="openUpdateModal(${a.id})">Update Balance</button>
+      <button class="btn btn-primary btn-sm mt-8" data-action="openUpdateModal" data-arg="${a.id}">Update Balance</button>
     </div>`;
   }).join('');
 }
@@ -659,8 +659,8 @@ function renderBudgetItems(items, projection) {
             <span class="bi-freq">${freqLabel[item.frequency]}</span>
           </div>
           <span class="bi-amount ${isOut ? 'outflow' : 'inflow'}">${fmtSigned(item.amount, accCur)}</span>
-          <button class="btn-icon" onclick="openEditBudgetModal(${item.id})" title="Edit">&#9998;</button>
-          <button class="btn-icon" onclick="openDeleteBudgetConfirm(${item.id})" title="Remove">&#10005;</button>
+          <button class="btn-icon" data-action="openEditBudgetModal" data-arg="${item.id}" title="Edit">&#9998;</button>
+          <button class="btn-icon" data-action="openDeleteBudgetConfirm" data-arg="${item.id}" title="Remove">&#10005;</button>
         </div>`;
     }).join('');
 
@@ -673,7 +673,7 @@ function renderBudgetItems(items, projection) {
           </div>
           <div class="bac-meta">
             <span class="bac-net ${netClass}">${netLabel}</span>
-            <button class="btn btn-primary btn-sm" onclick="openAddBudgetModal(${acc.id})">+ Add</button>
+            <button class="btn btn-primary btn-sm" data-action="openAddBudgetModal" data-arg="${acc.id}">+ Add</button>
           </div>
         </div>
         ${accItems.length
@@ -1005,7 +1005,7 @@ function renderThemeGrid() {
     <button type="button"
             class="theme-swatch ${t.id === prefs.theme ? 'active' : ''}"
             data-theme-id="${t.id}"
-            onclick="setTheme('${t.id}')">
+            data-action="setTheme" data-arg="${t.id}">
       <span class="theme-swatch-dot" style="background:${t.swatch}"></span>
       <span class="theme-swatch-name">${esc(t.label)}</span>
     </button>`).join('');
@@ -1168,6 +1168,35 @@ async function loadPrefs() {
   }
   applyTheme();
 }
+
+// ─── Event delegation for data-action / data-action-change ───────────────────
+// CSP-safe replacement for inline onclick=/onchange= attributes. A handler at
+// the document level looks up [data-action] on the closest ancestor, parses an
+// optional data-arg, and invokes the named function from the global scope.
+// Functions are looked up by name from window — the action names live on
+// markup we author, not on user input, so this is not an injection path.
+function _parseActionArg(s) {
+  if (s === undefined) return undefined;
+  if (s === 'true')    return true;
+  if (s === 'false')   return false;
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+  return s;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-action]');
+  if (!t) return;
+  const fn = window[t.dataset.action];
+  if (typeof fn !== 'function') return;
+  const arg = _parseActionArg(t.dataset.arg);
+  arg !== undefined ? fn(arg) : fn();
+});
+document.addEventListener('change', e => {
+  const t = e.target.closest('[data-action-change]');
+  if (!t) return;
+  const fn = window[t.dataset.actionChange];
+  if (typeof fn !== 'function') return;
+  t.hasAttribute('data-pass-value') ? fn(t.value) : fn();
+});
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 (async () => {

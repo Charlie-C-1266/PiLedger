@@ -30,6 +30,7 @@ from constants import (
     SUBTYPES_BY_TYPE,
 )
 from db import db, from_cents, init, to_cents, utcnow_iso
+from security import SecurityHeadersMiddleware
 from auth import (
     dummy_hash,
     hash_password,
@@ -65,6 +66,7 @@ from schemas import (
 
 
 app = FastAPI(title="PiLedger")
+app.add_middleware(SecurityHeadersMiddleware)
 init()
 
 

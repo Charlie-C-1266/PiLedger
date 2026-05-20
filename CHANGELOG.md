@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.15.0] — 2026-05-20
+
+### Added
+
+- **Security-headers middleware (P0-3).** New `security.py` registers a `SecurityHeadersMiddleware` on the FastAPI app that attaches a fixed set of defensive HTTP response headers to every reply: a one-year `Strict-Transport-Security` with `includeSubDomains`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, a `Permissions-Policy` that disables geolocation/microphone/camera/payment, and a strict `Content-Security-Policy` (`default-src 'self'; script-src 'self'; …`) with **no** `'unsafe-inline'` on `script-src`. The middleware uses `response.headers.setdefault(...)` so individual routes can still override a header for a specific response without it being clobbered on the way out. Without the asset and handler work below the strict CSP would have broken the dashboard at first paint, which is why P1-7 and P1-8 ship in the same change.
+- **Vendored Chart.js + Inter (P1-7).** Chart.js 4.4.0 (`static/vendor/chart.umd.min.js`, 200 KB unminified) and the Inter Latin subset (`static/vendor/inter/inter-latin.woff2`, 47 KB, with five `@font-face` declarations in `static/vendor/inter/inter.css` covering weights 300–700) are now served from `/static`. The dashboard no longer reaches out to `cdn.jsdelivr.net` or `fonts.googleapis.com` on first paint, which is what makes `script-src 'self'`/`font-src 'self'` feasible — and as a side effect the SPA now boots fully offline once the page is cached.
+
+### Changed
+
+- **Every inline event handler removed from the SPA (P1-8).** The 44 `onclick=`/`onchange=` attributes in `static/index.html` and the 4 in `static/login.html`, plus the 7 dynamically-rendered `onclick=` strings inside `static/app.js` template literals, are now expressed as `data-action="functionName"` (plus optional `data-arg="..."` for arguments). Two document-level delegated listeners in `app.js` — one for `click`, one for `change` — look up the named function on `window` and invoke it with the parsed argument (string/number/boolean coercion is automatic). Selects that need the new value pass an additional `data-pass-value` attribute. The two `<script>` blocks in `static/login.html` (the pre-paint theme bootstrap and the ~80-line login-form logic) have been extracted to `static/theme-bootstrap.js` and `static/login.js`; `static/index.html` references the same `theme-bootstrap.js`. Net effect: every page served by PiLedger now has **zero** inline `<script>` content and **zero** `on*=` attributes, so a CSP without `'unsafe-inline'` on `script-src` is satisfiable.
+
+### Tests
+
+- New `tests/test_security_headers.py` (10 cases) asserts every header is present on `/login`, on the root redirect, on a 401, on an authed `/api/summary`, and on a static asset; parametrises across every CSP directive; and pins `script-src` to `'self'` only.
+- New `tests/test_static_assets.py` (7 cases) treats the served HTML/JS as data and asserts: no `on*=` attributes in `index.html`, `login.html`, or any template string in `app.js`; every `<script src=…>` points at `/static/`; no `<script>` block lacks a `src`; no `cdn.jsdelivr.net`/`fonts.googleapis.com`/`fonts.gstatic.com` references survive anywhere; and the three vendored files exist on disk.
+- A pre-existing e2e test (`tests/e2e/test_theme_persistence.py::test_prefs_persist_across_sessions`) was tightening too aggressively — an exact-equality check on `/api/prefs` that broke when v0.11 added a `base_currency` field — and is now a subset check. Independent of this PR's substantive changes; bundled here because the e2e suite is otherwise green and the assertion is one line.
+
+Affected files: `app.py` (one import + one `add_middleware` line), new `security.py`, `static/index.html`, `static/login.html`, `static/app.js` (template literals + new dispatcher), new `static/theme-bootstrap.js`, new `static/login.js`, new `static/vendor/chart.umd.min.js`, new `static/vendor/inter/inter.css`, new `static/vendor/inter/inter-latin.woff2`, new `tests/test_security_headers.py`, new `tests/test_static_assets.py`, `tests/e2e/test_theme_persistence.py`. After all changes: `./venv/bin/ruff check .` → **All checks passed**; `./venv/bin/pytest` → **179 passed** (158 prior + 21 new); `./venv/bin/pytest tests/e2e` → **34 passed**.
+
+---
+
 ## [0.14.0] — 2026-05-20
 
 ### Added
