@@ -131,7 +131,7 @@ The following requirements were captured and are met by the current implementati
 ## Architecture
 
 ```
-Browser  ──HTTP──►  FastAPI (app.py)  ──┬──►  schemas.py  (Pydantic in/out models)
+Browser  ──HTTP──►  FastAPI (src/app.py)  ──┬──►  schemas.py  (Pydantic in/out models)
                          │              ├──►  auth.py     (hashing, sessions)
                          │              ├──►  db.py       (connection + init/migrations)
                          │              └──►  constants.py (DB path, cookie flags, bounds)
@@ -145,11 +145,11 @@ Browser  ──HTTP──►  FastAPI (app.py)  ──┬──►  schemas.py  
                     └── app.js
 ```
 
-**Backend:** Python 3.12, FastAPI, Uvicorn. The application is split across five modules: `app.py` (routes), `schemas.py` (Pydantic request/response models), `auth.py` (password hashing + session lifecycle + `require_auth` dependency), `db.py` (connection context manager, schema init/migrations, money helpers), and `constants.py` (DB path, cookie flags, type aliases, API bounds). The database is SQLite, accessed directly via the standard-library `sqlite3` module — no ORM.
+**Backend:** Python 3.12, FastAPI, Uvicorn. The application source lives under `src/` and is split across six modules: `app.py` (routes), `schemas.py` (Pydantic request/response models), `auth.py` (password hashing + session lifecycle + `require_auth` dependency), `db.py` (connection context manager, schema init/migrations, money helpers), `constants.py` (DB path, cookie flags, type aliases, API bounds), and `security.py` (the defensive-headers middleware). The database is SQLite, accessed directly via the standard-library `sqlite3` module — no ORM.
 
 **Frontend:** Vanilla JavaScript (no framework), Chart.js 4.4 loaded from CDN, Inter font from Google Fonts. The SPA has two views — Overview and Budget Planner — switched via a sticky nav tab inside the header. No build step is required.
 
-**Database:** A single SQLite file. Defaults to `piledger.db` alongside `app.py`; can be overridden via the `PILEDGER_DB` environment variable. Money is stored as integer cents inside the database; the JSON API exposes plain floating-point pounds.
+**Database:** A single SQLite file. Defaults to `piledger.db` at the project root (one level above `src/`); can be overridden via the `PILEDGER_DB` environment variable. Money is stored as integer cents inside the database; the JSON API exposes plain floating-point pounds.
 
 ---
 
@@ -157,36 +157,35 @@ Browser  ──HTTP──►  FastAPI (app.py)  ──┬──►  schemas.py  
 
 ```
 piledger/
-├── app.py                 Backend — FastAPI routes
-├── auth.py                Password hashing, session lifecycle, require_auth dependency
-├── db.py                  SQLite connection, init() + migrations, cents↔pounds helpers
-├── constants.py           DB path, cookie flags, type aliases, money/rate/days bounds
-├── schemas.py             Pydantic request/response models (validation lives here)
+├── src/                   Application source (Python + frontend)
+│   ├── app.py             Backend — FastAPI routes
+│   ├── auth.py            Password hashing, session lifecycle, require_auth dependency
+│   ├── db.py              SQLite connection, init() + migrations, cents↔pounds helpers
+│   ├── constants.py       DB path, cookie flags, type aliases, money/rate/days bounds
+│   ├── schemas.py         Pydantic request/response models (validation lives here)
+│   ├── security.py        SecurityHeadersMiddleware (HSTS, CSP, frame-deny, …)
+│   └── static/
+│       ├── index.html     Dashboard SPA — Overview + Budget Planner + all modals
+│       ├── login.html     Login / register page
+│       ├── style.css      All styles (shared between dashboard and login page)
+│       ├── app.js         Dashboard JavaScript — API calls, chart rendering, modals
+│       └── vendor/        Vendored Chart.js + Inter font (served self-hosted)
 ├── requirements.txt       Runtime dependencies (fastapi, uvicorn)
 ├── requirements-dev.txt   Test dependencies (pytest, httpx)
-├── pytest.ini             pytest config (testpaths = tests, pythonpath = .)
+├── pytest.ini             pytest config (testpaths = tests, pythonpath = src)
 ├── start.sh               Convenience wrapper: starts uvicorn on 0.0.0.0:8080
 ├── Dockerfile             Container image definition — Python 3.12-slim, non-root user, healthcheck
 ├── docker-compose.yml     One-service orchestration with a persistent named volume for the DB
 ├── .dockerignore          Excludes venv, *.db, tests/, etc. from the image build context
-├── piledger.db             SQLite database (auto-created; gitignored)
+├── piledger.db            SQLite database (auto-created; gitignored)
 ├── CHANGELOG.md           Versioned change log (Keep a Changelog format)
 ├── CLAUDE.md              Project instructions for the Claude Code agent
 ├── .gitignore             Excludes *.db, venv/, __pycache__/, .env, etc.
 ├── venv/                  Python virtual environment
-├── tests/                 pytest suite (see Testing section)
-│   ├── conftest.py        Shared fixtures (isolated test DB, alice/bob clients)
-│   ├── test_auth.py
-│   ├── test_accounts.py
-│   ├── test_balances.py
-│   ├── test_dashboard.py
-│   ├── test_loans.py
-│   └── test_edge_cases.py
-└── static/
-    ├── index.html         Dashboard SPA — Overview + Budget Planner + all modals
-    ├── login.html         Login / register page
-    ├── style.css          All styles (shared between dashboard and login page)
-    └── app.js             Dashboard JavaScript — API calls, chart rendering, modals
+└── tests/                 pytest suite (see Testing section)
+    ├── conftest.py        Shared fixtures (isolated test DB, alice/bob clients)
+    ├── e2e/               Playwright browser tests (opt-in)
+    └── test_*.py          Unit / API suite — runs by default
 ```
 
 ---
@@ -510,7 +509,7 @@ Both flows produce the same `venv/` layout, so `./start.sh`, the systemd snippet
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PILEDGER_DB` | `piledger.db` alongside `app.py` | Absolute or relative path to the SQLite database file. Useful for pointing different environments (dev / staging / prod) at different databases without editing source. |
+| `PILEDGER_DB` | `piledger.db` at the project root | Absolute or relative path to the SQLite database file. Useful for pointing different environments (dev / staging / prod) at different databases without editing source. |
 | `COOKIE_SECURE` | `false` | When set to `true` / `1` / `yes`, the session cookie is issued with the `Secure` flag so it is only transmitted over HTTPS. Enable this whenever you front the app with a TLS-terminating proxy. |
 
 ### Running the server
@@ -522,7 +521,7 @@ Both flows produce the same `venv/` layout, so `./start.sh`, the systemd snippet
 This is equivalent to:
 
 ```bash
-./venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
+./venv/bin/uvicorn --app-dir src app:app --host 0.0.0.0 --port 8080
 ```
 
 The server starts, creates `piledger.db` on first run, and begins serving on port 8080. The terminal will display one log line per request.
@@ -563,7 +562,7 @@ After=network.target
 [Service]
 User=charlie
 WorkingDirectory=/home/charlie/git/piledger
-ExecStart=/home/charlie/git/piledger/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080
+ExecStart=/home/charlie/git/piledger/venv/bin/uvicorn --app-dir /home/charlie/git/piledger/src app:app --host 0.0.0.0 --port 8080
 Restart=on-failure
 
 [Install]
@@ -632,7 +631,7 @@ The two shared fixtures `alice` and `bob` both depend on a single per-test `app`
 The pytest suite is the source of truth; the curl recipes below remain useful for spot-checking a running deployment from another host.
 
 ```bash
-./venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080 &
+./venv/bin/uvicorn --app-dir src app:app --host 0.0.0.0 --port 8080 &
 sleep 2
 ```
 

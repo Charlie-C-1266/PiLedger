@@ -9,7 +9,7 @@ catch regressions at the static-file level before a browser would.
 import re
 from pathlib import Path
 
-STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+STATIC_DIR = Path(__file__).resolve().parent.parent / "src" / "static"
 
 # Matches ``on<word>="..."``` HTML event-handler attributes (onclick, onchange,
 # onsubmit, onload, …). Lowercase-only is fine: HTML attributes are case-

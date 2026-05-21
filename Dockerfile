@@ -23,9 +23,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Application source. The compose file mounts a named volume at /data for the
 # SQLite file, and PILEDGER_DB points at that path so user data survives image
-# rebuilds and container recreation.
-COPY app.py auth.py constants.py db.py schemas.py ./
-COPY static ./static
+# rebuilds and container recreation. The single src-tree COPY also picks up
+# security.py (which the previous file-by-file COPY had missed since P0-3
+# landed — that bug now can't recur).
+COPY src ./src
 
 # Run as an unprivileged user. /data is writable so SQLite can create and
 # fsync the DB file inside the mounted volume; /app is read-only at runtime.
@@ -44,4 +45,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/login', timeout=3).status == 200 else 1)"
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "--app-dir", "src", "app:app", "--host", "0.0.0.0", "--port", "8080"]

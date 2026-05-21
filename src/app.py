@@ -12,6 +12,7 @@ This module wires the FastAPI app and HTTP routes. Supporting code lives in:
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 import math
+import os
 import sqlite3
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
@@ -84,6 +85,12 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 init()
 
+# Resolve static asset paths relative to this module rather than the process
+# CWD so the app is invocable from any working directory (start.sh, the
+# Docker entrypoint, IDE runners, and direct `uvicorn --app-dir src` all
+# end up pointing at the same files).
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
 
 # Pydantic validation failures default to 422, but the public contract documented
 # in README + CHANGELOG returns 400 for bad input. Translate them so callers see
@@ -106,7 +113,7 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
 
 @app.get("/login")
 def login_page() -> FileResponse:
-    return FileResponse("static/login.html")
+    return FileResponse(os.path.join(_STATIC_DIR, "login.html"))
 
 
 @app.post("/api/auth/register", status_code=201, response_model=RegisterOut)
@@ -782,7 +789,7 @@ def budget_projection(
 def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
     if not session_uid(session):
         return RedirectResponse("/login", status_code=302)
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
 
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")

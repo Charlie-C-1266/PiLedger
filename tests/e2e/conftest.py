@@ -69,11 +69,15 @@ def live_server(tmp_path_factory):
     # tests/test_rate_limit.py against the in-process TestClient.
     env["PILEDGER_LOGIN_RATE_LIMIT"] = "10000/minute"
     # Make sure the child process imports the repo's app, not a stray install.
-    env["PYTHONPATH"] = str(REPO_ROOT) + os.pathsep + env.get("PYTHONPATH", "")
+    # Source lives under src/ after the 2026 restructure; the --app-dir flag
+    # below also puts that on sys.path, but PYTHONPATH keeps any direct
+    # `python -c "import app"` smoke tests in subprocesses working too.
+    env["PYTHONPATH"] = str(REPO_ROOT / "src") + os.pathsep + env.get("PYTHONPATH", "")
 
     venv_uvicorn = REPO_ROOT / "venv" / "bin" / "uvicorn"
     cmd = [
         str(venv_uvicorn) if venv_uvicorn.exists() else "uvicorn",
+        "--app-dir", "src",
         "app:app",
         "--host", "127.0.0.1",
         "--port", str(port),
