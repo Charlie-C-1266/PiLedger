@@ -19,6 +19,17 @@ const state = {
 
 const charts = { history: null, distribution: null, projection: null, budget: null };
 
+// Chart-type choices the user can flip between live. Persisted to localStorage
+// so the next page load remembers their pick. `distributionAccounts` caches the
+// last account list so toggling chart type doesn't need another /api/accounts.
+const chartPrefs = {
+  distributionType: (() => {
+    try { return localStorage.getItem('piledger:distChart') || 'doughnut'; }
+    catch { return 'doughnut'; }
+  })(),
+};
+let distributionAccounts = [];
+
 // ─── User prefs / theming ────────────────────────────────────────────────────
 // Available palettes — id must match the [data-theme] hooks in style.css and
 // the backend Theme literal. The swatch is what the user sees in the picker.
@@ -362,6 +373,51 @@ const BASE_OPTS = {
   },
 };
 
+// Draws a thin vertical guide line at the hovered x. Pairs with LINE_OPTS'
+// 'index' interaction mode so the tooltip and the line agree on which x slot
+// they are showing — much easier to read balances on a specific date than
+// hunting for individual point dots.
+const crosshairPlugin = {
+  id: 'pl_crosshair',
+  afterDatasetsDraw(chart) {
+    // Crosshair only makes sense on time-series line charts — doughnut/bar
+    // wouldn't benefit from a vertical guide across categorical slices.
+    if (chart.config.type !== 'line') return;
+    const active = chart.tooltip?.getActiveElements?.();
+    if (!active || !active.length) return;
+    const x = active[0].element.x;
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = cssVar('--muted', '#94a3b8');
+    ctx.setLineDash([3, 3]);
+    ctx.globalAlpha = 0.6;
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+Chart.register(crosshairPlugin);
+
+// Shared options for the three line charts: hover anywhere on the chart and
+// every series' value at that x lights up in a single tooltip.
+const LINE_OPTS = {
+  interaction: { mode: 'index', intersect: false, axis: 'x' },
+  hover:       { mode: 'index', intersect: false },
+  plugins: {
+    ...BASE_OPTS.plugins,
+    tooltip: {
+      ...BASE_OPTS.plugins.tooltip,
+      mode: 'index', intersect: false,
+      backgroundColor: 'rgba(15,23,42,0.92)',
+      padding: 10, cornerRadius: 6, titleFont: { weight: '600' },
+    },
+  },
+};
+
 // Convert a native-currency amount to the user's base using the cached FX
 // table. Missing rates fall back to 1.0 — matches server semantics and keeps
 // the chart honest about what we don't know.
@@ -408,6 +464,7 @@ function renderHistoryChart(data) {
     type: 'line', data: { labels, datasets },
     options: {
       ...BASE_OPTS,
+      ...LINE_OPTS,
       scales: {
         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
         y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
@@ -417,6 +474,15 @@ function renderHistoryChart(data) {
 }
 
 function renderDistributionChart(accounts) {
+  // Cache for setDistributionChartType() so toggling type doesn't need a refetch.
+  distributionAccounts = accounts;
+
+  // Sync the toggle's active state to whatever was loaded from localStorage —
+  // the markup defaults to 'doughnut' active but the saved pref may be 'bar'.
+  document.querySelectorAll('#distribution-type-toggle .chart-type-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.arg === chartPrefs.distributionType)
+  );
+
   const canvas = document.getElementById('distribution-chart');
   if (charts.distribution) { charts.distribution.destroy(); charts.distribution = null; }
 
@@ -426,8 +492,8 @@ function renderDistributionChart(accounts) {
   );
   if (!with_bal.length) { charts.distribution = emptyChart(canvas, 'No asset balances yet'); return; }
 
-  // Convert each slice to the base currency so the doughnut compares like with
-  // like. Hover tooltip still shows the original native amount.
+  // Convert each slice to the base currency so values compare like with like.
+  // Hover tooltip still shows the original native amount.
   const base = prefs.base_currency || 'GBP';
   const slices = with_bal.map(a => ({
     name: a.name,
@@ -437,7 +503,22 @@ function renderDistributionChart(accounts) {
     converted: toBase(a.current_balance, a.currency || base),
   }));
 
-  charts.distribution = new Chart(canvas, {
+  // Tooltip used by both renderers — pulls the matching slice by index so the
+  // native-currency value (not the base-converted one) is what the user sees.
+  const sliceLabel = ctx => {
+    const s = slices[ctx.dataIndex];
+    return s.currency === base
+      ? ` ${s.name}: ${fmt(s.native, s.currency)}`
+      : ` ${s.name}: ${fmt(s.native, s.currency)} (≈ ${fmt(s.converted, base)})`;
+  };
+
+  charts.distribution = chartPrefs.distributionType === 'bar'
+    ? renderDistributionBar(canvas, slices, sliceLabel)
+    : renderDistributionDoughnut(canvas, slices, sliceLabel);
+}
+
+function renderDistributionDoughnut(canvas, slices, sliceLabel) {
+  return new Chart(canvas, {
     type: 'doughnut',
     data: {
       labels: slices.map(s => s.name),
@@ -451,17 +532,57 @@ function renderDistributionChart(accounts) {
       ...BASE_OPTS, cutout: '62%',
       plugins: {
         ...BASE_OPTS.plugins,
-        tooltip: { callbacks: { label: ctx => {
-          const s = slices[ctx.dataIndex];
-          // Show native value first; append converted only if currencies differ.
-          return s.currency === base
-            ? ` ${s.name}: ${fmt(s.native, s.currency)}`
-            : ` ${s.name}: ${fmt(s.native, s.currency)} (≈ ${fmt(s.converted, base)})`;
-        } } },
+        tooltip: { callbacks: { label: sliceLabel } },
       },
     },
   });
 }
+
+function renderDistributionBar(canvas, slices, sliceLabel) {
+  // Sort descending so the largest account sits at the top of the bar chart.
+  // (We sort a copy — slices is used as a position-stable lookup elsewhere.)
+  const order = slices.map((_, i) => i)
+    .sort((a, b) => slices[b].converted - slices[a].converted);
+  const ordered = order.map(i => slices[i]);
+
+  return new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: ordered.map(s => s.name),
+      datasets: [{
+        data: ordered.map(s => s.converted),
+        backgroundColor: ordered.map(s => s.color),
+        borderWidth: 0, borderRadius: 4, maxBarThickness: 26,
+      }],
+    },
+    options: {
+      ...BASE_OPTS,
+      indexAxis: 'y',
+      plugins: {
+        ...BASE_OPTS.plugins,
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => sliceLabel({ dataIndex: order[ctx.dataIndex] }) } },
+      },
+      scales: {
+        x: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      },
+    },
+  });
+}
+
+// Triggered by the Doughnut / Bar toggle in the Distribution card header.
+// Persists choice, re-renders from the cached accounts (no API round-trip).
+function setDistributionChartType(type) {
+  if (type !== 'doughnut' && type !== 'bar') return;
+  chartPrefs.distributionType = type;
+  try { localStorage.setItem('piledger:distChart', type); } catch {}
+  document.querySelectorAll('#distribution-type-toggle .chart-type-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.arg === type)
+  );
+  if (distributionAccounts.length) renderDistributionChart(distributionAccounts);
+}
+window.setDistributionChartType = setDistributionChartType;
 
 async function loadProjectionChart() {
   const months = parseInt(document.getElementById('projection-months').value, 10);
@@ -488,6 +609,7 @@ function renderProjectionChart(data, months) {
     type: 'line', data: { labels, datasets },
     options: {
       ...BASE_OPTS,
+      ...LINE_OPTS,
       scales: {
         x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
         y: { ticks: { callback: v => fmt(v), font: { size: 11 } }, grid: { color: cssVar('--border', '#f1f5f9') } },
@@ -604,8 +726,9 @@ function renderBudgetChart(projection) {
     type: 'line', data: { labels, datasets },
     options: {
       ...BASE_OPTS,
+      ...LINE_OPTS,
       plugins: {
-        ...BASE_OPTS.plugins,
+        ...LINE_OPTS.plugins,
         legend: {
           ...BASE_OPTS.plugins.legend,
           labels: {
