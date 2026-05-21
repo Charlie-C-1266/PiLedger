@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.16.0] — 2026-05-20
+
+### Added
+
+- **Login rate limiting (P0-4).** `POST /api/auth/login` is now capped at **5 attempts per minute per source IP** via [SlowAPI](https://slowapi.readthedocs.io/), addressing the "no rate limiting on login attempts" gap previously documented in README's Security Notes. PBKDF2 at 260 000 iterations puts brute-force ceiling at roughly 10 attempts/sec, which is ~36 000/hour against an 8-character password — fast enough that a determined attacker with network reach could realistically work the bottom of the password-strength distribution. The 5/min cap drops that ceiling by three orders of magnitude (300/hour). The limit is configurable via `PILEDGER_LOGIN_RATE_LIMIT` (slowapi string syntax — `10/minute`, `100/hour`, etc.) so an operator running an internal-only deployment can loosen it without code changes. The key function is the socket peer IP (`slowapi.util.get_remote_address`), not `X-Forwarded-For` parsing — chosen deliberately to avoid the trusted-proxy-allowlist footgun where a misconfigured allowlist lets an attacker spoof the header and evade the cap entirely. The README's existing "front with a reverse proxy" guidance already covers internet-facing deployments where per-client rate limiting must happen at the proxy layer (where the real client IP is visible); the app-layer limit remains a defence-in-depth backstop for LAN deployments. SlowAPI registers a default `RateLimitExceeded` exception handler that returns 429 with a JSON body and standard `Retry-After` / `X-RateLimit-*` headers — and because `SecurityHeadersMiddleware` (P0-3) runs after the handler, every 429 still carries the full defensive header set. Affected files: `requirements.txt` (new `slowapi>=0.1.9` dep), `constants.py` (new `LOGIN_RATE_LIMIT` constant with env override), `app.py` (Limiter wiring, exception handler registration, `request: Request` added to the login signature, `@limiter.limit(LOGIN_RATE_LIMIT)` decorator), `tests/conftest.py` (disables the limiter in the shared `app` fixture so suite-wide login fixtures don't trip the cap), `tests/e2e/conftest.py` (sets `PILEDGER_LOGIN_RATE_LIMIT=10000/minute` for the session-scoped Uvicorn subprocess, since the production cap would otherwise drop the e2e suite from 34 passed to ~26 once the shared 127.0.0.1 bucket runs dry), new `tests/test_rate_limit.py` (6 cases pinning: 5 under-cap logins succeed, 6th attempt returns 429 regardless of password validity, register and `GET /login` stay unaffected, and 429 responses still carry the P0-3 security headers), `README.md` (Security Notes — moves login rate-limiting from "not protected" to "protected", documents the `PILEDGER_LOGIN_RATE_LIMIT` env var and the shared-bucket-behind-proxy caveat, and adds a one-liner summarising the P0-3 header set).
+
+---
+
 ## [0.15.0] — 2026-05-20
 
 ### Added

@@ -19,10 +19,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
 from constants import (
     COOKIE_SECURE,
     FREQ_TO_MONTHLY,
     ISO_FMT,
+    LOGIN_RATE_LIMIT,
     MAX_DAYS,
     MAX_MONTHS,
     SESSION_COOKIE,
@@ -65,7 +70,17 @@ from schemas import (
 )
 
 
+# Login rate limiter. Key function is the socket peer IP (slowapi default),
+# which means behind a reverse proxy every client shares a single bucket —
+# the README directs internet-exposed deployments to add nginx `limit_req`
+# / Caddy `rate_limit` at the proxy layer where real client IPs are visible.
+# This app-layer limit is defence-in-depth for LAN deployments. Configurable
+# via the PILEDGER_LOGIN_RATE_LIMIT env var (see constants.py).
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="PiLedger")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 init()
 
@@ -109,7 +124,8 @@ def register(data: RegisterIn) -> RegisterOut:
 
 
 @app.post("/api/auth/login", response_model=LoginOut)
-def login(data: LoginIn, response: Response) -> LoginOut:
+@limiter.limit(LOGIN_RATE_LIMIT)
+def login(request: Request, data: LoginIn, response: Response) -> LoginOut:
     username = data.username.strip()
     with db() as conn:
         user = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
