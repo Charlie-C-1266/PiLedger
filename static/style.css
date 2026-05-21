@@ -366,6 +366,33 @@ body {
   height: 270px;
 }
 
+.chart-type-toggle {
+  display: inline-flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  padding: 2px;
+  gap: 2px;
+}
+.chart-type-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  border: none;
+  border-radius: calc(var(--r-xs) - 2px);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.chart-type-btn.active {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.chart-type-btn:not(.active):hover { color: var(--text); }
+
 /* ─── Projections ────────────────────────────────────────────────────────────── */
 .projection-stats {
   display: grid;

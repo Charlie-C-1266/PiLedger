@@ -151,7 +151,13 @@
           <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
         </div>
         <div class="card chart-card chart-card--sm">
-          <div class="chart-header"><h3>Distribution</h3></div>
+          <div class="chart-header">
+            <h3>Distribution</h3>
+            <div class="chart-type-toggle" id="distribution-type-toggle" role="group" aria-label="Distribution chart type">
+              <button type="button" class="chart-type-btn active" data-action="setDistributionChartType" data-arg="doughnut" title="Doughnut">Doughnut</button>
+              <button type="button" class="chart-type-btn"        data-action="setDistributionChartType" data-arg="bar"      title="Horizontal bar">Bar</button>
+            </div>
+          </div>
           <div class="chart-wrap"><canvas id="distribution-chart"></canvas></div>
         </div>
       </section>
