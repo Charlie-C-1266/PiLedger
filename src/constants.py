@@ -7,7 +7,12 @@ from typing import Literal
 
 DB: str = os.environ.get(
     "PILEDGER_DB",
-    os.path.join(os.path.dirname(__file__), "piledger.db"),
+    # Source lives in src/; the default DB file lives at the project root
+    # so existing dev databases keep working after the src/ restructure.
+    # Resolve via one parent traversal from this module's location.
+    os.path.normpath(
+        os.path.join(os.path.dirname(__file__), os.pardir, "piledger.db")
+    ),
 )
 SESSION_COOKIE = "piledger_session"
 SESSION_DAYS = 30
