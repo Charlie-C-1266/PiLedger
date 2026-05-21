@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.17.1] — 2026-05-21
+
+### Tests
+
+- **Budget endpoint coverage gap closed.** Until this release the only direct test of `GET/POST/PUT/DELETE /api/budget*` was a single round-trip inside `tests/test_loans.py:139`, which meant auth, user isolation, validation, cascading delete, and partial-PATCH semantics on the entire budget surface were unguarded — a regression that dropped the `account_id` ownership check at `app.py:643-646` (letting bob create a budget item targeting alice's account) would have shipped without anything tripping. New `tests/test_budget.py` (22 cases) pins: 401 on every budget endpoint when unauthenticated; bob cannot POST against alice's `account_id`, cannot read/edit/delete alice's items; 404 for nonexistent or other-user items on both PUT and DELETE; `ON DELETE CASCADE` from `accounts → budget_items` (`db.py:95`) actually removes the child rows when the parent account is deleted; rejection of blank name / unknown frequency / amount above `MAX_MONEY` / unknown extra fields (the `_In.extra="forbid"` guarantee); explicit acceptance of negative amounts so the loan-payment encoding documented in `test_loans.py` is pinned as a contract; partial PATCH semantics so name-only / amount-only / frequency-only updates leave every other field untouched; and empty-body PATCH as a 200 no-op (the `if patch:` short-circuit at `app.py:672`). All 22 pass first run with no source changes.
+
+- **Session cookie attributes pinned.** `app.py:137-144` sets `httponly`, `samesite="lax"`, a 30-day `Max-Age`, and conditionally `Secure` based on the `COOKIE_SECURE` env var, but the test suite never inspected the actual `Set-Cookie` header — a regression that dropped `HttpOnly` would have silently exposed the session token to client-side JS (defeating the XSS-defence story that CSP-without-unsafe-inline is meant to back up), and one that flipped `samesite` would have weakened CSRF protection. New `tests/test_sessions_and_cookies.py` parses the raw `Set-Cookie` line and asserts `HttpOnly` present, `SameSite=Lax`, `Path=/`, `Max-Age = SESSION_DAYS * 86400`, `Secure` absent by default (so HTTP-only LAN deployments keep working), and `Secure` present when the `COOKIE_SECURE` flag is monkeypatched on. The cookie helper parses the header with a small `_parse_set_cookie` shim rather than relying on `httpx.Cookies` (which discards boolean attributes), so attribute-presence regressions can't slip past.
+
+- **Server-side session expiry covered.** The same new test file exercises the two `auth.py` branches that were previously dead-tested: `session_uid`'s `expires_at > now` filter (now `tests/test_sessions_and_cookies.py` writes a row directly with `expires_at` in the past and confirms `/api/auth/me`, `/api/accounts`, `/api/summary`, and `/api/prefs` all 401 with that token) and `make_session`'s opportunistic eviction sweep (after a fresh login, the previously-expired row is gone from the `sessions` table). Without these, an off-by-one in the `WHERE expires_at>?` comparison or a future change to the sweep query could quietly leave expired tokens valid or fail to clean up the table over time.
+
+- **`BalanceIn.recorded_at` parser branches covered.** The four-branch field validator at `schemas.py:78-94` had only canonical-Z form exercised; the lenient `+00:00`, naive (no-tz), and non-UTC-offset paths — exactly the timezone-bug-prone code — were unguarded. New `tests/test_recorded_at_parser.py` (8 cases) round-trips canonical Z, asserts `+00:00` is re-emitted as `Z`, asserts naive ISO is tagged UTC and re-emitted, asserts `+05:00` converts to UTC-7, asserts `-08:00` converts to UTC+8, rejects garbage strings and empty strings with 400, and pins the missing-field default (server stamps a canonical-format timestamp). The 20-char Z-suffixed shape is asserted on the default-stamping path so a regression that stored `None` or a non-canonical format would be caught.
+
+Affected files: new `tests/test_budget.py` (22 cases), new `tests/test_sessions_and_cookies.py` (9 cases), new `tests/test_recorded_at_parser.py` (8 cases). After: `./venv/bin/pytest` → **224 passed** (was 185, +39); `./venv/bin/pytest tests/e2e` → **34 passed** (unchanged). No source changes.
+
+---
+
 ## [0.17.0] — 2026-05-21
 
 ### Added
