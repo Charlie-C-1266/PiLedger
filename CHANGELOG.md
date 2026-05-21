@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.17.1] — 2026-05-21
+
+### Tests
+
+- **Schema migration coverage.** `db.init()` carries nine conditional, additive migrations gated by `PRAGMA table_info` checks (add `accounts.user_id`, widen `accounts.type` CHECK to allow `'loan'` via table-rewrite, add `users.theme` / `users.dark_mode`, add `accounts.subtype`, add `accounts.currency`, add `users.base_currency`, convert `balance_history.balance` REAL → `balance_cents` INTEGER, convert `budget_items.amount` REAL → `amount_cents` INTEGER). Until this release every one of these branches was dead-tested: the suite has always started from a fresh DB so the `CREATE TABLE IF NOT EXISTS` fast path runs and the migration bodies never fire. A future change that mis-orders a CAST, drops a column from the table-rewrite SELECT list, or breaks an additive ALTER would have shipped silently and only manifested when a long-deployed user upgraded — the worst possible time to discover it. New `tests/test_migrations.py` (18 cases) materialises the pre-migration ("v0") schema directly with raw `executescript`, seeds a representative row in every table (one user, two accounts, two balance-history entries with REAL balances, two budget items with REAL amounts including a negative one to pin sign preservation), then calls the real `init()` and asserts: every expected column is present after; the type CHECK now mentions `'loan'` and accepts an inserted loan row; existing accounts survive the table-rewrite with `id` / `name` / `type` / `interest_rate` / `color` preserved; default backfills land correctly (`theme='olive'`, `dark_mode=0`, `subtype='general'`, `currency='GBP'`, `base_currency='GBP'`); the riskiest migrations (the two REAL → INTEGER conversions) round exactly to cents with `1234.56 → 123456`, `8000.00 → 800000`, `3000.00 → 300000`, and crucially `-1234.55 → -123455` (negative values are the loan-payment encoding from `test_loans.py`, so a regression that absolute-valued the cast would break the budget projection in production but not in any other test). Idempotency is pinned — running `init()` a second time on the already-migrated DB must be a no-op rather than re-firing a table-rewrite or duplicating data — and a separate "fresh install" case confirms `CREATE TABLE IF NOT EXISTS` produces every column the routes expect.
+
+Affected files: new `tests/test_migrations.py` (18 cases). After: `./venv/bin/pytest` → **203 passed** on this branch (was 185, +18); `./venv/bin/pytest tests/e2e` → **34 passed** (unchanged). No source changes. This PR is independent of #17 (test-coverage-budget-and-auth) — when both land the combined suite will be 242 unit/API tests.
+
+---
+
 ## [0.17.0] — 2026-05-21
 
 ### Added
