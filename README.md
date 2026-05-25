@@ -288,6 +288,7 @@ All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) req
 | `POST` | `/api/auth/login` | `{username, password}` | `{ok, username}` + sets cookie, or `401` |
 | `POST` | `/api/auth/logout` | — (reads cookie) | `{ok}` + deletes session + clears cookie |
 | `GET` | `/api/auth/me` | — | `{id, username}` |
+| `PUT` | `/api/auth/password` | `{current_password, new_password}` | `{ok}` + rotates every session and sets a fresh cookie, or `400` (weak new password) / `401` (current wrong) |
 
 ### Accounts
 

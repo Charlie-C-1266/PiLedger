@@ -459,6 +459,13 @@ body {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 440px;
+  /* Cap the modal at the viewport height and let the body scroll when content
+     outgrows it (Settings does, once the password section is in). Keeping the
+     header and footer outside the scroll region keeps the close button and
+     primary action visible regardless of content length. */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   animation: modal-in .14s ease;
 }
 .modal--sm { max-width: 360px; }
@@ -492,6 +499,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  /* Header + footer pin to the modal frame; the body absorbs the height
+     budget and scrolls internally when its contents exceed it. */
+  overflow-y: auto;
+  min-height: 0;
 }
 .modal-body p { font-size: 14px; color: var(--text); }
 
@@ -996,6 +1007,24 @@ body {
   font-weight: 600;
   color: var(--text);
 }
+
+/* Change-password section — action button on the left, status text on the
+   right so success / error feedback sits inline rather than pushing the
+   modal layout around. The status colours pick up the existing semantic
+   greens/reds so they read consistently with the rest of the dashboard. */
+.pw-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.pw-status {
+  font-size: 12.5px;
+  color: var(--muted);
+  min-height: 1em;
+}
+.pw-status.ok    { color: var(--green-dk); }
+.pw-status.error { color: var(--red-text); }
 
 /* Settings modal — a row that pairs a label with a control on the right. */
 .settings-row {

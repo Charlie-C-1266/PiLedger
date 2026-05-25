@@ -1151,6 +1151,13 @@ function openSettingsModal() {
   renderThemeGrid();
   renderModePill();
   renderCurrencySettings();
+  // Reset the password-change section each open so a stale "Password updated"
+  // status or leftover values from a prior interaction don't carry across.
+  ['pw-current', 'pw-new', 'pw-confirm'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  _setPwStatus('');
   openModal('settings-modal');
 }
 
@@ -1284,6 +1291,71 @@ async function _savePrefs(patch) {
 function setTheme(themeId)   { _savePrefs({ theme: themeId }); }
 function setDarkMode(on)     { _savePrefs({ dark_mode: !!on }); }
 function toggleDarkMode()    { setDarkMode(!prefs.dark_mode); }
+
+// ─── Password change ─────────────────────────────────────────────────────────
+// Uses raw `fetch` rather than the `api` wrapper because `apiFetch` redirects
+// to /login on 401, and the password-change route returns 401 specifically
+// when the *current* password is wrong — which the user should see inline,
+// not be silently kicked out for. The 200 response also carries a refreshed
+// session cookie (every prior session for the user was rotated), so the
+// browser stays logged in seamlessly after the call.
+function _setPwStatus(text, kind) {
+  const el = document.getElementById('pw-status');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.remove('ok', 'error');
+  if (kind) el.classList.add(kind);
+}
+
+async function submitPasswordChange() {
+  const cur     = document.getElementById('pw-current').value;
+  const next    = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+
+  if (!cur || !next || !confirm) {
+    _setPwStatus('Fill in all three fields.', 'error');
+    return;
+  }
+  if (next.length < 8) {
+    _setPwStatus('New password must be at least 8 characters.', 'error');
+    return;
+  }
+  if (next !== confirm) {
+    _setPwStatus('New password and confirmation do not match.', 'error');
+    return;
+  }
+  if (next === cur) {
+    _setPwStatus('New password must differ from the current one.', 'error');
+    return;
+  }
+
+  _setPwStatus('Updating…');
+  try {
+    const res = await fetch('/api/auth/password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ current_password: cur, new_password: next }),
+    });
+    if (res.status === 401) {
+      _setPwStatus('Current password is incorrect.', 'error');
+      return;
+    }
+    if (res.status === 400) {
+      _setPwStatus('New password rejected by the server.', 'error');
+      return;
+    }
+    if (!res.ok) {
+      _setPwStatus(`Unexpected error (HTTP ${res.status}).`, 'error');
+      return;
+    }
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value     = '';
+    document.getElementById('pw-confirm').value = '';
+    _setPwStatus('Password updated. Other devices signed out.', 'ok');
+  } catch (e) {
+    _setPwStatus('Network error: ' + e.message, 'error');
+  }
+}
 
 async function loadPrefs() {
   try {

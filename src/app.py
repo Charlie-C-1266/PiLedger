@@ -72,6 +72,7 @@ from schemas import (
     LoginIn,
     LoginOut,
     OkOut,
+    PasswordChangeIn,
     PrefsOut,
     PrefsPatch,
     RateOut,
@@ -253,6 +254,51 @@ def get_me(uid: int = Depends(require_auth)) -> UserOut:
     if not user:
         raise HTTPException(404)
     return UserOut(id=user["id"], username=user["username"])
+
+
+@app.put("/api/auth/password", response_model=OkOut)
+def change_password(
+    data: PasswordChangeIn,
+    response: Response,
+    uid: int = Depends(require_auth),
+) -> OkOut:
+    """Change the authenticated user's password, then rotate every session.
+
+    The session rotation is the load-bearing piece: if a separate device's
+    session token has been stolen (or even just left signed-in on a public
+    machine), changing the password from this device should kick the other
+    one out. Implemented as DELETE-then-INSERT rather than UPDATE — the new
+    token is unrelated to the old one, so even a leaked old token cookie
+    can't be repurposed if the row is somehow reanimated. The new cookie
+    written on this response is what keeps the *current* browser logged in
+    seamlessly after the rotation.
+    """
+    with db() as conn:
+        user = conn.execute(
+            "SELECT password_hash FROM users WHERE id=?", (uid,)
+        ).fetchone()
+        if not user or not verify_password(data.current_password, user["password_hash"]):
+            raise HTTPException(401, "Current password is incorrect")
+        conn.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (hash_password(data.new_password), uid),
+        )
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.commit()
+    # `make_session` opens its own connection; running it after the explicit
+    # commit above guarantees the rotation is visible before the new token
+    # row is inserted (i.e. the new row can't be torn down by the bulk
+    # DELETE racing inside the same transaction).
+    token = make_session(uid)
+    response.set_cookie(
+        SESSION_COOKIE, token,
+        max_age=SESSION_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=COOKIE_SECURE,
+    )
+    return OkOut(ok=True)
 
 
 @app.delete("/api/auth/me", response_model=OkOut)

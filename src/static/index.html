@@ -432,6 +432,16 @@
           <div class="rates-table" id="rates-table"></div>
           <p class="rates-note" id="rates-note"></p>
         </div>
+        <div class="field" id="settings-password-field">
+          <label>Change Password <span class="field-hint">Existing sessions on other devices will be signed out.</span></label>
+          <input type="password" id="pw-current" placeholder="Current password" autocomplete="current-password" />
+          <input type="password" id="pw-new" placeholder="New password (min 8 characters)" autocomplete="new-password" />
+          <input type="password" id="pw-confirm" placeholder="Confirm new password" autocomplete="new-password" />
+          <div class="pw-actions">
+            <button class="btn btn-primary" data-action="submitPasswordChange">Update Password</button>
+            <span class="pw-status" id="pw-status" role="status"></span>
+          </div>
+        </div>
       </div>
       <div class="modal-footer modal-footer--split">
         <button class="btn btn-ghost" id="rates-save-btn" data-action="saveRatesFromTable" style="display:none">Save Rates</button>
