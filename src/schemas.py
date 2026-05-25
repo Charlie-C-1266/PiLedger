@@ -52,6 +52,16 @@ class DeleteMeIn(_In):
     password: Annotated[str, Field(min_length=1, max_length=256)]
 
 
+class PasswordChangeIn(_In):
+    """Body for `PUT /api/auth/password`. `current_password` accepts any
+    non-empty string (it's compared against the stored hash; existing-password
+    strength is not the new request's problem). `new_password` enforces the
+    same lower bound `RegisterIn` uses so a change can never weaken a
+    password below the registration policy."""
+    current_password: Annotated[str, Field(min_length=1, max_length=256)]
+    new_password: Annotated[str, Field(min_length=8, max_length=256)]
+
+
 class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
