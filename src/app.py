@@ -35,7 +35,16 @@ from constants import (
     SESSION_DAYS,
     SUBTYPES_BY_TYPE,
 )
-from db import db, from_cents, init, to_cents, utcnow_iso
+from db import (
+    USER_SCOPED_TABLES,
+    db,
+    from_cents,
+    init,
+    to_cents,
+    user_scoped_delete_sql,
+    user_scoped_select_sql,
+    utcnow_iso,
+)
 from security import SecurityHeadersMiddleware
 from auth import (
     dummy_hash,
@@ -54,6 +63,7 @@ from schemas import (
     BudgetItemIn,
     BudgetItemOut,
     BudgetItemPatch,
+    DeleteMeIn,
     HistoryAccountOut,
     HistoryPointOut,
     LoginIn,
@@ -172,6 +182,77 @@ def get_me(uid: int = Depends(require_auth)) -> UserOut:
     if not user:
         raise HTTPException(404)
     return UserOut(id=user["id"], username=user["username"])
+
+
+@app.delete("/api/auth/me", response_model=OkOut)
+def delete_me(
+    data: DeleteMeIn,
+    response: Response,
+    uid: int = Depends(require_auth),
+) -> OkOut:
+    """Self-serve account deletion. Re-verifies the password to defend against
+    XSS-driven CSRF (a stolen session cookie alone can't trigger a wipe), then
+    cascades every user-scoped table before deleting the `users` row.
+
+    The cascade is intentionally explicit (one DELETE per table in
+    `USER_SCOPED_TABLES`) rather than relying on the schema's
+    `ON DELETE CASCADE` foreign keys alone. Reasons:
+      * Defence in depth — a future migration that adds a user-scoped table
+        without an `ON DELETE CASCADE` FK still gets wiped.
+      * Visibility — the cascade is readable in `app.py` rather than buried
+        in `db.py`, and the guard test in `tests/test_export.py` catches any
+        new user-scoped table missing from `USER_SCOPED_TABLES`.
+    """
+    with db() as conn:
+        user = conn.execute(
+            "SELECT password_hash FROM users WHERE id=?", (uid,)
+        ).fetchone()
+        if not user or not verify_password(data.password, user["password_hash"]):
+            raise HTTPException(401, "Invalid password")
+        for table in USER_SCOPED_TABLES:
+            conn.execute(user_scoped_delete_sql(table), (uid,))
+        # `sessions.user_id` has ON DELETE CASCADE so the users-row delete
+        # below would clear them, but doing it explicitly here means any
+        # other valid session for this user is killed in the same
+        # transaction, before the users row vanishes.
+        conn.execute("DELETE FROM sessions WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit()
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return OkOut(ok=True)
+
+
+@app.get("/api/export")
+def export_data(uid: int = Depends(require_auth)) -> JSONResponse:
+    """Return every row owned by the authenticated user as JSON.
+
+    The shape is `{version, exported_at, user, <table>: [...rows], ...}` —
+    one key per table in `USER_SCOPED_TABLES` plus the user row itself
+    (without the password hash). The `Content-Disposition: attachment`
+    header makes browsers save the response rather than render it.
+    """
+    now = utcnow_iso()
+    with db() as conn:
+        user_row = conn.execute(
+            "SELECT id, username, theme, dark_mode, base_currency, created_at"
+            " FROM users WHERE id=?",
+            (uid,),
+        ).fetchone()
+        if not user_row:
+            raise HTTPException(404, "Not found")
+        payload: dict = {
+            "version": 1,
+            "exported_at": now,
+            "user": dict(user_row),
+        }
+        for table in USER_SCOPED_TABLES:
+            rows = conn.execute(user_scoped_select_sql(table), (uid,)).fetchall()
+            payload[table] = [dict(r) for r in rows]
+    filename = f"piledger-export-{user_row['username']}-{now[:10]}.json"
+    return JSONResponse(
+        content=payload,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ─── User preferences ─────────────────────────────────────────────────────────
