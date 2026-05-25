@@ -289,14 +289,15 @@ All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) req
 | `POST` | `/api/auth/logout` | — (reads cookie) | `{ok}` + deletes session + clears cookie |
 | `GET` | `/api/auth/me` | — | `{id, username}` |
 | `PUT` | `/api/auth/password` | `{current_password, new_password}` | `{ok}` + rotates every session and sets a fresh cookie, or `400` (weak new password) / `401` (current wrong) |
+| `DELETE` | `/api/auth/me` | `{password}` | `{ok}` + cascades every row owned by the user across `accounts` / `balance_history` / `budget_items` / `exchange_rates`, kills all sessions, deletes the user row, and clears the session cookie. `401` if the password is wrong. |
 
 ### Accounts
 
 | Method | Path | Body | Response |
 |---|---|---|---|
 | `GET` | `/api/accounts` | — | Array of account objects, each with `current_balance` and `last_updated` joined from the latest `balance_history` row |
-| `POST` | `/api/accounts` | `{name, type, interest_rate?, color?}` | Created account object |
-| `PUT` | `/api/accounts/{id}` | `{name?, interest_rate?, color?}` | Updated account object |
+| `POST` | `/api/accounts` | `{name, type, subtype?, currency?, interest_rate?, color?}` | Created account object. `subtype` defaults to `general` and must be valid for the given `type` (see the `SUBTYPES_BY_TYPE` map in `constants.py`); `currency` defaults to `GBP`. |
+| `PUT` | `/api/accounts/{id}` | `{name?, subtype?, currency?, interest_rate?, color?}` | Updated account object. `type` is not editable after creation. |
 | `DELETE` | `/api/accounts/{id}` | — | `{ok}` |
 
 ### Balance history
@@ -327,6 +328,34 @@ All routes require auth and operate only on items owned by the calling user. The
 | `GET` | `/api/budget/projection` | `?months=3\|6\|12` | `{months, accounts[], net_worth[]}` — see below |
 
 The `accounts[]` array in `/api/budget/projection` contains one entry per account with `{id, name, type, color, current_balance, monthly_net, points[], final_balance}`. The `net_worth[]` array contains one entry per month (including month 0 = today) with `{month, balance, date}`, where `balance` is `Σ(assets) − Σ(loans)` at that month.
+
+### User preferences
+
+Per-user UI + currency preferences. Used by the SPA on every page load to drive theme, light/dark, and the base currency that net-worth totals are reported in.
+
+| Method | Path | Body / Params | Response |
+|---|---|---|---|
+| `GET` | `/api/prefs` | — | `{theme, dark_mode, base_currency}` |
+| `PUT` | `/api/prefs` | `{theme?, dark_mode?, base_currency?}` | Updated `{theme, dark_mode, base_currency}`. Partial — only fields present are written. Changing `base_currency` rescales any stored exchange rates so each one keeps meaning "1 unit of `currency` = `rate` units of base" against the new base. |
+
+`theme` must be one of the values in the `Theme` literal in `constants.py` (currently ten options across green/blue/purple/red/orange/neutral spectrum); `base_currency` must be one of the supported `Currency` codes. Unknown values return `400`.
+
+### Exchange rates
+
+Manual FX table used by `/api/summary` and `/api/budget/projection` to convert per-account balances into the user's base currency. Rates are user-editable from the Settings modal — no outbound HTTP. A missing rate doesn't drop the account from totals; instead `/api/summary` falls back to 1.0 and returns the offending codes in `missing_rates` so the UI can warn.
+
+| Method | Path | Body / Params | Response |
+|---|---|---|---|
+| `GET` | `/api/rates` | — | `{base_currency, rates: [{currency, rate, updated_at}, ...]}` |
+| `PUT` | `/api/rates` | `{rates: [{currency, rate}, ...]}` | Bulk replace. Each `rate` means "1 unit of `currency` = `rate` units of base". `400` if a rate is set against the base currency itself, or if a currency appears twice in the payload. |
+
+### Data lifecycle
+
+Self-serve data portability. Pairs with the `DELETE /api/auth/me` endpoint in the Auth table.
+
+| Method | Path | Params | Response |
+|---|---|---|---|
+| `GET` | `/api/export` | — | `{version, exported_at, user, accounts, balance_history, budget_items, exchange_rates}` — a complete user-scoped JSON dump. The `user` sub-object excludes `password_hash`. Returned with `Content-Disposition: attachment; filename="piledger-export-<username>-<YYYY-MM-DD>.json"` so browsers save the response rather than render it. |
 
 ### Projection calculation
 
