@@ -270,6 +270,15 @@ All migrations are no-ops on a database that is already at the current schema.
 
 All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) require a valid session cookie. A missing or expired cookie returns `HTTP 401`.
 
+### Ops
+
+| Method | Path | Auth | Response |
+|---|---|---|---|
+| `GET` | `/healthz` | none | `{ok, version, uptime_s}` — liveness probe for uptime monitors and the Docker healthcheck. Returns the running app version and monotonic uptime in seconds. |
+| `GET` | `/docs` | session | Swagger UI. Unauthenticated browsers are 302-redirected to `/login`. |
+| `GET` | `/redoc` | session | ReDoc. Same redirect behaviour as `/docs`. |
+| `GET` | `/api/openapi.json` | session | OpenAPI 3 spec consumed by the Swagger/ReDoc UIs above. Returns `401` without a session — FastAPI's default `/openapi.json` mount is disabled so an anonymous scanner cannot fingerprint the API. |
+
 ### Auth
 
 | Method | Path | Body / Params | Response |
@@ -599,7 +608,81 @@ sudo ufw allow 8080/tcp
 
 ### HTTPS
 
-The server currently runs over plain HTTP. This is acceptable on a trusted local network but means the session cookie and financial data are unencrypted in transit. To add HTTPS, put a reverse proxy such as **nginx** or **Caddy** in front of Uvicorn and terminate TLS there. Caddy can obtain and renew a Let's Encrypt certificate automatically if the VM has a public domain name.
+The server itself runs over plain HTTP, which is acceptable on a trusted LAN but exposes session cookies and financial data in transit on anything internet-facing. Front Uvicorn with a TLS-terminating reverse proxy — Caddy and nginx are the two configurations in widest self-hosted use.
+
+**Before exposing the app behind a proxy:**
+
+1. **Bind Uvicorn to `127.0.0.1`, not `0.0.0.0`.** Edit `start.sh` (or the `command:` line in `docker-compose.yml`) to use `--host 127.0.0.1` so the only path in is via the proxy. Otherwise port 8080 stays reachable from the LAN and the TLS gate can be bypassed.
+2. **Set `COOKIE_SECURE=true`.** This adds the `Secure` flag to the session cookie so browsers refuse to send it over plain HTTP. In Docker Compose set the env var in your `.env` file; for bare-metal `start.sh` add `export COOKIE_SECURE=true`.
+3. **Decide where rate limiting lives.** The app-layer login rate limit keys on the socket peer IP, which behind a proxy means every client shares one bucket (see [Security Notes](#security-notes)). Add per-client limiting at the proxy layer too — both snippets below include a real-IP-aware rate limit on the login endpoint.
+
+#### Caddy
+
+Caddy auto-provisions and renews a Let's Encrypt certificate if the host has a public DNS name. Drop this into `/etc/caddy/Caddyfile`:
+
+```caddy
+piledger.example.com {
+    # Belt-and-braces login rate limit; the app-layer limit cannot
+    # distinguish clients once they share a proxy.
+    @login path /api/auth/login
+    rate_limit @login 5r/m
+
+    reverse_proxy 127.0.0.1:8080 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+}
+```
+
+Reload with `caddy reload --config /etc/caddy/Caddyfile`.
+
+#### nginx
+
+The `proxy_http_version 1.1` and empty-`Connection` header lines are mandatory — without them, nginx defaults to HTTP/1.0 upstream and drops keep-alive, which manifests as slow page loads and broken WebSocket-style requests. Drop this into `/etc/nginx/sites-available/piledger`:
+
+```nginx
+limit_req_zone $binary_remote_addr zone=piledger_login:10m rate=5r/m;
+
+server {
+    listen 443 ssl http2;
+    server_name piledger.example.com;
+
+    # Provide your own cert paths here; certbot --nginx is the common path.
+    ssl_certificate     /etc/letsencrypt/live/piledger.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/piledger.example.com/privkey.pem;
+
+    location /api/auth/login {
+        limit_req zone=piledger_login burst=2 nodelay;
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+    }
+}
+```
+
+Symlink into `sites-enabled` and reload: `sudo ln -s /etc/nginx/sites-available/piledger /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx`.
+
+#### Verifying the proxy is up
+
+```bash
+# From any host on the network — should return 200 and a small JSON body.
+curl https://piledger.example.com/healthz
+# Expected: {"ok":true,"version":"0.21.0","uptime_s":<int>}
+```
+
+A `/healthz` probe is the cleanest check because it returns 200 even before login is configured, so it isolates "proxy + TLS + app" from "credentials work".
 
 ---
 

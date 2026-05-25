@@ -39,10 +39,11 @@ ENV PILEDGER_DB=/data/piledger.db
 
 EXPOSE 8080
 
-# Health check hits /login because it always returns 200 unauthenticated — /
-# returns 302 to /login, which curl/wget treats as success too but /login is
-# the most direct "is the SPA wired up" check we can make without a session.
+# Health check hits /healthz — a dedicated unauthenticated probe that returns
+# {"ok": true, "version": "...", "uptime_s": N}. Asserts both HTTP 200 and a
+# truthy "ok" field so a half-broken process (e.g. SQLite gone wonky) that
+# could still serve a static /login can't fool the check.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/login', timeout=3).status == 200 else 1)"
+    CMD python -c "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3); sys.exit(0 if r.status==200 and json.load(r).get('ok') is True else 1)"
 
 CMD ["uvicorn", "--app-dir", "src", "app:app", "--host", "0.0.0.0", "--port", "8080"]
