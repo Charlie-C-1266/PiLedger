@@ -34,10 +34,16 @@ let distributionAccounts = [];
 // Available palettes — id must match the [data-theme] hooks in style.css and
 // the backend Theme literal. The swatch is what the user sees in the picker.
 const THEMES = [
-  { id: 'olive',  label: 'Olive',  swatch: '#708238' },
-  { id: 'indigo', label: 'Indigo', swatch: '#6366f1' },
-  { id: 'slate',  label: 'Slate',  swatch: '#475569' },
-  { id: 'rose',   label: 'Rose',   swatch: '#be185d' },
+  { id: 'olive',   label: 'Olive',   swatch: '#708238' },
+  { id: 'emerald', label: 'Emerald', swatch: '#059669' },
+  { id: 'teal',    label: 'Teal',    swatch: '#0d9488' },
+  { id: 'sky',     label: 'Sky',     swatch: '#0284c7' },
+  { id: 'indigo',  label: 'Indigo',  swatch: '#6366f1' },
+  { id: 'violet',  label: 'Violet',  swatch: '#7c3aed' },
+  { id: 'rose',    label: 'Rose',    swatch: '#be185d' },
+  { id: 'crimson', label: 'Crimson', swatch: '#dc2626' },
+  { id: 'amber',   label: 'Amber',   swatch: '#d97706' },
+  { id: 'slate',   label: 'Slate',   swatch: '#475569' },
 ];
 
 const prefs = { theme: 'olive', dark_mode: false, base_currency: 'GBP' };

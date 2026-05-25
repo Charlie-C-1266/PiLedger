@@ -46,9 +46,15 @@
 /* Alternative palettes — flip the accent only. --accent-lt and the focus
    ring are derived from --accent and --surface above, so swapping themes
    here automatically restyles every accent-aware element. */
-[data-theme="indigo"] { --accent: #6366f1; --accent-dk: #4f46e5; }
-[data-theme="slate"]  { --accent: #475569; --accent-dk: #334155; }
-[data-theme="rose"]   { --accent: #be185d; --accent-dk: #9d174d; }
+[data-theme="indigo"]  { --accent: #6366f1; --accent-dk: #4f46e5; }
+[data-theme="slate"]   { --accent: #475569; --accent-dk: #334155; }
+[data-theme="rose"]    { --accent: #be185d; --accent-dk: #9d174d; }
+[data-theme="emerald"] { --accent: #059669; --accent-dk: #047857; }
+[data-theme="teal"]    { --accent: #0d9488; --accent-dk: #0f766e; }
+[data-theme="sky"]     { --accent: #0284c7; --accent-dk: #0369a1; }
+[data-theme="amber"]   { --accent: #d97706; --accent-dk: #b45309; }
+[data-theme="crimson"] { --accent: #dc2626; --accent-dk: #b91c1c; }
+[data-theme="violet"]  { --accent: #7c3aed; --accent-dk: #6d28d9; }
 
 /* Dark mode — re-targets surface tones plus pastel semantic chips so they
    stay readable on a dark background. Accent stays whatever theme is set. */
