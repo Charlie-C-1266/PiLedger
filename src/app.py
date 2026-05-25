@@ -14,9 +14,11 @@ from typing import Annotated, Optional
 import math
 import os
 import sqlite3
+import time
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -34,6 +36,7 @@ from constants import (
     SESSION_COOKIE,
     SESSION_DAYS,
     SUBTYPES_BY_TYPE,
+    VERSION,
 )
 from db import (
     USER_SCOPED_TABLES,
@@ -89,11 +92,27 @@ from schemas import (
 # via the PILEDGER_LOGIN_RATE_LIMIT env var (see constants.py).
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="PiLedger")
+# `docs_url=None` / `redoc_url=None` / `openapi_url=None` disable FastAPI's
+# default unauthenticated mounts. The replacements below (`/docs`, `/redoc`,
+# `/api/openapi.json`) all gate on the session cookie, so an anonymous scanner
+# cannot fingerprint the API surface — only logged-in users see Swagger /
+# ReDoc. This matches the P0-10 design (path 2: gate rather than fully
+# disable, because self-hosters routinely log in to inspect their own API).
+app = FastAPI(
+    title="PiLedger",
+    version=VERSION,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 init()
+
+# Monotonic clock so `/healthz` uptime never goes backwards on a wall-clock
+# adjustment. Captured at import time, which is effectively process start.
+_BOOT_MONOTONIC = time.monotonic()
 
 # Resolve static asset paths relative to this module rather than the process
 # CWD so the app is invocable from any working directory (start.sh, the
@@ -117,6 +136,58 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
             e["ctx"] = {k: str(v) for k, v in e["ctx"].items()}
         safe.append(e)
     return JSONResponse(status_code=400, content={"detail": safe})
+
+
+# ─── Ops endpoints ────────────────────────────────────────────────────────────
+
+@app.get("/healthz", include_in_schema=False)
+def healthz() -> dict:
+    """Liveness + version probe for uptime monitors and the Docker healthcheck.
+
+    Deliberately unauthenticated — uptime monitors (Uptime Kuma,
+    Healthchecks.io, kube probes) need to poll without holding a session,
+    and the response carries no sensitive information beyond the version
+    string. Returns `uptime_s` as an int so log scrapers don't have to
+    handle floats."""
+    return {
+        "ok": True,
+        "version": VERSION,
+        "uptime_s": int(time.monotonic() - _BOOT_MONOTONIC),
+    }
+
+
+@app.get("/api/openapi.json", include_in_schema=False)
+def openapi_schema(uid: int = Depends(require_auth)) -> dict:
+    """Auth-gated OpenAPI spec. The default `/openapi.json` is disabled in
+    the FastAPI constructor; this replacement is fed to the gated Swagger /
+    ReDoc UIs below. `app.openapi()` is FastAPI's spec-builder method and
+    works regardless of whether the default route is mounted."""
+    return app.openapi()
+
+
+@app.get("/docs", include_in_schema=False)
+def swagger_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
+    """Swagger UI for logged-in users; redirects to /login for everyone else.
+
+    Mirrors the behaviour of `GET /` rather than 401-ing — a browser user
+    hitting /docs sees a familiar login page, not a JSON error blob."""
+    if not session_uid(session):
+        return RedirectResponse("/login", status_code=302)
+    return get_swagger_ui_html(
+        openapi_url="/api/openapi.json",
+        title="PiLedger API docs",
+    )
+
+
+@app.get("/redoc", include_in_schema=False)
+def redoc_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
+    """ReDoc for logged-in users; redirects to /login for everyone else."""
+    if not session_uid(session):
+        return RedirectResponse("/login", status_code=302)
+    return get_redoc_html(
+        openapi_url="/api/openapi.json",
+        title="PiLedger API docs",
+    )
 
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
