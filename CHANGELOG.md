@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.19.0] — 2026-05-25
+
+### Added
+
+- **Six additional colour themes in the Settings picker.** The palette has gone from four options (Olive, Indigo, Slate, Rose) to ten: Emerald, Teal, Sky, Violet, Crimson, and Amber join the existing set so users can pick something closer to their preferred accent across the green / blue / purple / red / orange / neutral spectrum rather than being forced into one of two warm and two cool choices. Each new theme overrides only `--accent` / `--accent-dk`; `--accent-lt` and `--accent-ring` continue to derive from those via `color-mix`, so every accent-aware element (focus rings, active swatch border, account cards, account-edit modal accent, budget cards, projection cards, dashboard headings, the Sign Out / Add Account buttons) inherits the new tint automatically — no per-theme one-off rules required, and dark mode works for the new palettes without any extra wiring because the `[data-mode="dark"]` block re-derives `--accent-lt` and `--accent-text` from whichever accent is active. Picked hues are the Tailwind-600/700 pairs (emerald `#059669` / `#047857`, teal `#0d9488` / `#0f766e`, sky `#0284c7` / `#0369a1`, amber `#d97706` / `#b45309`, crimson `#dc2626` / `#b91c1c`, violet `#7c3aed` / `#6d28d9`) — those land at roughly the same perceived contrast as the existing accents, so none of the new options blow out the text/border tones on the surface or get washed out in dark mode. The picker grid is `repeat(auto-fill, minmax(120px, 1fr))`, so it absorbs the extra swatches by wrapping onto a second row without any layout change. The frontend `THEMES` array is also re-ordered to walk the spectrum (Olive → Emerald → Teal → Sky → Indigo → Violet → Rose → Crimson → Amber → Slate) so the picker reads as a colour wheel rather than four originals followed by six new ones. Affected files: `src/constants.py` (the `Theme = Literal[...]` allowlist gains the six new ids — adding the backend value is what causes the prefs endpoint to accept them; without this the new swatches would 400 on click), `src/static/style.css` (six new `[data-theme="..."]` blocks), `src/static/app.js` (rebuilt `THEMES` array with the new swatches in spectrum order), `tests/test_prefs.py` (`test_every_allowed_theme_accepted` now iterates the full ten-value list so a future drop of any value from the literal trips a test instead of shipping). After: `./venv/bin/pytest` → **242 passed** (unchanged); `./venv/bin/pytest tests/e2e` → **34 passed** (unchanged).
+
+---
+
 ## [0.18.0] — 2026-05-21
 
 ### Changed

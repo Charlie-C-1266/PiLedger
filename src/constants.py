@@ -60,7 +60,10 @@ AccountSubtype = Literal[
 # Per-user UI preferences. Olive is the default colour palette; users can pick
 # an alternative from the Settings modal. Adding a new theme = adding a value
 # here plus matching CSS variables in static/style.css.
-Theme = Literal["olive", "indigo", "slate", "rose"]
+Theme = Literal[
+    "olive", "indigo", "slate", "rose",
+    "emerald", "teal", "sky", "amber", "crimson", "violet",
+]
 DEFAULT_THEME: Theme = "olive"
 
 # Supported currencies. Curated shortlist — adding a new one means appending

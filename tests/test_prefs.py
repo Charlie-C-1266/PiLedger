@@ -71,7 +71,10 @@ def test_extra_field_rejected(alice):
 
 
 def test_every_allowed_theme_accepted(alice):
-    for t in ("olive", "indigo", "slate", "rose"):
+    for t in (
+        "olive", "indigo", "slate", "rose",
+        "emerald", "teal", "sky", "amber", "crimson", "violet",
+    ):
         r = alice.put("/api/prefs", json={"theme": t})
         assert r.status_code == 200, t
         assert r.json()["theme"] == t
