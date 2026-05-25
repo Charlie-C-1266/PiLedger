@@ -11,6 +11,48 @@ import sqlite3
 import constants
 
 
+# Tables that carry per-user data. `GET /api/export` walks this tuple to
+# build the JSON dump; `DELETE /api/auth/me` walks it to cascade-clear the
+# user's rows before deleting the `users` row. Keeping them in lock-step
+# behind one constant means a future per-user table cannot ship without
+# also extending the export and the delete cascade — `tests/test_export.py`
+# enumerates `sqlite_master` and trips if any user-scoped table is missing
+# from this tuple. `users` is not in the list because the user row itself
+# is special-cased (excluded from export, deleted last by the cascade);
+# `sessions` is auth state rather than user data, so it is cleared on
+# delete but not exported.
+USER_SCOPED_TABLES: tuple[str, ...] = (
+    "accounts",
+    "balance_history",
+    "budget_items",
+    "exchange_rates",
+)
+
+
+def user_scoped_select_sql(table: str) -> str:
+    """SQL to read every row of `table` belonging to a given user (one `?` param).
+
+    All tables in `USER_SCOPED_TABLES` carry a `user_id` column except
+    `balance_history`, which is reached via its `account_id` → `accounts.user_id`.
+    """
+    if table == "balance_history":
+        return (
+            "SELECT * FROM balance_history WHERE account_id IN "
+            "(SELECT id FROM accounts WHERE user_id=?)"
+        )
+    return f"SELECT * FROM {table} WHERE user_id=?"
+
+
+def user_scoped_delete_sql(table: str) -> str:
+    """SQL to delete every row of `table` belonging to a given user (one `?` param)."""
+    if table == "balance_history":
+        return (
+            "DELETE FROM balance_history WHERE account_id IN "
+            "(SELECT id FROM accounts WHERE user_id=?)"
+        )
+    return f"DELETE FROM {table} WHERE user_id=?"
+
+
 # ─── Money helpers ────────────────────────────────────────────────────────────
 
 def to_cents(dollars: float) -> int:

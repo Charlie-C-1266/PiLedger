@@ -45,6 +45,13 @@ class RegisterIn(_In):
         return v
 
 
+class DeleteMeIn(_In):
+    """Body for `DELETE /api/auth/me` — re-confirm the password before the
+    cascade. Bounds match `LoginIn` so a stored-credential helper that
+    works for login also works here."""
+    password: Annotated[str, Field(min_length=1, max_length=256)]
+
+
 class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
