@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.22.1] — 2026-05-25
+
+### Documentation
+
+- **README API reference caught up to v0.22.0.** Several endpoints were live in the running app but undocumented in the README's API reference, which had drifted over a sequence of small PRs that each updated `app.py` + `CHANGELOG.md` without revisiting `README.md`. Newly documented: `DELETE /api/auth/me` (data-lifecycle delete, shipped in v0.20.0) added to the Auth table; new "User preferences" section covering `GET /api/prefs` + `PUT /api/prefs` (shipped in v0.8.0 with the Settings modal); new "Exchange rates" section covering `GET /api/rates` + `PUT /api/rates` (shipped in v0.11.0 with multi-currency, including the "rate against the base currency itself is rejected" + "duplicate currency in payload is rejected" 400 cases); new "Data lifecycle" section covering `GET /api/export` (shipped in v0.20.0 — documents the `version, exported_at, user, accounts, balance_history, budget_items, exchange_rates` shape, the `password_hash` omission, and the `Content-Disposition` attachment filename). Also fixed: the `POST /api/accounts` and `PUT /api/accounts/{id}` body rows were stale — `subtype` (shipped in v0.6.0) and `currency` (shipped in v0.11.0) had never made it into the documented bodies, so anyone copy-pasting from the README would have been hitting account creation without the two columns that actually matter for the budget projection's currency conversion and the dashboard's subtype filtering. New rows note that `subtype` must be valid for the parent `type` (referencing `SUBTYPES_BY_TYPE` in `constants.py`) and that `type` itself is not editable after creation. Affected files: `README.md` only (no source or test changes — the routes were always there). `constants.VERSION` bumped to `0.22.1` so `GET /healthz` reflects the patch.
+
+---
+
 ## [0.22.0] — 2026-05-25
 
 ### Added
