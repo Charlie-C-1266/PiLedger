@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.26.0] — 2026-05-26
+
+### Added
+
+- **`ruff format --check` in CI (P1-4).** A new formatting check step runs after `ruff check` in the lint job. A one-time `ruff format .` pass was applied across all 34 Python files (pure whitespace/quoting changes, no logic) so the check passes from the first run. Any future PR that introduces unformatted code will fail CI.
+
+- **mypy strict type checking in CI (P1-5).** A new `typecheck` CI job runs `mypy` in strict mode against `schemas.py`, `auth.py`, `db.py`, and `constants.py` — all four pass clean today. `app.py` and `security.py` are excluded for now (21 errors, mostly `sqlite3.Row` → schema-model type narrowing); they'll be widened as type coverage improves. `mypy>=1.11` added as a dev dependency.
+
+- **Coverage reporting in CI (P1-6).** The test job now runs `pytest --cov=src --cov-report=term-missing` and pipes a `coverage report` summary into the GitHub Actions step summary so every PR shows a coverage table. No minimum gate — the current baseline is 99% (702 statements, 10 missed). `pytest-cov>=5.0` added as a dev dependency.
+
+Affected files: `.github/workflows/ci.yml` (three new steps: ruff format check, mypy job, coverage reporting), `pyproject.toml` (new `mypy` + `pytest-cov` dev deps, `[tool.mypy]` config), `uv.lock` (updated), `requirements.txt` (regenerated), `src/constants.py` (`VERSION` bumped to `0.26.0`), plus 34 Python files reformatted by `ruff format`. After: `uv run pytest --cov=src` → **286 passed**, 99% coverage; `uv run pytest tests/e2e` → **38 passed**; `uv run ruff check .` → clean; `uv run ruff format --check .` → clean; `uv run mypy` → clean (4 files).
+
+---
+
 ## [0.25.0] — 2026-05-26
 
 ### Added
