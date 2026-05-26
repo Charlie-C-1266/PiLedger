@@ -9,9 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
-- **New account colours default to the active theme accent.** The colour picker in the Add Account modal now defaults to the current theme's accent swatch (e.g. emerald `#059669` when the emerald theme is active) instead of the hardcoded indigo `#6366f1`. Charts built from account colours will therefore match the chosen theme for any accounts created going forward. Existing accounts keep their stored colours. The Edit Account fallback also uses the theme accent.
+- **All charts and account cards use the active theme colour palette.** Charts (balance history, distribution, savings projections, budget) now derive their colours from the user's chosen theme accent rather than per-account stored colours. A `themePalette(n)` generator creates `n` distinct colours by rotating hue from the accent in HSL space, so multi-account charts have distinguishable but harmonious lines/slices that all belong to the chosen palette. Account cards, budget cards, and breakdown table dots also use the palette. Switching themes immediately recolours everything on the next render. The Add Account colour picker also defaults to the theme accent.
 
-Affected files: `src/static/app.js` (`themeAccent()` helper, `openAddAccountModal`, `openEditModal`), `src/static/index.html` (default `<input type="color">` value), `src/constants.py` (`VERSION` bumped to `0.29.0`).
+Affected files: `src/static/app.js` (`themeAccent()`, `themePalette()`, HSL helpers, all chart render functions, `createAccountCard`, `createBudgetAccountCard`, `renderBreakdownTable`), `src/static/index.html` (default colour value), `src/constants.py` (`VERSION` bumped to `0.29.0`).
 
 ---
 
