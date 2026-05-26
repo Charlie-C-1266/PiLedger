@@ -64,6 +64,11 @@ const THEMES = [
 
 const prefs = { theme: 'olive', dark_mode: false, base_currency: 'GBP' };
 
+function themeAccent() {
+  const t = THEMES.find(t => t.id === prefs.theme);
+  return t ? t.swatch : '#708238';
+}
+
 // Supported currencies — id must match the backend Currency literal in
 // constants.py. `dec` is what Intl.NumberFormat uses for minimumFractionDigits
 // (JPY has no minor unit and would otherwise render fractional yen).
@@ -255,6 +260,40 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
+function _hexToHsl(hex) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  let r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (d > 0) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r)      h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else                h = ((r - g) / d + 4) / 6;
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+function _hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1); };
+  const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+  return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+}
+
+function themePalette(count) {
+  const [h, s, l] = _hexToHsl(themeAccent());
+  if (count <= 1) return [themeAccent()];
+  const step = Math.min(360 / count, 50);
+  return Array.from({ length: count }, (_, i) => {
+    const hue = h + i * step;
+    const lit = l + (i % 2 === 0 ? 0 : 8);
+    return _hslToHex(hue, Math.min(s, 85), Math.max(30, Math.min(lit, 60)));
+  });
+}
+
 /** Create an HTML element. Attributes are set via setAttribute; children are
  *  appended (strings become text nodes, nullish values are skipped). */
 function el(tag, attrs, ...children) {
@@ -347,8 +386,8 @@ function setAccountFilter(type) {
   renderAccounts(state.accounts);
 }
 
-/** @param {AccountOut} a */
-function createAccountCard(a) {
+/** @param {AccountOut} a @param {string} color */
+function createAccountCard(a, color) {
   const cur = a.currency || 'GBP';
   const isLoan = a.type === 'loan';
 
@@ -363,7 +402,7 @@ function createAccountCard(a) {
   const editBtn = el('button', { class: 'btn-icon', 'data-action': 'openEditModal', 'data-arg': String(a.id), title: 'Edit' });
   editBtn.innerHTML = '&#9998;';
 
-  const card = el('div', { class: 'card account-card', style: `--accent-color:${a.color}` },
+  const card = el('div', { class: 'card account-card', style: `--accent-color:${color}` },
     el('div', { class: 'account-header' }, headerLeft, editBtn),
     el('div', { class: 'account-balance' }, fmt(a.current_balance, cur)),
     el('div', { class: 'account-updated' }, (isLoan ? 'Owed · ' : 'Updated: ') + fmtDate(a.last_updated)),
@@ -400,7 +439,8 @@ function renderAccounts(accounts) {
     grid.replaceChildren(empty);
     return;
   }
-  grid.replaceChildren(...visible.map(createAccountCard));
+  const palette = themePalette(visible.length);
+  grid.replaceChildren(...visible.map((a, i) => createAccountCard(a, palette[i])));
 }
 
 // ─── Overview charts ──────────────────────────────────────────────────────────
@@ -494,15 +534,17 @@ function renderHistoryChart(data) {
   const rawDates = [...dateSet].sort();
   const labels   = rawDates.map(fmtShort);
 
-  const datasets = filled.map(a => {
+  const palette = themePalette(filled.length);
+  const datasets = filled.map((a, i) => {
+    const color = palette[i];
     const byDate = {};
     a.history.forEach(h => { byDate[h.date.split('T')[0]] = h.balance; });
     let last = null;
     return {
       label: a.name,
       data: rawDates.map(d => { if (byDate[d] != null) last = byDate[d]; return last; }),
-      borderColor: a.color,
-      backgroundColor: hexToRgba(a.color, 0.08),
+      borderColor: color,
+      backgroundColor: hexToRgba(color, 0.08),
       fill: true, stepped: true, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5,
       _currency: a.currency || 'GBP',
     };
@@ -543,9 +585,10 @@ function renderDistributionChart(accounts) {
   // Convert each slice to the base currency so values compare like with like.
   // Hover tooltip still shows the original native amount.
   const base = prefs.base_currency || 'GBP';
-  const slices = with_bal.map(a => ({
+  const palette = themePalette(with_bal.length);
+  const slices = with_bal.map((a, i) => ({
     name: a.name,
-    color: a.color,
+    color: palette[i],
     native: a.current_balance,
     currency: a.currency || base,
     converted: toBase(a.current_balance, a.currency || base),
@@ -646,9 +689,10 @@ function renderProjectionChart(data, months) {
   section.style.display = '';
 
   const labels   = data[0].points.map(p => fmtMonthYear(p.date));
-  const datasets = data.map(a => ({
+  const palette  = themePalette(data.length);
+  const datasets = data.map((a, i) => ({
     label: a.name, data: a.points.map(p => p.balance),
-    borderColor: a.color, backgroundColor: hexToRgba(a.color, 0.06),
+    borderColor: palette[i], backgroundColor: hexToRgba(palette[i], 0.06),
     fill: true, tension: 0.35, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4,
     _currency: a.currency || 'GBP',
   }));
@@ -665,15 +709,15 @@ function renderProjectionChart(data, months) {
     },
   });
 
-  /** @param {SavingsProjection} a */
-  function createProjectionStatCard(a) {
+  /** @param {SavingsProjection} a @param {string} color */
+  function createProjectionStatCard(a, color) {
     const cur = a.currency || 'GBP';
     const row = (label, value, interest) => {
       const r = el('div', { class: 'proj-row' }, el('span', null, label), el('span', { class: 'proj-value' }, fmt(value, cur)));
       r.append(interest != null ? el('span', { class: 'proj-interest' }, '+' + fmt(interest, cur)) : el('span'));
       return r;
     };
-    return el('div', { class: 'card projection-card', style: `--accent-color:${a.color}` },
+    return el('div', { class: 'card projection-card', style: `--accent-color:${color}` },
       el('div', { class: 'proj-name' }, a.name),
       el('div', { class: 'proj-rate' }, `${a.interest_rate}% AER (monthly compounding)`),
       el('div', { class: 'proj-rows' },
@@ -682,7 +726,7 @@ function renderProjectionChart(data, months) {
         row('2 years', a['2yr'], a['2yr'] - a.initial_balance),
         row('5 years', a['5yr'], a['5yr'] - a.initial_balance)));
   }
-  document.getElementById('projection-stats').replaceChildren(...data.map(createProjectionStatCard));
+  document.getElementById('projection-stats').replaceChildren(...data.map((a, i) => createProjectionStatCard(a, palette[i])));
 }
 
 function emptyChart(canvas, msg) {
@@ -736,14 +780,13 @@ function renderBudgetChart(projection) {
   const labels   = projection.accounts[0].points.map((p, i) =>
     i === 0 ? 'Now' : fmtMonthYear(p.date)
   );
-  const datasets = projection.accounts.map(a => ({
+  const budgetPalette = themePalette(projection.accounts.length);
+  const datasets = projection.accounts.map((a, i) => ({
     label: a.name,
     data:  a.points.map(p => p.balance),
-    borderColor:     a.color,
-    backgroundColor: hexToRgba(a.color, 0.06),
+    borderColor:     budgetPalette[i],
+    backgroundColor: hexToRgba(budgetPalette[i], 0.06),
     fill: false, tension: 0.3, borderWidth: 2,
-    // Dash loan lines so a downward trend visually reads as "debt reducing"
-    // rather than being confused with an asset losing value.
     borderDash: a.type === 'loan' ? [6, 4] : [],
     pointRadius: 0, pointHoverRadius: 4,
     _currency: a.currency || 'GBP',
@@ -816,13 +859,13 @@ function createBudgetItemRow(item, accCur) {
     editBtn, delBtn);
 }
 
-/** @param {BudgetProjectionAccount} acc @param {BudgetItemOut[]} accItems */
-function createBudgetAccountCard(acc, accItems) {
+/** @param {BudgetProjectionAccount} acc @param {BudgetItemOut[]} accItems @param {string} color */
+function createBudgetAccountCard(acc, accItems, color) {
   const accCur = acc.currency || 'GBP';
   const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : 'neutral';
   const netLabel = acc.monthly_net !== 0 ? fmtSigned(acc.monthly_net, accCur) + '/mo' : 'No items';
 
-  const card = el('div', { class: 'card budget-account-card', style: `--accent-color:${acc.color}` },
+  const card = el('div', { class: 'card budget-account-card', style: `--accent-color:${color}` },
     el('div', { class: 'bac-header' },
       el('div', null,
         el('div', { class: 'account-name' }, acc.name),
@@ -847,8 +890,9 @@ function renderBudgetItems(items, projection) {
   }
   const byAccount = {};
   items.forEach(i => { (byAccount[i.account_id] ||= []).push(i); });
-  grid.replaceChildren(...projection.accounts.map(acc =>
-    createBudgetAccountCard(acc, byAccount[acc.id] || [])));
+  const bPalette = themePalette(projection.accounts.length);
+  grid.replaceChildren(...projection.accounts.map((acc, i) =>
+    createBudgetAccountCard(acc, byAccount[acc.id] || [], bPalette[i])));
 }
 
 // ─── Monthly breakdown table ──────────────────────────────────────────────────
@@ -867,13 +911,14 @@ function renderBreakdownTable(projection) {
     ${colLabels.map(l => `<th>${esc(l)}</th>`).join('')}
   </tr></thead><tbody>`;
 
-  accounts.forEach(acc => {
+  const tablePalette = themePalette(accounts.length);
+  accounts.forEach((acc, i) => {
     const accCur = acc.currency || 'GBP';
     const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : '';
     const netStr   = acc.monthly_net !== 0 ? fmtSigned(acc.monthly_net, accCur) : '—';
     html += `<tr>
       <td>
-        <span class="td-dot" style="background:${esc(acc.color)}"></span>${esc(acc.name)}
+        <span class="td-dot" style="background:${esc(tablePalette[i])}"></span>${esc(acc.name)}
       </td>
       <td class="td-net ${netClass}">${netStr}</td>
       ${acc.points.map(p => `<td class="td-bal${p.balance < 0 ? ' negative' : ''}">${fmt(p.balance, accCur)}</td>`).join('')}
@@ -924,7 +969,7 @@ function openAddAccountModal() {
   document.getElementById('add-interest').value = '';
   document.getElementById('add-min-payment').value = '';
   document.getElementById('add-balance').value = '';
-  document.getElementById('add-color').value = '#6366f1';
+  document.getElementById('add-color').value = themeAccent();
   populateCurrencySelect(document.getElementById('add-currency'), prefs.base_currency);
   toggleAddInterest();
   openModal('add-account-modal');
@@ -1013,7 +1058,7 @@ function openEditModal(id) {
   const hasRate = (a.type === 'savings' || a.type === 'loan');
   document.getElementById('edit-name').value     = a.name;
   document.getElementById('edit-interest').value = a.interest_rate;
-  document.getElementById('edit-color').value    = a.color || '#6366f1';
+  document.getElementById('edit-color').value    = a.color || themeAccent();
   populateSubtypeSelect(document.getElementById('edit-subtype'), a.type, a.subtype || 'general');
   document.getElementById('edit-interest-group').style.display = hasRate ? '' : 'none';
   document.getElementById('edit-interest-label').textContent =

@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.0] — 2026-05-26
+
+### Changed
+
+- **All charts and account cards use the active theme colour palette.** Charts (balance history, distribution, savings projections, budget) now derive their colours from the user's chosen theme accent rather than per-account stored colours. A `themePalette(n)` generator creates `n` distinct colours by rotating hue from the accent in HSL space, so multi-account charts have distinguishable but harmonious lines/slices that all belong to the chosen palette. Account cards, budget cards, and breakdown table dots also use the palette. Switching themes immediately recolours everything on the next render. The Add Account colour picker also defaults to the theme accent.
+
+Affected files: `src/static/app.js` (`themeAccent()`, `themePalette()`, HSL helpers, all chart render functions, `createAccountCard`, `createBudgetAccountCard`, `renderBreakdownTable`), `src/static/index.html` (default colour value), `src/constants.py` (`VERSION` bumped to `0.29.0`).
+
+---
+
 ## [0.28.1] — 2026-05-26
 
 ### Fixed
