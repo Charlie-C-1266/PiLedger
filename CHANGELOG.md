@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.26.1] — 2026-05-26
+
+### Tests
+
+- **FREQ_TO_MONTHLY multiplier coverage (audit P1 #2).** All four frequency multipliers — weekly (`52/12`), monthly (`1.0`), quarterly (`1/3`), annually (`1/12`) — are now exercised through `/api/budget/projection`. Prior to this, only `"monthly"` was ever passed, so a typo in any non-monthly multiplier would have shipped undetected. New tests verify each frequency individually, plus a mixed-frequency accumulation test that creates weekly + annually items on one account and asserts the summed monthly net. 5 new cases.
+
+- **Budget projection months validation (audit P1 #3).** The in-route allow-list (`months not in (3, 6, 12)` → 400) is now covered. A parametrised test hits every value 1–11 that's outside the allowed set and asserts 400; a companion test confirms 3, 6, and 12 all return 200. Auth gate also pinned. 3 new cases. The previously-uncovered line at `app.py:972` is now hit.
+
+Affected files: `tests/test_budget.py` (+8 cases, now 30), `src/constants.py` (`VERSION` bumped to `0.26.1`). After: `uv run pytest --cov=src` → **294 passed**, 99% coverage (9 missed lines, down from 10); `uv run pytest tests/e2e` → **38 passed**.
+
+---
+
 ## [0.26.0] — 2026-05-26
 
 ### Added

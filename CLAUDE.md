@@ -37,22 +37,26 @@ Exceptions: none by default. If a change genuinely needs to go straight to `main
 ./start.sh          # serves on 0.0.0.0:8080
 ```
 
-## Running tests
+## Pre-PR checks
 
-PiLedger has two test suites:
+**Run all CI checks locally before committing and raising a PR.** This avoids round-tripping on CI failures. The full local check sequence:
 
 ```bash
-./venv/bin/pytest              # unit + API suite (isolated SQLite DB per test, runs in seconds)
-./venv/bin/pytest tests/e2e    # end-to-end browser suite (Playwright + Chromium, ~30s)
+uv run ruff check .                        # lint
+uv run ruff format --check .               # formatting
+uv run mypy                                # type check (strict on schemas, auth, db, constants)
+uv run pytest                              # unit + API suite
+uv run pytest tests/e2e                    # end-to-end browser suite (Playwright + Chromium)
 ```
 
-The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. **Always run both suites before committing and raising a PR.** The e2e suite is excluded from CI, so a regression there will not block merge — a broken e2e test has slipped past review in the past for exactly this reason, and that should not happen again. If Playwright's browser is missing, install it once with `./venv/bin/playwright install chromium`.
+All five must pass before a change is considered complete. If any check fails, fix the code — do not skip or delete tests, and do not bypass lint/format/type errors.
 
-Both suites must pass before any change is considered complete. If a code change causes a test failure in either suite, fix the test or the code — do not skip or delete tests.
+The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. The e2e suite is excluded from CI, so a regression there will not block merge — a broken e2e test has slipped past review in the past for exactly this reason, and that should not happen again. If Playwright's browser is missing, install it once with `uv run playwright install chromium`.
 
 ## Stack
 
 - **Backend**: Python 3.12, FastAPI, SQLite (`piledger.db`), Uvicorn
-- **Frontend**: Vanilla JS, Chart.js 4.4 (CDN), Inter font (Google Fonts)
+- **Frontend**: Vanilla JS, Chart.js 4.4 (vendored), Inter font (vendored)
 - **Auth**: PBKDF2-SHA256 passwords, 30-day `HttpOnly` session cookies
-- **Tests**: pytest 9, httpx, `starlette.testclient.TestClient`
+- **Tests**: pytest 9, httpx, `starlette.testclient.TestClient`, Playwright
+- **CI**: GitHub Actions — ruff check, ruff format, mypy, pytest + coverage, lockfile drift, pip-audit
