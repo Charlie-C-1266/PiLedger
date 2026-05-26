@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.24.0] — 2026-05-26
+
+### Added
+
+- **Backup guide (P0-11).** New `docs/backups.md` covering the SQLite `.backup` recipe for both Docker and bare-metal deployments, an automated daily cron job with 7-day rotation, a full restore procedure (stop → copy → start → verify), and a pointer to `GET /api/export` for per-user data portability. Explains why a plain `cp` of a live SQLite database can produce a corrupt copy and why `.backup` is the only safe approach under concurrent writes.
+
+### Changed
+
+- **README simplified; detailed docs moved to `docs/`.** The 921-line README has been replaced with a concise project introduction featuring CI/license/Python badges, a feature list, quick-start snippet, stack summary, and a documentation index linking to the new `docs/` folder. All detailed content — getting started guides, architecture, API reference, database schema, authentication, frontend, deployment (including the Caddy/nginx reverse-proxy snippets), testing, and security notes — now lives in dedicated files under `docs/`. No content was removed; it was reorganised for discoverability.
+
+Affected files: `README.md` (rewritten), new `docs/getting-started.md`, new `docs/architecture.md`, new `docs/api-reference.md`, new `docs/database.md`, new `docs/authentication.md`, new `docs/frontend.md`, new `docs/deployment.md`, new `docs/backups.md`, new `docs/testing.md`, new `docs/security.md`, `src/constants.py` (`VERSION` bumped to `0.24.0`).
+
+---
+
 ## [0.23.0] — 2026-05-26
 
 ### Added
