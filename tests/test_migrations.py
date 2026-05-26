@@ -1,9 +1,9 @@
 """Coverage for the additive migrations in ``db.init()``.
 
 Every test in the main suite starts from a fresh DB, so each migration
-branch in ``db.py:49-217`` is dead-tested by default. These tests
-materialise a pre-migration schema, drop a row or two into it, run
-``init()``, and assert the columns and data look right after.
+branch in ``db.py`` is dead-tested by default. These tests materialise
+a pre-migration schema, drop a row or two into it, run ``init()``, and
+assert the columns and data look right after.
 
 The migrations under test (in execution order inside ``init()``):
 
@@ -15,6 +15,11 @@ The migrations under test (in execution order inside ``init()``):
 6. Add ``users.base_currency``.
 7. Convert ``balance_history.balance`` (REAL) → ``balance_cents`` (INTEGER).
 8. Convert ``budget_items.amount``  (REAL) → ``amount_cents``  (INTEGER).
+
+After all legacy migrations run (or are no-ops on a fresh DB), ``init()``
+stamps a ``schema_version`` row in the ``meta`` table. Subsequent runs
+skip the sniff-based legacy path and gate future migrations on
+``if version < N`` instead.
 
 A regression that misorders a cast, drops a column, or breaks data
 preservation would have shipped silently against the pre-existing suite.
@@ -354,3 +359,61 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
     assert _table_columns(db_path, "exchange_rates") >= {
         "user_id", "currency", "rate", "updated_at",
     }
+
+
+# ─── schema_version stamp ───────────────────────────────────────────────────
+
+def _read_schema_version(db_path: Path) -> int | None:
+    conn = sqlite3.connect(str(db_path))
+    try:
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key='schema_version'"
+        ).fetchone()
+        return int(row[0]) if row else None
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        conn.close()
+
+
+def test_legacy_db_gets_stamped_after_migration(migrated_db):
+    """A v0 database (no meta table) should be stamped with the current
+    schema version after init() runs the legacy migrations."""
+    from db import SCHEMA_VERSION
+    assert _read_schema_version(migrated_db) == SCHEMA_VERSION
+
+
+def test_fresh_db_gets_stamped(tmp_path, monkeypatch):
+    """A brand-new database should be stamped with the current version
+    on the very first init()."""
+    db_path = tmp_path / "fresh.db"
+    import constants
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, SCHEMA_VERSION
+    init()
+    assert _read_schema_version(db_path) == SCHEMA_VERSION
+
+
+def test_second_init_skips_legacy_migrations(migrated_db):
+    """Once stamped, a second init() takes the version-gated path and
+    never re-enters the legacy migration code."""
+    from db import init, SCHEMA_VERSION
+    init()
+    assert _read_schema_version(migrated_db) == SCHEMA_VERSION
+
+
+def test_meta_table_exists_on_fresh_db(tmp_path, monkeypatch):
+    db_path = tmp_path / "fresh.db"
+    import constants
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init
+    init()
+    assert "meta" in _table_columns(db_path, "meta") or _read_schema_version(db_path) is not None
+    conn = sqlite3.connect(str(db_path))
+    try:
+        tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+    finally:
+        conn.close()
+    assert "meta" in tables

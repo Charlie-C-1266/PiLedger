@@ -122,7 +122,7 @@ def test_user_scoped_tables_covers_every_user_keyed_table(app):
     """
     # `users` is the user row itself (special-cased in both routes); `sessions`
     # is auth state, not user data, and is wiped on delete but not exported.
-    EXEMPT = {"users", "sessions"}
+    EXEMPT = {"users", "sessions", "meta"}
 
     with db() as conn:
         tables = [

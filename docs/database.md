@@ -61,13 +61,30 @@ Recurring cash-flow items used by the Budget Planner — one row per item, attac
 | `frequency` | TEXT | One of `'weekly'`, `'monthly'`, `'quarterly'`, `'annually'`. Normalised to a monthly equivalent via `FREQ_TO_MONTHLY` (in `constants.py`) before any projection is calculated. |
 | `created_at` | TEXT | UTC ISO-8601 |
 
+## `meta`
+
+Key-value infrastructure table. Currently holds a single row: `schema_version`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | TEXT PK | e.g. `'schema_version'` |
+| `value` | TEXT | The value for the key |
+
 ## Schema migrations
 
-`init()` in `db.py` runs on startup and applies all migrations idempotently — `CREATE TABLE IF NOT EXISTS` for fresh databases plus four additive migrations for existing ones:
+`init()` in `db.py` runs on startup and applies migrations based on an explicit integer `schema_version` stored in the `meta` table.
 
-1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent. Pre-auth rows get `user_id = NULL` and are invisible to all authenticated users, which is the safe default.
-2. **`accounts.type` widening (0.6.0)** — SQLite cannot alter a `CHECK` constraint in place, so the table is recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint, preserving all rows. Detected by scanning `sqlite_master.sql` for the absence of `'loan'`.
-3. **`balance_history.balance REAL` → `balance_cents INTEGER`** — table rebuilt; values converted with `CAST(ROUND(balance * 100) AS INTEGER)`.
-4. **`budget_items.amount REAL` → `amount_cents INTEGER`** — same approach as (3).
+**Fresh databases** get the current-schema `CREATE TABLE IF NOT EXISTS` statements, then are stamped with the latest `SCHEMA_VERSION`.
 
-All migrations are no-ops on a database that is already at the current schema.
+**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — eight idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
+
+1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
+2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
+3. **`users.theme` + `users.dark_mode` (0.8.0)** — added via `ALTER TABLE`.
+4. **`accounts.subtype` (0.6.0)** — added via `ALTER TABLE`, defaults to `'general'`.
+5. **`accounts.currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
+6. **`users.base_currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
+7. **`balance_history.balance REAL` → `balance_cents INTEGER`** — table rebuilt; values converted with `CAST(ROUND(balance * 100) AS INTEGER)`.
+8. **`budget_items.amount REAL` → `amount_cents INTEGER`** — same approach as (7).
+
+After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
