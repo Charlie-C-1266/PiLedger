@@ -60,7 +60,6 @@ piledger/
 ├── pyproject.toml         Dependency declarations (runtime + dev)
 ├── uv.lock                Locked dependency versions for reproducible installs
 ├── requirements.txt       Pinned runtime deps (generated from uv.lock, for pip users)
-├── requirements-dev.txt   Test dependencies (pytest, httpx)
 ├── pytest.ini             pytest config (testpaths = tests, pythonpath = src)
 ├── start.sh               Convenience wrapper: starts uvicorn on 0.0.0.0:8080
 ├── Dockerfile             Container image definition — Python 3.12-slim, non-root user, healthcheck

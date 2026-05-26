@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.27.1] — 2026-05-26
+
+### Removed
+
+- **`requirements-dev.txt` deleted.** All dev dependencies (pytest, httpx, pytest-playwright, ruff, mypy, pip-audit, pytest-cov) are declared in `pyproject.toml`'s `[dependency-groups] dev` section and installed via `uv sync`. The separate `requirements-dev.txt` was redundant and incomplete (missing mypy, pip-audit, pytest-cov that were added in v0.23–0.26). Docs updated to point pip users at `uv sync` for dev deps or manual install.
+
+Affected files: deleted `requirements-dev.txt`, updated `docs/getting-started.md`, `docs/deployment.md`, `docs/architecture.md`, `src/constants.py` (`VERSION` bumped to `0.27.1`).
+
+---
+
 ## [0.27.0] — 2026-05-26
 
 ### Changed

@@ -50,14 +50,12 @@ The host port (`8080`) is set in `docker-compose.yml`; change the left half of `
 
 ```bash
 # From the project root
-uv venv venv                                 # create the venv/ directory
-uv pip install -r requirements.txt           # install runtime deps into venv/
-uv pip install -r requirements-dev.txt       # (optional) test + lint tools
+uv sync                                      # install all deps (runtime + dev) from uv.lock
 
 ./start.sh                                   # serves on 0.0.0.0:8080
 ```
 
-The repository's tooling (`start.sh`, the systemd snippet in [Deployment](deployment.md)) expects the virtualenv at `venv/`, which is why we pass that name to `uv venv` instead of the default `.venv`.
+`uv sync` creates a `.venv/` directory by default. If you prefer the `venv/` layout that `start.sh` and the systemd snippet in [Deployment](deployment.md) expect, use `uv venv venv && uv pip install -r requirements.txt` instead.
 
 ## Local setup with `pip` + `venv`
 
@@ -67,9 +65,10 @@ The standard-library flow — no extra tooling required beyond Python 3.12 itsel
 # From the project root
 python3 -m venv venv                                 # create the virtual environment
 ./venv/bin/pip install -r requirements.txt           # install runtime dependencies
-./venv/bin/pip install -r requirements-dev.txt       # (optional) test + lint tools
 
 ./start.sh                                           # serves on 0.0.0.0:8080
 ```
+
+To install dev dependencies (pytest, ruff, mypy, etc.) with pip, run: `./venv/bin/pip install pytest httpx pytest-playwright ruff mypy pytest-cov pip-audit`.
 
 The full operational reference — environment variables, running headless, the systemd service unit, firewall notes — lives in [Deployment](deployment.md).
