@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.23.0] — 2026-05-26
+
+### Added
+
+- **Dependency pinning with `uv lock` (P0-8).** Reproducible installs via a new `pyproject.toml` and `uv.lock` at the repo root. Runtime dependencies (`fastapi>=0.104.0,<0.136.3`, `uvicorn[standard]>=0.24.0`, `slowapi>=0.1.9`) and dev dependencies (`pytest>=9.0`, `httpx>=0.25`, `pytest-playwright>=0.5`, `ruff>=0.6`, `pip-audit>=2.7`) are declared in `pyproject.toml` using PEP 735 dependency groups. The existing `requirements.txt` is now a generated artefact produced by `uv export --no-hashes --no-dev` and kept around for pip users and the Dockerfile's `pip install -r requirements.txt` layer. FastAPI is capped below 0.136.3 because that release was flagged by pip-audit (MAL-2026-4750) for including an undocumented `fastar` dependency in its `[standard]` extra — PiLedger doesn't use the `[standard]` extra so the suspicious package was never pulled in, but pinning below the flagged release keeps the audit clean. CI now uses `astral-sh/setup-uv@v6` and installs with `uv sync --frozen`. A new `lockfile-check` CI job diffs a fresh `uv export --no-hashes --no-dev` against the committed `requirements.txt` so the two never drift.
+
+- **`pip-audit` in CI (P0-9).** A new `audit` CI job runs `uv run pip-audit --strict` after installing dependencies, so any known CVE in the dependency tree fails the pipeline. `pip-audit` is declared as a dev dependency in `pyproject.toml` so it ships in the lockfile.
+
+Affected files: new `pyproject.toml`, new `uv.lock`, regenerated `requirements.txt` (now fully pinned with transitive deps), `.github/workflows/ci.yml` (rewritten to use `uv`; four jobs: lint, test, lockfile-check, audit), `src/constants.py` (`VERSION` bumped to `0.23.0`). After: `uv run pytest` → **282 passed**; `uv run pytest tests/e2e` → **38 passed**; `uv run pip-audit --strict` → no known vulnerabilities; `uv run ruff check .` → clean.
+
+---
+
 ## [0.22.1] — 2026-05-25
 
 ### Documentation

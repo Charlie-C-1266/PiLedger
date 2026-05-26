@@ -1,0 +1,21 @@
+[project]
+name = "piledger"
+version = "0.23.0"
+description = "Self-hosted personal finance dashboard"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.104.0,<0.136.3",
+    "uvicorn[standard]>=0.24.0",
+    "slowapi>=0.1.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0",
+    "httpx>=0.25",
+    "pytest-playwright>=0.5",
+    "ruff>=0.6",
+    "pip-audit>=2.7",
+]

@@ -12,15 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install ruff
-        run: pip install ruff
+      - uses: astral-sh/setup-uv@v6
 
       - name: Run ruff
-        run: ruff check --output-format=github .
+        run: uv run ruff check --output-format=github .
 
   test:
     name: Tests (pytest)
@@ -31,14 +26,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
+
+      - uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt -r requirements-dev.txt
+        run: uv sync --frozen
 
       - name: Run pytest
-        run: pytest
+        run: uv run pytest
+
+  lockfile-check:
+    name: Lockfile drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Verify requirements.txt matches lockfile
+        run: |
+          uv export --no-hashes --no-dev 2>/dev/null > /tmp/expected-requirements.txt
+          diff -u requirements.txt /tmp/expected-requirements.txt
+
+  audit:
+    name: Dependency audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run pip-audit
+        run: uv run pip-audit --strict --disable-pip
