@@ -50,6 +50,7 @@ DEFAULT_HEADERS: dict[str, str] = {
     "Referrer-Policy": "same-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
     "Content-Security-Policy": _CSP,
+    "Cache-Control": "no-cache",
 }
 
 

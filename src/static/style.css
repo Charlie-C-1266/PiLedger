@@ -1033,9 +1033,9 @@ body {
   margin: 4px 0;
 }
 
-.dark-label-alt { display: none; }
-[data-mode="dark"] .dark-label     { display: none; }
-[data-mode="dark"] .dark-label-alt { display: inline; }
+.dark-label-alt { display: none !important; }
+[data-mode="dark"] .dark-label     { display: none !important; }
+[data-mode="dark"] .dark-label-alt { display: inline !important; }
 
 .dropdown-item .icon-sun  { display: none; }
 .dropdown-item .icon-moon { display: block; }
