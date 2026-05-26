@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.28.1] — 2026-05-26
+
+### Fixed
+
+- **Stale-CSS breakage after upgrade: dropdown visible inline, layout broken.** After upgrading to v0.28.0, browsers with cached CSS from the previous version rendered the new HTML (with dropdown markup) against the old CSS (without dropdown styles), causing every dropdown menu item and SVG icon to appear inline in the header. Root cause: no `Cache-Control` header was sent on any response, so browsers used heuristic caching and could serve stale CSS/JS without revalidating. Fix: added `Cache-Control: no-cache` to the security-headers middleware so browsers always revalidate with the server (ETags still allow `304 Not Modified`, so bandwidth is not wasted). Additionally, the dropdown `<div>` now carries the HTML `hidden` attribute as defence-in-depth — even if CSS fails to load entirely, the dropdown content stays invisible until JS explicitly reveals it.
+
+- **Docker: documentation files missing from image.** The Dockerfile only copied `src/` into the image but the `/guide` documentation viewer reads markdown files from `docs/`. Added `COPY docs ./docs` so the guide page works in containerised deployments.
+
+Affected files: `src/security.py` (`Cache-Control: no-cache`), `src/static/index.html` (`hidden` on dropdown), `src/static/app.js` (toggle `hidden`), `src/static/style.css` (`!important` for label swap), `tests/test_security_headers.py`, `Dockerfile` (`COPY docs`), `src/constants.py` (`VERSION` bumped to `0.28.1`).
+
+---
+
 ## [0.28.0] — 2026-05-26
 
 ### Added

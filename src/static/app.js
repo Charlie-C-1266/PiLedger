@@ -1418,15 +1418,17 @@ async function loadPrefs() {
 function toggleMenu() {
   const dd = document.getElementById('header-dropdown');
   const btn = document.getElementById('btn-menu');
-  const isOpen = dd.classList.toggle('open');
-  btn.setAttribute('aria-expanded', String(isOpen));
+  const opening = dd.hasAttribute('hidden');
+  if (opening) dd.removeAttribute('hidden');
+  else         dd.setAttribute('hidden', '');
+  btn.setAttribute('aria-expanded', String(opening));
 }
 
 function _closeMenu() {
   const dd = document.getElementById('header-dropdown');
   const btn = document.getElementById('btn-menu');
-  if (!dd || !dd.classList.contains('open')) return;
-  dd.classList.remove('open');
+  if (!dd || dd.hasAttribute('hidden')) return;
+  dd.setAttribute('hidden', '');
   btn.setAttribute('aria-expanded', 'false');
 }
 

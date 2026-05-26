@@ -970,12 +970,7 @@ body {
   flex-shrink: 0;
 }
 
-#btn-menu .icon-close { display: none; }
-#btn-menu[aria-expanded="true"] .icon-menu  { display: none; }
-#btn-menu[aria-expanded="true"] .icon-close { display: block; }
-
 .header-dropdown {
-  display: none;
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
@@ -988,7 +983,6 @@ body {
   padding: 6px 0;
   animation: dropdown-in .12s ease;
 }
-.header-dropdown.open { display: block; }
 
 @keyframes dropdown-in {
   from { opacity: 0; transform: translateY(-4px); }

@@ -16,6 +16,7 @@ EXPECTED_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), payment=()",
+    "Cache-Control": "no-cache",
 }
 
 

@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PiLedger</title>
-  <script src="/static/theme-bootstrap.js"></script>
-  <script src="/static/vendor/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/static/vendor/inter/inter.css" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <script src="/static/theme-bootstrap.js?v=0.28.1"></script>
+  <script src="/static/vendor/chart.umd.min.js?v=0.28.1"></script>
+  <link rel="stylesheet" href="/static/vendor/inter/inter.css?v=0.28.1" />
+  <link rel="stylesheet" href="/static/style.css?v=0.28.1" />
 </head>
 <body>
 
@@ -36,16 +36,12 @@
                 aria-label="Open menu"
                 aria-expanded="false"
                 aria-controls="header-dropdown">
-          <svg class="icon-menu" width="18" height="18" viewBox="0 0 20 20" fill="none">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
             <path d="M3 5h14M3 10h14M3 15h14"
                   stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
-          <svg class="icon-close" width="18" height="18" viewBox="0 0 20 20" fill="none">
-            <path d="M5 5l10 10M15 5L5 15"
-                  stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
         </button>
-        <div class="header-dropdown" id="header-dropdown" role="menu">
+        <div class="header-dropdown" id="header-dropdown" role="menu" hidden>
           <div class="dropdown-item dropdown-label" role="menuitem">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
               <circle cx="10" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"/>
@@ -505,6 +501,6 @@
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=0.28.1"></script>
 </body>
 </html>
