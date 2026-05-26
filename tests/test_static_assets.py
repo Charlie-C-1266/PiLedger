@@ -57,8 +57,26 @@ def test_login_loads_only_local_scripts():
     assert inline == [], f"inline <script> blocks in login.html: {inline}"
 
 
+def test_guide_has_no_inline_event_handlers():
+    matches = _INLINE_HANDLER.findall(_read("guide.html"))
+    assert matches == [], f"inline handlers found in guide.html: {matches}"
+
+
+def test_guide_loads_only_local_scripts():
+    html = _read("guide.html")
+    srcs = re.findall(r'<script[^>]+src="([^"]+)"', html)
+    for src in srcs:
+        assert src.startswith("/static/"), f"non-local script: {src}"
+    inline = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>", html)
+    assert inline == [], f"inline <script> blocks in guide.html: {inline}"
+
+
+def test_vendored_marked_present():
+    assert (STATIC_DIR / "vendor" / "marked.min.js").exists()
+
+
 def test_no_cdn_links_remain():
-    for name in ("index.html", "login.html"):
+    for name in ("index.html", "login.html", "guide.html"):
         html = _read(name)
         assert "cdn.jsdelivr.net" not in html, f"{name} still references jsdelivr"
         assert "fonts.googleapis.com" not in html, (

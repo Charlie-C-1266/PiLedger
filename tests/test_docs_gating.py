@@ -74,6 +74,44 @@ def test_openapi_json_requires_auth(client):
     assert client.get("/api/openapi.json").status_code == 401
 
 
+# ── /guide (public documentation viewer) ────────────────────────────────────
+
+
+def test_guide_is_public(client):
+    r = client.get("/guide")
+    assert r.status_code == 200
+    assert "Documentation" in r.text
+
+
+def test_guide_serves_html(client):
+    r = client.get("/guide")
+    assert "text/html" in r.headers["content-type"]
+
+
+# ── /api/docs/{slug} (public markdown endpoint) ─────────────────────────────
+
+
+def test_api_docs_returns_markdown(client):
+    r = client.get("/api/docs/getting-started")
+    assert r.status_code == 200
+    assert "# Getting Started" in r.text
+
+
+def test_api_docs_404_for_unknown_slug(client):
+    r = client.get("/api/docs/nonexistent")
+    assert r.status_code == 404
+
+
+def test_api_docs_rejects_path_traversal(client):
+    r = client.get("/api/docs/..%2F..%2Fetc%2Fpasswd")
+    assert r.status_code == 404
+
+
+def test_api_docs_is_public(client):
+    r = client.get("/api/docs/architecture")
+    assert r.status_code == 200
+
+
 def test_openapi_json_returns_spec_for_authenticated_user(alice):
     r = alice.get("/api/openapi.json")
     assert r.status_code == 200

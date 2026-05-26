@@ -29,6 +29,8 @@ from slowapi.util import get_remote_address
 
 from constants import (
     COOKIE_SECURE,
+    DOCS_DIR,
+    DOC_SLUGS,
     FREQ_TO_MONTHLY,
     ISO_FMT,
     LOGIN_RATE_LIMIT,
@@ -199,6 +201,26 @@ def redoc_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 @app.get("/login")
 def login_page() -> FileResponse:
     return FileResponse(os.path.join(_STATIC_DIR, "login.html"))
+
+
+@app.get("/guide", include_in_schema=False)
+def guide_page() -> FileResponse:
+    """Public documentation viewer — accessible without authentication."""
+    return FileResponse(os.path.join(_STATIC_DIR, "guide.html"))
+
+
+@app.get("/api/docs/{slug}", include_in_schema=False)
+def get_doc(slug: str) -> FileResponse:
+    """Serve a raw markdown doc file by slug. Public — no auth required.
+
+    The slug is validated against a fixed allowlist to prevent path traversal.
+    Returns text/markdown so the frontend can parse it client-side."""
+    if slug not in DOC_SLUGS:
+        raise HTTPException(404, "Document not found")
+    path = os.path.join(DOCS_DIR, f"{slug}.md")
+    if not os.path.isfile(path):
+        raise HTTPException(404, "Document not found")
+    return FileResponse(path, media_type="text/markdown")
 
 
 @app.post("/api/auth/register", status_code=201, response_model=RegisterOut)

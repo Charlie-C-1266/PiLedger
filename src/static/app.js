@@ -301,7 +301,8 @@ async function loadAll() {
   state.accounts = accounts;
   renderSummary(summary);
   renderAccounts(accounts);
-  document.getElementById('header-username').textContent = me.username;
+  const unEl = document.getElementById('dropdown-username');
+  if (unEl) unEl.textContent = me.username;
   await Promise.all([loadHistoryChart(), loadProjectionChart()]);
   renderDistributionChart(accounts);
 }
@@ -910,8 +911,10 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape')
+  if (e.key === 'Escape') {
+    _closeMenu();
     document.querySelectorAll('.modal-overlay.open').forEach(el => closeModal(el.id));
+  }
 });
 
 // Add Account
@@ -1186,6 +1189,7 @@ function renderModePill() {
 }
 
 function openSettingsModal() {
+  _closeMenu();
   renderThemeGrid();
   renderModePill();
   renderCurrencySettings();
@@ -1409,6 +1413,27 @@ async function loadPrefs() {
   }
   applyTheme();
 }
+
+// ─── Header dropdown menu ───────────────────────────────────────────────────
+function toggleMenu() {
+  const dd = document.getElementById('header-dropdown');
+  const btn = document.getElementById('btn-menu');
+  const isOpen = dd.classList.toggle('open');
+  btn.setAttribute('aria-expanded', String(isOpen));
+}
+
+function _closeMenu() {
+  const dd = document.getElementById('header-dropdown');
+  const btn = document.getElementById('btn-menu');
+  if (!dd || !dd.classList.contains('open')) return;
+  dd.classList.remove('open');
+  btn.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.header-menu-wrap');
+  if (wrap && !wrap.contains(e.target)) _closeMenu();
+});
 
 // ─── Event delegation for data-action / data-action-change ───────────────────
 // CSP-safe replacement for inline onclick=/onchange= attributes. A handler at
