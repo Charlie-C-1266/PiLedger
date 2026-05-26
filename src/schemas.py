@@ -1,4 +1,5 @@
 """Pydantic request and response models for the PiLedger API."""
+
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
@@ -22,8 +23,10 @@ from constants import (
 
 # ─── Inbound schemas ──────────────────────────────────────────────────────────
 
+
 class _In(BaseModel):
     """Inbound payload base — rejects unknown fields rather than silently dropping them."""
+
     model_config = ConfigDict(extra="forbid")
 
 
@@ -49,6 +52,7 @@ class DeleteMeIn(_In):
     """Body for `DELETE /api/auth/me` — re-confirm the password before the
     cascade. Bounds match `LoginIn` so a stored-credential helper that
     works for login also works here."""
+
     password: Annotated[str, Field(min_length=1, max_length=256)]
 
 
@@ -58,6 +62,7 @@ class PasswordChangeIn(_In):
     strength is not the new request's problem). `new_password` enforces the
     same lower bound `RegisterIn` uses so a change can never weaken a
     password below the registration policy."""
+
     current_password: Annotated[str, Field(min_length=1, max_length=256)]
     new_password: Annotated[str, Field(min_length=8, max_length=256)]
 
@@ -73,7 +78,9 @@ class AccountIn(_In):
     @model_validator(mode="after")
     def _subtype_matches_type(self) -> "AccountIn":
         if self.subtype not in SUBTYPES_BY_TYPE[self.type]:
-            raise ValueError(f"subtype '{self.subtype}' is not valid for type '{self.type}'")
+            raise ValueError(
+                f"subtype '{self.subtype}' is not valid for type '{self.type}'"
+            )
         return self
 
 
@@ -81,7 +88,9 @@ class AccountPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     subtype: Optional[AccountSubtype] = None
     currency: Optional[Currency] = None
-    interest_rate: Optional[float] = Field(default=None, ge=0, le=MAX_RATE, allow_inf_nan=False)
+    interest_rate: Optional[float] = Field(
+        default=None, ge=0, le=MAX_RATE, allow_inf_nan=False
+    )
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
 
 
@@ -120,12 +129,15 @@ class BudgetItemIn(_In):
 
 class BudgetItemPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
-    amount: Optional[float] = Field(default=None, ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)
+    amount: Optional[float] = Field(
+        default=None, ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False
+    )
     frequency: Optional[Frequency] = None
 
 
 class PrefsPatch(_In):
     """Partial update — only fields present are written."""
+
     theme: Optional[Theme] = None
     dark_mode: Optional[bool] = None
     base_currency: Optional[Currency] = None
@@ -133,16 +145,19 @@ class PrefsPatch(_In):
 
 class RateIn(_In):
     """Single FX rate: `1 unit of currency = rate units of the user's base currency`."""
+
     currency: Currency
     rate: Annotated[float, Field(ge=MIN_RATE_FX, le=MAX_RATE_FX, allow_inf_nan=False)]
 
 
 class RatesPut(_In):
     """Bulk replace of the user's manual rates table."""
+
     rates: list[RateIn] = Field(default_factory=list)
 
 
 # ─── Outbound schemas ─────────────────────────────────────────────────────────
+
 
 class UserOut(BaseModel):
     id: int

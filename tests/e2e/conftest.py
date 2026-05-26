@@ -18,6 +18,7 @@ Key design choices:
 * `headed` and `slow_mo` can be toggled with `PILEDGER_E2E_HEADED=1` and
   `PILEDGER_E2E_SLOWMO=250` to debug a failing test visually.
 """
+
 from __future__ import annotations
 
 import os
@@ -77,11 +78,15 @@ def live_server(tmp_path_factory):
     venv_uvicorn = REPO_ROOT / "venv" / "bin" / "uvicorn"
     cmd = [
         str(venv_uvicorn) if venv_uvicorn.exists() else "uvicorn",
-        "--app-dir", "src",
+        "--app-dir",
+        "src",
         "app:app",
-        "--host", "127.0.0.1",
-        "--port", str(port),
-        "--log-level", "warning",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        str(port),
+        "--log-level",
+        "warning",
     ]
 
     proc = subprocess.Popen(
@@ -151,7 +156,10 @@ def pytest_collection_modifyitems(config, items):
     """Mark every test in this directory as `e2e` so the suite is opt-in."""
     e2e_root = Path(__file__).parent.resolve()
     for item in items:
-        if e2e_root in Path(item.fspath).resolve().parents or Path(item.fspath).resolve() == e2e_root:
+        if (
+            e2e_root in Path(item.fspath).resolve().parents
+            or Path(item.fspath).resolve() == e2e_root
+        ):
             item.add_marker(pytest.mark.e2e)
 
 

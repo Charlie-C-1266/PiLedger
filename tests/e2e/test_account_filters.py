@@ -8,12 +8,15 @@ Behaviour under test:
 * The 'Accounts' (count) tile always shows every account.
 * Charts and summary numbers stay global — only the cards below change.
 """
+
 from __future__ import annotations
 
 from playwright.sync_api import Page, expect
 
 
-def _add(page: Page, name: str, type_value: str, opening_balance: str | None = None) -> None:
+def _add(
+    page: Page, name: str, type_value: str, opening_balance: str | None = None
+) -> None:
     page.locator("#btn-add-account").click()
     page.locator("#add-account-modal").wait_for(state="visible")
     page.locator("#add-name").fill(name)
@@ -31,7 +34,9 @@ def _seed_one_of_each(page: Page) -> None:
     _add(page, "Loan C", "loan", "750")
 
 
-def test_default_state_shows_all_accounts_with_all_tile_active(signed_in_page: Page) -> None:
+def test_default_state_shows_all_accounts_with_all_tile_active(
+    signed_in_page: Page,
+) -> None:
     page = signed_in_page
     _seed_one_of_each(page)
 
@@ -113,7 +118,9 @@ def test_count_tile_always_clears_filter(signed_in_page: Page) -> None:
     )
 
 
-def test_filter_with_no_matching_accounts_shows_empty_state(signed_in_page: Page) -> None:
+def test_filter_with_no_matching_accounts_shows_empty_state(
+    signed_in_page: Page,
+) -> None:
     """A user with only savings, who clicks Loans, sees a friendly empty
     state and a 'Show all' escape hatch — not a blank panel."""
     page = signed_in_page
@@ -155,6 +162,6 @@ def test_filter_persists_across_balance_update(signed_in_page: Page) -> None:
         "aria-pressed", "true"
     )
     expect(page.locator(".account-card")).to_have_count(1)
-    expect(page.locator(".account-card").first.locator(".account-balance")).to_contain_text(
-        "999.00"
-    )
+    expect(
+        page.locator(".account-card").first.locator(".account-balance")
+    ).to_contain_text("999.00")

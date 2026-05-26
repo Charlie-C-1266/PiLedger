@@ -6,14 +6,20 @@ user-scoped row, kill all sessions for that user, drop the `users` row, and
 clear the session cookie on the response. None of the cleanup can leak into
 another user's data.
 """
+
 from db import USER_SCOPED_TABLES, db, user_scoped_select_sql
 
 
 # ── Auth gate ────────────────────────────────────────────────────────────────
 
+
 def test_delete_me_requires_auth(client):
-    assert client.request("DELETE", "/api/auth/me",
-                          json={"password": "password123"}).status_code == 401
+    assert (
+        client.request(
+            "DELETE", "/api/auth/me", json={"password": "password123"}
+        ).status_code
+        == 401
+    )
 
 
 def test_delete_me_wrong_password_returns_401(alice):
@@ -29,22 +35,34 @@ def test_delete_me_missing_password_is_400(alice):
 
 def test_delete_me_rejects_unknown_fields(alice):
     # _In uses extra="forbid".
-    r = alice.request("DELETE", "/api/auth/me",
-                      json={"password": "password123", "wat": 1})
+    r = alice.request(
+        "DELETE", "/api/auth/me", json={"password": "password123", "wat": 1}
+    )
     assert r.status_code == 400
 
 
 # ── Happy path ───────────────────────────────────────────────────────────────
 
+
 def _seed(client):
-    acct = client.post("/api/accounts", json={
-        "name": "Main", "type": "current", "currency": "GBP",
-    }).json()
+    acct = client.post(
+        "/api/accounts",
+        json={
+            "name": "Main",
+            "type": "current",
+            "currency": "GBP",
+        },
+    ).json()
     client.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 100.0})
-    client.post("/api/budget", json={
-        "account_id": acct["id"], "name": "Rent",
-        "amount": -800.0, "frequency": "monthly",
-    })
+    client.post(
+        "/api/budget",
+        json={
+            "account_id": acct["id"],
+            "name": "Rent",
+            "amount": -800.0,
+            "frequency": "monthly",
+        },
+    )
     client.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
     return acct
 
@@ -66,9 +84,10 @@ def test_delete_me_clears_every_user_scoped_table(alice):
             rows = conn.execute(user_scoped_select_sql(table), (uid,)).fetchall()
             assert rows == [], f"{table} still holds rows for deleted user {uid}"
         # Sessions for the deleted user are gone too.
-        assert conn.execute(
-            "SELECT 1 FROM sessions WHERE user_id=?", (uid,)
-        ).fetchone() is None
+        assert (
+            conn.execute("SELECT 1 FROM sessions WHERE user_id=?", (uid,)).fetchone()
+            is None
+        )
 
 
 def test_delete_me_clears_session_cookie(alice):
@@ -78,8 +97,10 @@ def test_delete_me_clears_session_cookie(alice):
     # The cookie clear is communicated as a Set-Cookie line with Max-Age=0
     # (or an explicit expires-in-the-past). Either way, the session-cookie
     # name must appear in the Set-Cookie set with a clearing attribute.
-    assert any("piledger_session=" in c and ("Max-Age=0" in c or "expires=" in c.lower())
-               for c in cookie_headers), cookie_headers
+    assert any(
+        "piledger_session=" in c and ("Max-Age=0" in c or "expires=" in c.lower())
+        for c in cookie_headers
+    ), cookie_headers
 
 
 def test_delete_me_invalidates_old_session_token(alice):
@@ -101,6 +122,7 @@ def test_delete_me_invalidates_old_session_token(alice):
 
 
 # ── Cross-user isolation ─────────────────────────────────────────────────────
+
 
 def test_delete_me_does_not_touch_other_users(alice, bob):
     _seed(alice)
@@ -125,6 +147,7 @@ def test_delete_me_frees_username_for_reuse(alice):
     r = alice.request("DELETE", "/api/auth/me", json={"password": "password123"})
     assert r.status_code == 200
     # `alice` is a TestClient instance; use it to drive a fresh registration.
-    r = alice.post("/api/auth/register",
-                   json={"username": "alice", "password": "differentpass"})
+    r = alice.post(
+        "/api/auth/register", json={"username": "alice", "password": "differentpass"}
+    )
     assert r.status_code == 201

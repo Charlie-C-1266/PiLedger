@@ -13,6 +13,7 @@ Two concerns prior to this file were unguarded:
   fresh login. Neither code path was exercised — the suite always uses
   freshly-issued tokens.
 """
+
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -22,6 +23,7 @@ from constants import ISO_FMT, SESSION_DAYS
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _parse_set_cookie(raw: str) -> dict[str, str | bool]:
     """Parse one ``Set-Cookie`` header line into a lowercased attribute map.
@@ -44,8 +46,12 @@ def _parse_set_cookie(raw: str) -> dict[str, str | bool]:
 
 
 def _login_and_get_set_cookie(client: TestClient) -> dict[str, str | bool]:
-    client.post("/api/auth/register", json={"username": "alice", "password": "password123"})
-    resp = client.post("/api/auth/login", json={"username": "alice", "password": "password123"})
+    client.post(
+        "/api/auth/register", json={"username": "alice", "password": "password123"}
+    )
+    resp = client.post(
+        "/api/auth/login", json={"username": "alice", "password": "password123"}
+    )
     assert resp.status_code == 200
     raws = resp.headers.get_list("set-cookie")
     matching = [r for r in raws if r.split("=", 1)[0] == "piledger_session"]
@@ -54,6 +60,7 @@ def _login_and_get_set_cookie(client: TestClient) -> dict[str, str | bool]:
 
 
 # ─── Cookie attributes ────────────────────────────────────────────────────────
+
 
 def test_login_cookie_is_httponly(client):
     """No client-side JS should be able to read the session token."""
@@ -101,6 +108,7 @@ def test_login_cookie_secure_on_when_cookie_secure_enabled(app, monkeypatch):
 
 # ─── Session expiry ───────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def _alice_token(client) -> tuple[str, int]:
     """Register alice, log her in, return (session_token, user_id)."""
@@ -117,6 +125,7 @@ def _alice_token(client) -> tuple[str, int]:
 def _expire_session(token: str) -> None:
     """Rewrite the session row so its expires_at is firmly in the past."""
     from db import db
+
     past = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(ISO_FMT)
     with db() as conn:
         conn.execute("UPDATE sessions SET expires_at=? WHERE token=?", (past, token))
@@ -148,6 +157,7 @@ def test_new_login_sweeps_expired_sessions(client, _alice_token):
     """make_session deletes expired sessions on every fresh login. After a
     second login, the expired token row should no longer exist in the DB."""
     from db import db
+
     stale_token, _ = _alice_token
     _expire_session(stale_token)
 

@@ -9,6 +9,7 @@ This module wires the FastAPI app and HTTP routes. Supporting code lives in:
     auth.py      — password hashing, sessions, require_auth dependency
     schemas.py   — Pydantic request/response models
 """
+
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 import math
@@ -141,6 +142,7 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
 
 # ─── Ops endpoints ────────────────────────────────────────────────────────────
 
+
 @app.get("/healthz", include_in_schema=False)
 def healthz() -> dict:
     """Liveness + version probe for uptime monitors and the Docker healthcheck.
@@ -193,6 +195,7 @@ def redoc_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
 
+
 @app.get("/login")
 def login_page() -> FileResponse:
     return FileResponse(os.path.join(_STATIC_DIR, "login.html"))
@@ -217,14 +220,17 @@ def register(data: RegisterIn) -> RegisterOut:
 def login(request: Request, data: LoginIn, response: Response) -> LoginOut:
     username = data.username.strip()
     with db() as conn:
-        user = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username=?", (username,)
+        ).fetchone()
     stored = user["password_hash"] if user else dummy_hash()
     ok = verify_password(data.password, stored)
     if not user or not ok:
         raise HTTPException(401, "Invalid username or password")
     token = make_session(user["id"])
     response.set_cookie(
-        SESSION_COOKIE, token,
+        SESSION_COOKIE,
+        token,
         max_age=SESSION_DAYS * 86400,
         httponly=True,
         samesite="lax",
@@ -250,7 +256,9 @@ def logout(
 @app.get("/api/auth/me", response_model=UserOut)
 def get_me(uid: int = Depends(require_auth)) -> UserOut:
     with db() as conn:
-        user = conn.execute("SELECT id, username FROM users WHERE id=?", (uid,)).fetchone()
+        user = conn.execute(
+            "SELECT id, username FROM users WHERE id=?", (uid,)
+        ).fetchone()
     if not user:
         raise HTTPException(404)
     return UserOut(id=user["id"], username=user["username"])
@@ -277,7 +285,9 @@ def change_password(
         user = conn.execute(
             "SELECT password_hash FROM users WHERE id=?", (uid,)
         ).fetchone()
-        if not user or not verify_password(data.current_password, user["password_hash"]):
+        if not user or not verify_password(
+            data.current_password, user["password_hash"]
+        ):
             raise HTTPException(401, "Current password is incorrect")
         conn.execute(
             "UPDATE users SET password_hash=? WHERE id=?",
@@ -291,7 +301,8 @@ def change_password(
     # DELETE racing inside the same transaction).
     token = make_session(uid)
     response.set_cookie(
-        SESSION_COOKIE, token,
+        SESSION_COOKIE,
+        token,
         max_age=SESSION_DAYS * 86400,
         httponly=True,
         samesite="lax",
@@ -374,6 +385,7 @@ def export_data(uid: int = Depends(require_auth)) -> JSONResponse:
 
 # ─── User preferences ─────────────────────────────────────────────────────────
 
+
 def _prefs_out(row: sqlite3.Row) -> PrefsOut:
     return PrefsOut(
         theme=row["theme"] or "olive",
@@ -428,6 +440,7 @@ def update_prefs(
 
 # ─── Exchange rates ───────────────────────────────────────────────────────────
 
+
 def _load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
     """Return {currency: rate_to_base} for a user. The base currency is omitted
     (it is implicitly 1.0)."""
@@ -464,7 +477,9 @@ def _rescale_rates(
         )
 
 
-def _convert_to_base(amount: float, currency: str, base: str, rates: dict[str, float]) -> float:
+def _convert_to_base(
+    amount: float, currency: str, base: str, rates: dict[str, float]
+) -> float:
     """Convert ``amount`` of ``currency`` into ``base`` using the user's rates.
     Missing rates fall back to 1.0 so the total is never silently dropped; the
     /api/summary response flags the affected currencies so the UI can warn."""
@@ -488,7 +503,11 @@ def get_rates(uid: int = Depends(require_auth)) -> RatesOut:
     return RatesOut(
         base_currency=base,
         rates=[
-            RateOut(currency=r["currency"], rate=float(r["rate"]), updated_at=r["updated_at"])
+            RateOut(
+                currency=r["currency"],
+                rate=float(r["rate"]),
+                updated_at=r["updated_at"],
+            )
             for r in rows
         ],
     )
@@ -508,7 +527,9 @@ def put_rates(data: RatesPut, uid: int = Depends(require_auth)) -> RatesOut:
         seen: set[str] = set()
         for r in data.rates:
             if r.currency == base:
-                raise HTTPException(400, "Cannot set a rate against the base currency itself")
+                raise HTTPException(
+                    400, "Cannot set a rate against the base currency itself"
+                )
             if r.currency in seen:
                 raise HTTPException(400, f"Duplicate rate for currency '{r.currency}'")
             seen.add(r.currency)
@@ -529,13 +550,18 @@ def put_rates(data: RatesPut, uid: int = Depends(require_auth)) -> RatesOut:
     return RatesOut(
         base_currency=base,
         rates=[
-            RateOut(currency=r["currency"], rate=float(r["rate"]), updated_at=r["updated_at"])
+            RateOut(
+                currency=r["currency"],
+                rate=float(r["rate"]),
+                updated_at=r["updated_at"],
+            )
             for r in rows
         ],
     )
 
 
 # ─── Accounts ─────────────────────────────────────────────────────────────────
+
 
 def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
     return AccountOut(
@@ -548,7 +574,9 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         interest_rate=row["interest_rate"],
         color=row["color"],
         created_at=row["created_at"],
-        current_balance=from_cents(row["current_balance_cents"]) if "current_balance_cents" in row.keys() else None,
+        current_balance=from_cents(row["current_balance_cents"])
+        if "current_balance_cents" in row.keys()
+        else None,
         last_updated=row["last_updated"] if "last_updated" in row.keys() else None,
     )
 
@@ -556,7 +584,8 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
 @app.get("/api/accounts", response_model=list[AccountOut])
 def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
     with db() as conn:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT a.*,
                    b.balance_cents AS current_balance_cents,
                    b.recorded_at   AS last_updated
@@ -567,7 +596,9 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
             )
             WHERE a.user_id = ?
             ORDER BY a.created_at
-        """, (uid,)).fetchall()
+        """,
+            (uid,),
+        ).fetchall()
     return [_account_row_to_out(r) for r in rows]
 
 
@@ -577,11 +608,20 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
         cur = conn.execute(
             "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color)"
             " VALUES(?,?,?,?,?,?,?)",
-            (uid, data.name, data.type, data.subtype, data.currency,
-             data.interest_rate, data.color),
+            (
+                uid,
+                data.name,
+                data.type,
+                data.subtype,
+                data.currency,
+                data.interest_rate,
+                data.color,
+            ),
         )
         conn.commit()
-        row = conn.execute("SELECT * FROM accounts WHERE id=?", (cur.lastrowid,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM accounts WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
     return AccountOut(
         id=row["id"],
         user_id=row["user_id"],
@@ -613,14 +653,19 @@ def update_account(
         # Cross-field check: subtype must be valid for the row's existing type.
         # The Pydantic schema can't enforce this on a partial patch because
         # `type` isn't in the payload.
-        if "subtype" in updates and updates["subtype"] not in SUBTYPES_BY_TYPE[existing["type"]]:
+        if (
+            "subtype" in updates
+            and updates["subtype"] not in SUBTYPES_BY_TYPE[existing["type"]]
+        ):
             raise HTTPException(
                 400,
                 f"subtype '{updates['subtype']}' is not valid for type '{existing['type']}'",
             )
         if updates:
             sets = ", ".join(f"{k}=?" for k in updates)
-            conn.execute(f"UPDATE accounts SET {sets} WHERE id=?", [*updates.values(), aid])
+            conn.execute(
+                f"UPDATE accounts SET {sets} WHERE id=?", [*updates.values(), aid]
+            )
             conn.commit()
         row = conn.execute("SELECT * FROM accounts WHERE id=?", (aid,)).fetchone()
     return AccountOut(
@@ -649,6 +694,7 @@ def delete_account(aid: int, uid: int = Depends(require_auth)) -> OkOut:
 
 
 # ─── Balance history ──────────────────────────────────────────────────────────
+
 
 @app.post("/api/accounts/{aid}/balance", response_model=OkOut)
 def record_balance(
@@ -700,13 +746,15 @@ def get_history(
 
 # ─── Dashboard APIs ───────────────────────────────────────────────────────────
 
+
 @app.get("/api/summary", response_model=SummaryOut)
 def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
     with db() as conn:
         user = conn.execute(
             "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT a.type, a.currency, b.balance_cents
             FROM accounts a
             LEFT JOIN balance_history b ON b.id = (
@@ -714,7 +762,9 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
                 ORDER BY recorded_at DESC, id DESC LIMIT 1
             )
             WHERE a.user_id = ?
-        """, (uid,)).fetchall()
+        """,
+            (uid,),
+        ).fetchall()
         rates = _load_rates(conn, uid)
     base = (user["base_currency"] if user else None) or "GBP"
     current_t = savings_t = loans_t = 0.0
@@ -751,7 +801,8 @@ def all_history(
     with db() as conn:
         since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
         accounts = conn.execute(
-            "SELECT id, name, color, type, currency FROM accounts WHERE user_id=?", (uid,)
+            "SELECT id, name, color, type, currency FROM accounts WHERE user_id=?",
+            (uid,),
         ).fetchall()
         result: list[HistoryAccountOut] = []
         for a in accounts:
@@ -761,16 +812,22 @@ def all_history(
                 (a["id"], since),
             ).fetchall()
             if hist:
-                result.append(HistoryAccountOut(
-                    id=a["id"], name=a["name"], color=a["color"], type=a["type"],
-                    currency=a["currency"] or "GBP",
-                    history=[
-                        HistoryPointOut(
-                            balance=from_cents(h["balance_cents"]) or 0.0,
-                            date=h["recorded_at"],
-                        ) for h in hist
-                    ],
-                ))
+                result.append(
+                    HistoryAccountOut(
+                        id=a["id"],
+                        name=a["name"],
+                        color=a["color"],
+                        type=a["type"],
+                        currency=a["currency"] or "GBP",
+                        history=[
+                            HistoryPointOut(
+                                balance=from_cents(h["balance_cents"]) or 0.0,
+                                date=h["recorded_at"],
+                            )
+                            for h in hist
+                        ],
+                    )
+                )
     return result
 
 
@@ -780,7 +837,8 @@ def get_projections(
     uid: int = Depends(require_auth),
 ) -> list[dict]:
     with db() as conn:
-        rows = conn.execute("""
+        rows = conn.execute(
+            """
             SELECT a.id, a.name, a.interest_rate, a.color, a.currency, b.balance_cents
             FROM accounts a
             LEFT JOIN balance_history b ON b.id = (
@@ -788,7 +846,9 @@ def get_projections(
                 ORDER BY recorded_at DESC, id DESC LIMIT 1
             )
             WHERE a.type = 'savings' AND a.user_id = ?
-        """, (uid,)).fetchall()
+        """,
+            (uid,),
+        ).fetchall()
 
     now = datetime.now(timezone.utc)
     projections: list[dict] = []
@@ -802,20 +862,25 @@ def get_projections(
             }
             for m in range(months + 1)
         ]
-        projections.append({
-            "id": row["id"], "name": row["name"], "color": row["color"],
-            "currency": row["currency"] or "GBP",
-            "initial_balance": bal,
-            "interest_rate": row["interest_rate"],
-            "1yr": round(bal * math.pow(1 + mr, 12), 2),
-            "2yr": round(bal * math.pow(1 + mr, 24), 2),
-            "5yr": round(bal * math.pow(1 + mr, 60), 2),
-            "points": points,
-        })
+        projections.append(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "color": row["color"],
+                "currency": row["currency"] or "GBP",
+                "initial_balance": bal,
+                "interest_rate": row["interest_rate"],
+                "1yr": round(bal * math.pow(1 + mr, 12), 2),
+                "2yr": round(bal * math.pow(1 + mr, 24), 2),
+                "5yr": round(bal * math.pow(1 + mr, 60), 2),
+                "points": points,
+            }
+        )
     return projections
 
 
 # ─── Budget items ─────────────────────────────────────────────────────────────
+
 
 def _budget_row_to_out(row: sqlite3.Row) -> BudgetItemOut:
     return BudgetItemOut(
@@ -855,7 +920,9 @@ def create_budget_item(
             (uid, data.account_id, data.name, to_cents(data.amount), data.frequency),
         )
         conn.commit()
-        row = conn.execute("SELECT * FROM budget_items WHERE id=?", (cur.lastrowid,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM budget_items WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
     return _budget_row_to_out(row)
 
 
@@ -876,7 +943,9 @@ def update_budget_item(
             patch["amount_cents"] = to_cents(patch.pop("amount"))
         if patch:
             sets = ", ".join(f"{k}=?" for k in patch)
-            conn.execute(f"UPDATE budget_items SET {sets} WHERE id=?", [*patch.values(), bid])
+            conn.execute(
+                f"UPDATE budget_items SET {sets} WHERE id=?", [*patch.values(), bid]
+            )
             conn.commit()
         row = conn.execute("SELECT * FROM budget_items WHERE id=?", (bid,)).fetchone()
     return _budget_row_to_out(row)
@@ -905,7 +974,8 @@ def budget_projection(
         user = conn.execute(
             "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
-        accounts = conn.execute("""
+        accounts = conn.execute(
+            """
             SELECT a.id, a.name, a.type, a.interest_rate, a.color, a.currency,
                    b.balance_cents AS current_balance_cents
             FROM accounts a
@@ -915,7 +985,9 @@ def budget_projection(
             )
             WHERE a.user_id = ?
             ORDER BY a.created_at
-        """, (uid,)).fetchall()
+        """,
+            (uid,),
+        ).fetchall()
 
         items = conn.execute(
             "SELECT account_id, amount_cents, frequency FROM budget_items WHERE user_id=?",
@@ -928,7 +1000,9 @@ def budget_projection(
     monthly_net: dict[int, float] = {}
     for item in items:
         flow = from_cents(item["amount_cents"]) * FREQ_TO_MONTHLY[item["frequency"]]
-        monthly_net[item["account_id"]] = monthly_net.get(item["account_id"], 0.0) + flow
+        monthly_net[item["account_id"]] = (
+            monthly_net.get(item["account_id"], 0.0) + flow
+        )
 
     now = datetime.now(timezone.utc)
     result: list[dict] = []
@@ -948,17 +1022,19 @@ def budget_projection(
             date = (now + timedelta(days=m * 30.44)).strftime("%Y-%m-%d")
             points.append({"month": m, "balance": bal, "date": date})
 
-        result.append({
-            "id":              acc["id"],
-            "name":            acc["name"],
-            "type":            acc["type"],
-            "color":           acc["color"],
-            "currency":        acc["currency"] or "GBP",
-            "current_balance": from_cents(acc["current_balance_cents"]),
-            "monthly_net":     round(net, 2),
-            "points":          points,
-            "final_balance":   points[-1]["balance"],
-        })
+        result.append(
+            {
+                "id": acc["id"],
+                "name": acc["name"],
+                "type": acc["type"],
+                "color": acc["color"],
+                "currency": acc["currency"] or "GBP",
+                "current_balance": from_cents(acc["current_balance_cents"]),
+                "monthly_net": round(net, 2),
+                "points": points,
+                "final_balance": points[-1]["balance"],
+            }
+        )
 
     # Net worth at each month: assets minus liabilities, converted into the
     # user's base currency so the line is meaningful across mixed-currency
@@ -982,6 +1058,7 @@ def budget_projection(
 
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────
+
 
 @app.get("/")
 def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):

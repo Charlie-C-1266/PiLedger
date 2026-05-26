@@ -61,8 +61,12 @@ def test_no_cdn_links_remain():
     for name in ("index.html", "login.html"):
         html = _read(name)
         assert "cdn.jsdelivr.net" not in html, f"{name} still references jsdelivr"
-        assert "fonts.googleapis.com" not in html, f"{name} still references Google Fonts"
-        assert "fonts.gstatic.com" not in html, f"{name} still references Google Fonts CDN"
+        assert "fonts.googleapis.com" not in html, (
+            f"{name} still references Google Fonts"
+        )
+        assert "fonts.gstatic.com" not in html, (
+            f"{name} still references Google Fonts CDN"
+        )
 
 
 def test_vendored_assets_present():

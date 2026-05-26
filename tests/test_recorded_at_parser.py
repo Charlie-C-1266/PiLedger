@@ -9,7 +9,9 @@ the kind of thing that breaks on an edge timezone bug.
 
 
 def _setup(alice):
-    return alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()["id"]
+    return alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
 
 
 def _only_entry(alice, aid):
@@ -20,10 +22,13 @@ def _only_entry(alice, aid):
 
 def test_canonical_z_form_round_trips(alice):
     aid = _setup(alice)
-    r = alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2025-01-15T12:00:00Z",
-    })
+    r = alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2025-01-15T12:00:00Z",
+        },
+    )
     assert r.status_code == 200
     assert _only_entry(alice, aid)["recorded_at"] == "2025-01-15T12:00:00Z"
 
@@ -31,49 +36,64 @@ def test_canonical_z_form_round_trips(alice):
 def test_lenient_plus_zero_offset_normalised_to_z(alice):
     """ISO-8601 with explicit +00:00 should be re-emitted in canonical Z form."""
     aid = _setup(alice)
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2025-01-15T12:00:00+00:00",
-    })
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2025-01-15T12:00:00+00:00",
+        },
+    )
     assert _only_entry(alice, aid)["recorded_at"] == "2025-01-15T12:00:00Z"
 
 
 def test_naive_iso_assumed_utc(alice):
     """No tz suffix at all → schema tags it UTC and re-emits canonical."""
     aid = _setup(alice)
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2025-01-15T12:00:00",
-    })
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2025-01-15T12:00:00",
+        },
+    )
     assert _only_entry(alice, aid)["recorded_at"] == "2025-01-15T12:00:00Z"
 
 
 def test_non_utc_offset_converted_to_utc(alice):
     """+05:00 means UTC was 5 hours earlier. 12:00+05:00 == 07:00Z."""
     aid = _setup(alice)
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2025-01-15T12:00:00+05:00",
-    })
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2025-01-15T12:00:00+05:00",
+        },
+    )
     assert _only_entry(alice, aid)["recorded_at"] == "2025-01-15T07:00:00Z"
 
 
 def test_negative_offset_converted_to_utc(alice):
     """-08:00 (Pacific) means UTC is 8 hours later. 12:00-08:00 == 20:00Z."""
     aid = _setup(alice)
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2025-01-15T12:00:00-08:00",
-    })
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2025-01-15T12:00:00-08:00",
+        },
+    )
     assert _only_entry(alice, aid)["recorded_at"] == "2025-01-15T20:00:00Z"
 
 
 def test_garbage_recorded_at_rejected(alice):
     aid = _setup(alice)
-    r = alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "not a date",
-    })
+    r = alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "not a date",
+        },
+    )
     assert r.status_code == 400
 
 
@@ -81,10 +101,13 @@ def test_empty_recorded_at_rejected(alice):
     """Empty string isn't a valid ISO datetime — should 400, not silently
     fall through and store an empty timestamp."""
     aid = _setup(alice)
-    r = alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "",
-    })
+    r = alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "",
+        },
+    )
     assert r.status_code == 400
 
 

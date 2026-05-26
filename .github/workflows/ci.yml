@@ -14,8 +14,29 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
-      - name: Run ruff
+      - name: Run ruff check
         run: uv run ruff check --output-format=github .
+
+      - name: Run ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run mypy
+        run: uv run mypy
 
   test:
     name: Tests (pytest)
@@ -32,8 +53,16 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Run pytest
-        run: uv run pytest
+      - name: Run pytest with coverage
+        run: uv run pytest --cov=src --cov-report=term-missing
+
+      - name: Write coverage summary
+        if: always()
+        run: |
+          echo '## Coverage report' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          uv run coverage report >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   lockfile-check:
     name: Lockfile drift check

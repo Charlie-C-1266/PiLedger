@@ -13,6 +13,7 @@ The frontend has two failure surfaces:
 The backend caps money at ±£1 trillion (`constants.MAX_MONEY`); anything
 beyond that should be rejected with a 400 that surfaces as an alert.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -75,7 +76,9 @@ def test_negative_balance_blocked_by_input_constraint(signed_in_page: Page) -> N
     assert is_valid is False, "expected min=0 to mark a negative value invalid"
 
 
-def test_balance_exceeding_max_money_is_rejected_by_server(signed_in_page: Page) -> None:
+def test_balance_exceeding_max_money_is_rejected_by_server(
+    signed_in_page: Page,
+) -> None:
     """A 2-trillion deposit should clear the client (it's a number) but the
     server's `BalanceIn` schema caps at MAX_MONEY, returning 400 → alert."""
     page = signed_in_page
@@ -83,9 +86,11 @@ def test_balance_exceeding_max_money_is_rejected_by_server(signed_in_page: Page)
     _wait_for_account(page, "Crypto Pile")
 
     dialogs: list[Dialog] = []
+
     def _on_dialog(d: Dialog) -> None:
         dialogs.append(d)
         d.accept()
+
     page.on("dialog", _on_dialog)
 
     page.locator(".account-card", has_text="Crypto Pile").get_by_role(
@@ -109,8 +114,9 @@ def test_balance_exceeding_max_money_is_rejected_by_server(signed_in_page: Page)
 
     # Balance card should not have updated — value remains '—' (no balance yet).
     expect(
-        page.locator(".account-card", has_text="Crypto Pile")
-            .locator(".account-balance")
+        page.locator(".account-card", has_text="Crypto Pile").locator(
+            ".account-balance"
+        )
     ).not_to_contain_text("2,000,000,000,000")
 
 
@@ -141,7 +147,9 @@ def test_non_numeric_balance_blocked(signed_in_page: Page) -> None:
 
 
 @pytest.mark.parametrize("bad_rate", ["-1", "1500"])
-def test_interest_rate_out_of_range_rejected(signed_in_page: Page, bad_rate: str) -> None:
+def test_interest_rate_out_of_range_rejected(
+    signed_in_page: Page, bad_rate: str
+) -> None:
     """`MAX_RATE` is 1000% — anything beyond, or negative, must 400. The Add
     Account modal exposes the interest field only for savings/loans."""
     page = signed_in_page

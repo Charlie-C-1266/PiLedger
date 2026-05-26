@@ -45,8 +45,10 @@ def client(app):
 def alice(app):
     """HTTP client authenticated as user 'alice'."""
     with TestClient(app) as c:
-        c.post("/api/auth/register", json={"username": "alice", "password": "password123"})
-        c.post("/api/auth/login",    json={"username": "alice", "password": "password123"})
+        c.post(
+            "/api/auth/register", json={"username": "alice", "password": "password123"}
+        )
+        c.post("/api/auth/login", json={"username": "alice", "password": "password123"})
         yield c
 
 
@@ -54,6 +56,8 @@ def alice(app):
 def bob(app):
     """HTTP client authenticated as user 'bob' (shares the same DB as alice)."""
     with TestClient(app) as c:
-        c.post("/api/auth/register", json={"username": "bob", "password": "password123"})
-        c.post("/api/auth/login",    json={"username": "bob", "password": "password123"})
+        c.post(
+            "/api/auth/register", json={"username": "bob", "password": "password123"}
+        )
+        c.post("/api/auth/login", json={"username": "bob", "password": "password123"})
         yield c

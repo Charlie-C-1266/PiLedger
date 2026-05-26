@@ -24,6 +24,7 @@ skip the sniff-based legacy path and gate future migrations on
 A regression that misorders a cast, drops a column, or breaks data
 preservation would have shipped silently against the pre-existing suite.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -124,7 +125,9 @@ def migrated_db(tmp_path, monkeypatch):
     # history rows (REAL), and two budget items (REAL).
     conn = sqlite3.connect(str(db_path))
     try:
-        conn.execute("INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')")
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
         conn.execute(
             "INSERT INTO accounts(id, name, type, interest_rate, color)"
             " VALUES(1, 'Current', 'current', 0,   '#708238'),"
@@ -146,13 +149,16 @@ def migrated_db(tmp_path, monkeypatch):
 
     # Redirect db.db() at this file, then run the real init().
     import constants
+
     monkeypatch.setattr(constants, "DB", str(db_path))
     from db import init
+
     init()
     return db_path
 
 
 # ─── Per-migration assertions ─────────────────────────────────────────────────
+
 
 def test_adds_user_id_to_accounts(migrated_db):
     """V0 accounts had no user_id column; init() must add it."""
@@ -203,9 +209,7 @@ def test_adds_users_theme_and_dark_mode(migrated_db):
 def test_existing_users_default_to_olive_light_theme(migrated_db):
     conn = sqlite3.connect(str(migrated_db))
     try:
-        row = conn.execute(
-            "SELECT theme, dark_mode FROM users WHERE id=1"
-        ).fetchone()
+        row = conn.execute("SELECT theme, dark_mode FROM users WHERE id=1").fetchone()
     finally:
         conn.close()
     assert row == ("olive", 0)
@@ -244,9 +248,7 @@ def test_adds_users_base_currency(migrated_db):
 def test_existing_users_default_to_gbp_base_currency(migrated_db):
     conn = sqlite3.connect(str(migrated_db))
     try:
-        row = conn.execute(
-            "SELECT base_currency FROM users WHERE id=1"
-        ).fetchone()
+        row = conn.execute("SELECT base_currency FROM users WHERE id=1").fetchone()
     finally:
         conn.close()
     assert row[0] == "GBP"
@@ -255,6 +257,7 @@ def test_existing_users_default_to_gbp_base_currency(migrated_db):
 # ─── Data-conversion migrations ───────────────────────────────────────────────
 # These are the riskiest: a wrong CAST/ROUND ordering would silently
 # truncate every historical balance and budget amount.
+
 
 def test_balance_history_balance_real_renamed_to_balance_cents(migrated_db):
     cols = _table_columns(migrated_db, "balance_history")
@@ -296,6 +299,7 @@ def test_budget_items_values_converted_to_cents_exactly(migrated_db):
 
 # ─── Idempotency + fresh-DB sanity ────────────────────────────────────────────
 
+
 def test_running_init_twice_is_a_noop(migrated_db):
     """Every migration is gated by a column-presence check; a second run
     must not re-fire any of them (which would either error or duplicate
@@ -304,27 +308,28 @@ def test_running_init_twice_is_a_noop(migrated_db):
     pre_schema = _table_sql(migrated_db, "accounts")
     conn = sqlite3.connect(str(migrated_db))
     try:
-        pre_count_bh = conn.execute(
-            "SELECT COUNT(*) FROM balance_history"
-        ).fetchone()[0]
-        pre_count_bi = conn.execute(
-            "SELECT COUNT(*) FROM budget_items"
-        ).fetchone()[0]
+        pre_count_bh = conn.execute("SELECT COUNT(*) FROM balance_history").fetchone()[
+            0
+        ]
+        pre_count_bi = conn.execute("SELECT COUNT(*) FROM budget_items").fetchone()[0]
     finally:
         conn.close()
 
     from db import init
+
     init()
 
     assert _table_sql(migrated_db, "accounts") == pre_schema
     conn = sqlite3.connect(str(migrated_db))
     try:
-        assert conn.execute(
-            "SELECT COUNT(*) FROM balance_history"
-        ).fetchone()[0] == pre_count_bh
-        assert conn.execute(
-            "SELECT COUNT(*) FROM budget_items"
-        ).fetchone()[0] == pre_count_bi
+        assert (
+            conn.execute("SELECT COUNT(*) FROM balance_history").fetchone()[0]
+            == pre_count_bh
+        )
+        assert (
+            conn.execute("SELECT COUNT(*) FROM budget_items").fetchone()[0]
+            == pre_count_bi
+        )
     finally:
         conn.close()
 
@@ -336,32 +341,59 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
     db_path = tmp_path / "fresh.db"
 
     import constants
+
     monkeypatch.setattr(constants, "DB", str(db_path))
     from db import init
+
     init()
 
     assert _table_columns(db_path, "users") >= {
-        "id", "username", "password_hash",
-        "theme", "dark_mode", "base_currency", "created_at",
+        "id",
+        "username",
+        "password_hash",
+        "theme",
+        "dark_mode",
+        "base_currency",
+        "created_at",
     }
     assert _table_columns(db_path, "accounts") >= {
-        "id", "user_id", "name", "type", "subtype", "currency",
-        "interest_rate", "color", "created_at",
+        "id",
+        "user_id",
+        "name",
+        "type",
+        "subtype",
+        "currency",
+        "interest_rate",
+        "color",
+        "created_at",
     }
     assert _table_columns(db_path, "balance_history") >= {
-        "id", "account_id", "balance_cents", "notes", "recorded_at",
+        "id",
+        "account_id",
+        "balance_cents",
+        "notes",
+        "recorded_at",
     }
     assert _table_columns(db_path, "budget_items") >= {
-        "id", "user_id", "account_id", "name", "amount_cents",
-        "frequency", "created_at",
+        "id",
+        "user_id",
+        "account_id",
+        "name",
+        "amount_cents",
+        "frequency",
+        "created_at",
     }
     assert _table_columns(db_path, "sessions") >= {"token", "user_id", "expires_at"}
     assert _table_columns(db_path, "exchange_rates") >= {
-        "user_id", "currency", "rate", "updated_at",
+        "user_id",
+        "currency",
+        "rate",
+        "updated_at",
     }
 
 
 # ─── schema_version stamp ───────────────────────────────────────────────────
+
 
 def _read_schema_version(db_path: Path) -> int | None:
     conn = sqlite3.connect(str(db_path))
@@ -380,6 +412,7 @@ def test_legacy_db_gets_stamped_after_migration(migrated_db):
     """A v0 database (no meta table) should be stamped with the current
     schema version after init() runs the legacy migrations."""
     from db import SCHEMA_VERSION
+
     assert _read_schema_version(migrated_db) == SCHEMA_VERSION
 
 
@@ -388,8 +421,10 @@ def test_fresh_db_gets_stamped(tmp_path, monkeypatch):
     on the very first init()."""
     db_path = tmp_path / "fresh.db"
     import constants
+
     monkeypatch.setattr(constants, "DB", str(db_path))
     from db import init, SCHEMA_VERSION
+
     init()
     assert _read_schema_version(db_path) == SCHEMA_VERSION
 
@@ -398,6 +433,7 @@ def test_second_init_skips_legacy_migrations(migrated_db):
     """Once stamped, a second init() takes the version-gated path and
     never re-enters the legacy migration code."""
     from db import init, SCHEMA_VERSION
+
     init()
     assert _read_schema_version(migrated_db) == SCHEMA_VERSION
 
@@ -405,15 +441,23 @@ def test_second_init_skips_legacy_migrations(migrated_db):
 def test_meta_table_exists_on_fresh_db(tmp_path, monkeypatch):
     db_path = tmp_path / "fresh.db"
     import constants
+
     monkeypatch.setattr(constants, "DB", str(db_path))
     from db import init
+
     init()
-    assert "meta" in _table_columns(db_path, "meta") or _read_schema_version(db_path) is not None
+    assert (
+        "meta" in _table_columns(db_path, "meta")
+        or _read_schema_version(db_path) is not None
+    )
     conn = sqlite3.connect(str(db_path))
     try:
-        tables = {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()}
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
     finally:
         conn.close()
     assert "meta" in tables
