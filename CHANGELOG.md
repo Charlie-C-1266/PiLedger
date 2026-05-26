@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.28.1] — 2026-05-26
+
+### Fixed
+
+- **Docker: documentation files missing from image.** The Dockerfile only copied `src/` into the image but the `/guide` documentation viewer reads markdown files from `docs/`. Added `COPY docs ./docs` to the Dockerfile so the guide page works in containerised deployments. Without this fix, every `/api/docs/{slug}` request returned 404 and the guide page showed "Could not load document." The dashboard itself was unaffected — if the dropdown and CSS appeared broken after upgrading, the cause was a stale Docker image; `docker compose up --build` (or `docker compose build --no-cache`) forces a fresh build that picks up the updated HTML, CSS, and JS.
+
+Affected files: `Dockerfile`, `src/constants.py` (`VERSION` bumped to `0.28.1`).
+
+---
+
 ## [0.28.0] — 2026-05-26
 
 ### Added

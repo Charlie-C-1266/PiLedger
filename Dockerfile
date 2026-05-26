@@ -28,6 +28,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # landed — that bug now can't recur).
 COPY src ./src
 
+# Documentation markdown files served by the /guide viewer. Separate COPY so
+# editing a doc doesn't bust the (larger) src layer cache.
+COPY docs ./docs
+
 # Run as an unprivileged user. /data is writable so SQLite can create and
 # fsync the DB file inside the mounted volume; /app is read-only at runtime.
 RUN useradd --system --uid 10001 --home /home/piledger --create-home piledger \
