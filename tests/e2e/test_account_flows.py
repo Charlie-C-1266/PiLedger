@@ -4,6 +4,7 @@ Top-level account flows: add, update balance, edit, delete.
 These tests exercise the modal-driven interactions a real user goes through
 and verify both the rendered dashboard and the summary cards stay consistent.
 """
+
 from __future__ import annotations
 
 from playwright.sync_api import Page, expect
@@ -134,7 +135,9 @@ def test_edit_account_renames_card(signed_in_page: Page) -> None:
     expect(page.locator(".account-card", has_text="Old Name")).to_have_count(0)
 
 
-def test_delete_account_removes_card_and_returns_to_empty_state(signed_in_page: Page) -> None:
+def test_delete_account_removes_card_and_returns_to_empty_state(
+    signed_in_page: Page,
+) -> None:
     page = signed_in_page
 
     _open_add(page)
@@ -142,9 +145,13 @@ def test_delete_account_removes_card_and_returns_to_empty_state(signed_in_page: 
     page.locator("#add-type").select_option("current")
     _submit_add(page)
 
-    page.locator(".account-card", has_text="Throwaway").locator("button.btn-icon").click()
+    page.locator(".account-card", has_text="Throwaway").locator(
+        "button.btn-icon"
+    ).click()
     page.locator("#edit-account-modal").wait_for(state="visible")
-    page.locator("#edit-account-modal").get_by_role("button", name="Delete Account").click()
+    page.locator("#edit-account-modal").get_by_role(
+        "button", name="Delete Account"
+    ).click()
 
     page.locator("#confirm-delete-modal").wait_for(state="visible")
     expect(page.locator("#delete-account-name")).to_have_text("Throwaway")

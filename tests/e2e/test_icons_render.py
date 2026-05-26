@@ -9,6 +9,7 @@ These tests guard against two regression modes:
    no glyph but is still "in the DOM"). We assert each icon has a real
    bounding box so a collapsed-but-present icon still fails the test.
 """
+
 from __future__ import annotations
 
 from playwright.sync_api import Page, expect

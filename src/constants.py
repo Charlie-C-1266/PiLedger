@@ -1,4 +1,5 @@
 """Module-level constants, type aliases, and bounds shared across PiLedger."""
+
 import os
 from typing import Literal
 
@@ -16,9 +17,7 @@ DB: str = os.environ.get(
     # Source lives in src/; the default DB file lives at the project root
     # so existing dev databases keep working after the src/ restructure.
     # Resolve via one parent traversal from this module's location.
-    os.path.normpath(
-        os.path.join(os.path.dirname(__file__), os.pardir, "piledger.db")
-    ),
+    os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, "piledger.db")),
 )
 SESSION_COOKIE = "piledger_session"
 SESSION_DAYS = 30
@@ -51,14 +50,32 @@ Frequency = Literal["weekly", "monthly", "quarterly", "annually"]
 AccountSubtype = Literal[
     "general",
     # Current
-    "standard", "joint", "student", "premier", "basic", "business",
+    "standard",
+    "joint",
+    "student",
+    "premier",
+    "basic",
+    "business",
     # Savings
-    "cash_isa", "stocks_shares_isa", "lifetime_isa", "junior_isa",
-    "regular_saver", "easy_access", "fixed_term_bond", "notice_account",
-    "premium_bonds", "sipp", "workplace_pension",
+    "cash_isa",
+    "stocks_shares_isa",
+    "lifetime_isa",
+    "junior_isa",
+    "regular_saver",
+    "easy_access",
+    "fixed_term_bond",
+    "notice_account",
+    "premium_bonds",
+    "sipp",
+    "workplace_pension",
     # Loan
-    "bank_loan", "credit_card", "mortgage", "student_loan", "car_finance",
-    "overdraft", "bnpl",
+    "bank_loan",
+    "credit_card",
+    "mortgage",
+    "student_loan",
+    "car_finance",
+    "overdraft",
+    "bnpl",
 ]
 
 # Which sub-types each parent type accepts. Used by the API to reject
@@ -67,8 +84,16 @@ AccountSubtype = Literal[
 # an alternative from the Settings modal. Adding a new theme = adding a value
 # here plus matching CSS variables in static/style.css.
 Theme = Literal[
-    "olive", "indigo", "slate", "rose",
-    "emerald", "teal", "sky", "amber", "crimson", "violet",
+    "olive",
+    "indigo",
+    "slate",
+    "rose",
+    "emerald",
+    "teal",
+    "sky",
+    "amber",
+    "crimson",
+    "violet",
 ]
 DEFAULT_THEME: Theme = "olive"
 
@@ -76,27 +101,47 @@ DEFAULT_THEME: Theme = "olive"
 # here plus listing the symbol in CURRENCY_INFO below and the label in the
 # frontend CURRENCIES table.
 Currency = Literal[
-    "GBP", "USD", "EUR", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK",
+    "GBP",
+    "USD",
+    "EUR",
+    "JPY",
+    "CAD",
+    "AUD",
+    "CHF",
+    "NZD",
+    "SEK",
+    "NOK",
 ]
 DEFAULT_CURRENCY: Currency = "GBP"
-SUPPORTED_CURRENCIES: frozenset[str] = frozenset({
-    "GBP", "USD", "EUR", "JPY", "CAD", "AUD", "CHF", "NZD", "SEK", "NOK",
-})
+SUPPORTED_CURRENCIES: frozenset[str] = frozenset(
+    {
+        "GBP",
+        "USD",
+        "EUR",
+        "JPY",
+        "CAD",
+        "AUD",
+        "CHF",
+        "NZD",
+        "SEK",
+        "NOK",
+    }
+)
 
 # Display metadata. `decimals` is what the frontend uses to round; the DB
 # still stores everything as integer 100ths of the major unit (see db.py)
 # regardless of currency precision, which keeps the storage model uniform.
 CURRENCY_INFO: dict[str, dict[str, object]] = {
-    "GBP": {"symbol": "£",   "name": "British Pound",    "decimals": 2},
-    "USD": {"symbol": "$",   "name": "US Dollar",        "decimals": 2},
-    "EUR": {"symbol": "€",   "name": "Euro",             "decimals": 2},
-    "JPY": {"symbol": "¥",   "name": "Japanese Yen",     "decimals": 0},
-    "CAD": {"symbol": "C$",  "name": "Canadian Dollar",  "decimals": 2},
-    "AUD": {"symbol": "A$",  "name": "Australian Dollar","decimals": 2},
-    "CHF": {"symbol": "Fr.", "name": "Swiss Franc",      "decimals": 2},
-    "NZD": {"symbol": "NZ$", "name": "New Zealand Dollar","decimals": 2},
-    "SEK": {"symbol": "kr",  "name": "Swedish Krona",    "decimals": 2},
-    "NOK": {"symbol": "kr",  "name": "Norwegian Krone",  "decimals": 2},
+    "GBP": {"symbol": "£", "name": "British Pound", "decimals": 2},
+    "USD": {"symbol": "$", "name": "US Dollar", "decimals": 2},
+    "EUR": {"symbol": "€", "name": "Euro", "decimals": 2},
+    "JPY": {"symbol": "¥", "name": "Japanese Yen", "decimals": 0},
+    "CAD": {"symbol": "C$", "name": "Canadian Dollar", "decimals": 2},
+    "AUD": {"symbol": "A$", "name": "Australian Dollar", "decimals": 2},
+    "CHF": {"symbol": "Fr.", "name": "Swiss Franc", "decimals": 2},
+    "NZD": {"symbol": "NZ$", "name": "New Zealand Dollar", "decimals": 2},
+    "SEK": {"symbol": "kr", "name": "Swedish Krona", "decimals": 2},
+    "NOK": {"symbol": "kr", "name": "Norwegian Krone", "decimals": 2},
 }
 
 # Sanity bounds on an FX rate (X → base). Wide enough to cover any plausible
@@ -107,25 +152,52 @@ MAX_RATE_FX = 1_000_000.0
 
 
 SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
-    "current": frozenset({
-        "general", "standard", "joint", "student", "premier", "basic", "business",
-    }),
-    "savings": frozenset({
-        "general", "cash_isa", "stocks_shares_isa", "lifetime_isa", "junior_isa",
-        "regular_saver", "easy_access", "fixed_term_bond", "notice_account",
-        "premium_bonds", "sipp", "workplace_pension",
-    }),
-    "loan": frozenset({
-        "general", "bank_loan", "credit_card", "mortgage", "student_loan",
-        "car_finance", "overdraft", "bnpl",
-    }),
+    "current": frozenset(
+        {
+            "general",
+            "standard",
+            "joint",
+            "student",
+            "premier",
+            "basic",
+            "business",
+        }
+    ),
+    "savings": frozenset(
+        {
+            "general",
+            "cash_isa",
+            "stocks_shares_isa",
+            "lifetime_isa",
+            "junior_isa",
+            "regular_saver",
+            "easy_access",
+            "fixed_term_bond",
+            "notice_account",
+            "premium_bonds",
+            "sipp",
+            "workplace_pension",
+        }
+    ),
+    "loan": frozenset(
+        {
+            "general",
+            "bank_loan",
+            "credit_card",
+            "mortgage",
+            "student_loan",
+            "car_finance",
+            "overdraft",
+            "bnpl",
+        }
+    ),
 }
 
 FREQ_TO_MONTHLY: dict[Frequency, float] = {
-    "weekly":    52 / 12,
-    "monthly":   1.0,
+    "weekly": 52 / 12,
+    "monthly": 1.0,
     "quarterly": 1 / 3,
-    "annually":  1 / 12,
+    "annually": 1 / 12,
 }
 
 
@@ -133,7 +205,7 @@ FREQ_TO_MONTHLY: dict[Frequency, float] = {
 # Money is bounded so float→cents conversion stays well within int64 head-room
 # and the frontend never has to render absurdly large strings.
 
-MAX_MONEY = 1_000_000_000_000.0   # ±1 trillion dollars
-MAX_RATE  = 1_000.0               # % per annum
-MAX_DAYS  = 36_500                # ~100 years of history
-MAX_MONTHS = 1_200                # 100 years of projection
+MAX_MONEY = 1_000_000_000_000.0  # ±1 trillion dollars
+MAX_RATE = 1_000.0  # % per annum
+MAX_DAYS = 36_500  # ~100 years of history
+MAX_MONTHS = 1_200  # 100 years of projection

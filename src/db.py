@@ -3,6 +3,7 @@
 Money is stored as integer cents; helpers convert to/from float dollars at
 the API boundary.
 """
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Iterator, Optional
@@ -55,6 +56,7 @@ def user_scoped_delete_sql(table: str) -> str:
 
 # ─── Money helpers ────────────────────────────────────────────────────────────
 
+
 def to_cents(dollars: float) -> int:
     """Convert dollars to integer cents (banker-rounding via round())."""
     return int(round(dollars * 100))
@@ -66,6 +68,7 @@ def from_cents(cents: Optional[int]) -> Optional[float]:
 
 
 # ─── Connection ───────────────────────────────────────────────────────────────
+
 
 @contextmanager
 def db() -> Iterator[sqlite3.Connection]:
@@ -98,9 +101,7 @@ SCHEMA_VERSION: int = 1
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
     """Read the stamped schema version, or None if not yet stamped."""
-    row = conn.execute(
-        "SELECT value FROM meta WHERE key='schema_version'"
-    ).fetchone()
+    row = conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
     return int(row[0]) if row else None
 
 
@@ -162,9 +163,7 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 4. Add accounts.subtype.
     acc_cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
     if "subtype" not in acc_cols:
-        conn.execute(
-            "ALTER TABLE accounts ADD COLUMN subtype TEXT DEFAULT 'general'"
-        )
+        conn.execute("ALTER TABLE accounts ADD COLUMN subtype TEXT DEFAULT 'general'")
         conn.execute("UPDATE accounts SET subtype='general' WHERE subtype IS NULL")
         conn.commit()
 
@@ -173,7 +172,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE accounts ADD COLUMN currency TEXT NOT NULL DEFAULT 'GBP'"
         )
-        conn.execute("UPDATE accounts SET currency='GBP' WHERE currency IS NULL OR currency=''")
+        conn.execute(
+            "UPDATE accounts SET currency='GBP' WHERE currency IS NULL OR currency=''"
+        )
         conn.commit()
 
     # 6. Add users.base_currency.
@@ -183,7 +184,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.commit()
 
     # 7. balance_history.balance (REAL) → balance_cents (INTEGER).
-    bh_cols = {r[1] for r in conn.execute("PRAGMA table_info(balance_history)").fetchall()}
+    bh_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(balance_history)").fetchall()
+    }
     if "balance" in bh_cols and "balance_cents" not in bh_cols:
         conn.execute("PRAGMA foreign_keys = OFF")
         conn.executescript("""
@@ -229,6 +232,7 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
 
 
 # ─── Schema init + migrations ─────────────────────────────────────────────────
+
 
 def init() -> None:
     """Create tables on first run; apply additive migrations on subsequent runs."""

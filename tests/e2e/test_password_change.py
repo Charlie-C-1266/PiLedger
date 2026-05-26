@@ -1,4 +1,5 @@
 """End-to-end password-change flow via the Settings modal."""
+
 from __future__ import annotations
 
 import re
@@ -21,7 +22,9 @@ def test_settings_modal_exposes_password_change_form(signed_in_page: Page) -> No
     expect(signed_in_page.locator("#pw-status")).to_have_text("")
 
 
-def test_password_mismatch_shows_inline_error(signed_in_page: Page, registered_user) -> None:
+def test_password_mismatch_shows_inline_error(
+    signed_in_page: Page, registered_user
+) -> None:
     _open_settings(signed_in_page)
     signed_in_page.locator("#pw-current").fill(registered_user["password"])
     signed_in_page.locator("#pw-new").fill("newpassword123")
@@ -86,4 +89,6 @@ def test_password_change_succeeds_and_new_password_works_on_relogin(
     signed_in_page.locator("#login-password").fill(new_password)
     signed_in_page.locator("#login-btn").click()
     signed_in_page.wait_for_url(re.compile(r".*/$"))
-    expect(signed_in_page.locator("#header-username")).to_have_text(registered_user["username"])
+    expect(signed_in_page.locator("#header-username")).to_have_text(
+        registered_user["username"]
+    )

@@ -9,6 +9,7 @@ the value as JSON booleans even though SQLite stores dark_mode as 0/1.
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 
+
 def test_prefs_default_for_new_user(alice):
     r = alice.get("/api/prefs")
     assert r.status_code == 200
@@ -24,6 +25,7 @@ def test_put_prefs_requires_auth(client):
 
 
 # ── Round-trip ────────────────────────────────────────────────────────────────
+
 
 def test_set_theme(alice):
     r = alice.put("/api/prefs", json={"theme": "indigo"})
@@ -56,10 +58,15 @@ def test_partial_patch_leaves_other_field(alice):
 def test_empty_patch_is_noop(alice):
     alice.put("/api/prefs", json={"theme": "rose"})
     alice.put("/api/prefs", json={})
-    assert alice.get("/api/prefs").json() == {"theme": "rose", "dark_mode": False, "base_currency": "GBP"}
+    assert alice.get("/api/prefs").json() == {
+        "theme": "rose",
+        "dark_mode": False,
+        "base_currency": "GBP",
+    }
 
 
 # ── Validation ────────────────────────────────────────────────────────────────
+
 
 def test_invalid_theme_rejected(alice):
     assert alice.put("/api/prefs", json={"theme": "purple"}).status_code == 400
@@ -72,8 +79,16 @@ def test_extra_field_rejected(alice):
 
 def test_every_allowed_theme_accepted(alice):
     for t in (
-        "olive", "indigo", "slate", "rose",
-        "emerald", "teal", "sky", "amber", "crimson", "violet",
+        "olive",
+        "indigo",
+        "slate",
+        "rose",
+        "emerald",
+        "teal",
+        "sky",
+        "amber",
+        "crimson",
+        "violet",
     ):
         r = alice.put("/api/prefs", json={"theme": t})
         assert r.status_code == 200, t
@@ -82,14 +97,19 @@ def test_every_allowed_theme_accepted(alice):
 
 # ── Cross-user isolation ──────────────────────────────────────────────────────
 
+
 def test_alice_prefs_do_not_leak_to_bob(alice, bob):
     alice.put("/api/prefs", json={"theme": "rose", "dark_mode": True})
     # bob is a separate user — should still see defaults.
-    assert bob.get("/api/prefs").json() == {"theme": "olive", "dark_mode": False, "base_currency": "GBP"}
+    assert bob.get("/api/prefs").json() == {
+        "theme": "olive",
+        "dark_mode": False,
+        "base_currency": "GBP",
+    }
 
 
 def test_bob_cannot_overwrite_alice_prefs(alice, bob):
     alice.put("/api/prefs", json={"theme": "rose"})
     bob.put("/api/prefs", json={"theme": "slate"})
     assert alice.get("/api/prefs").json()["theme"] == "rose"
-    assert bob.get("/api/prefs").json()["theme"]   == "slate"
+    assert bob.get("/api/prefs").json()["theme"] == "slate"

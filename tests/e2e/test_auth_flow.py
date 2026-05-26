@@ -1,4 +1,5 @@
 """Sign-up / sign-in / sign-out flow exercised through the browser."""
+
 from __future__ import annotations
 
 import re
@@ -25,7 +26,9 @@ def test_register_then_auto_login_lands_on_dashboard(page: Page, unique_user) ->
     expect(page.locator("#total-amount")).to_be_visible()
 
 
-def test_register_with_mismatched_passwords_blocks_submit(page: Page, unique_user) -> None:
+def test_register_with_mismatched_passwords_blocks_submit(
+    page: Page, unique_user
+) -> None:
     page.goto("/login")
     page.locator("#tab-register").click()
     page.locator("#reg-username").fill(unique_user["username"])

@@ -9,6 +9,7 @@ Coverage:
   persistence must come from the API round-trip.
 * `/api/prefs` reflects the change for a third-party (curl-style) consumer.
 """
+
 from __future__ import annotations
 
 import re
@@ -27,7 +28,9 @@ def _close_settings(page: Page) -> None:
     page.locator("#settings-modal").wait_for(state="hidden")
 
 
-def test_theme_change_updates_html_attribute_and_localstorage(signed_in_page: Page) -> None:
+def test_theme_change_updates_html_attribute_and_localstorage(
+    signed_in_page: Page,
+) -> None:
     page = signed_in_page
 
     # Default theme is olive.
@@ -43,7 +46,9 @@ def test_theme_change_updates_html_attribute_and_localstorage(signed_in_page: Pa
     assert stored_theme == "rose"
 
 
-def test_dark_mode_toggle_persists_attribute_and_localstorage(signed_in_page: Page) -> None:
+def test_dark_mode_toggle_persists_attribute_and_localstorage(
+    signed_in_page: Page,
+) -> None:
     page = signed_in_page
 
     expect(page.locator("html")).not_to_have_attribute("data-mode", "dark")
@@ -55,7 +60,9 @@ def test_dark_mode_toggle_persists_attribute_and_localstorage(signed_in_page: Pa
     assert stored_dark == "1"
 
 
-def test_prefs_persist_across_sessions(page: Page, registered_user, live_server) -> None:
+def test_prefs_persist_across_sessions(
+    page: Page, registered_user, live_server
+) -> None:
     """The high-value test: settings really do follow the *user account*, not
     just the browser's localStorage. We wipe localStorage between sessions to
     prove the server is doing the persisting."""

@@ -1,4 +1,5 @@
 """Password hashing, session management, and the require_auth dependency."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import hashlib
@@ -40,7 +41,9 @@ def dummy_hash() -> str:
 def make_session(user_id: int) -> str:
     token = secrets.token_hex(32)
     now = utcnow_iso()
-    expires = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).strftime(ISO_FMT)
+    expires = (datetime.now(timezone.utc) + timedelta(days=SESSION_DAYS)).strftime(
+        ISO_FMT
+    )
     with db() as conn:
         conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
         conn.execute(

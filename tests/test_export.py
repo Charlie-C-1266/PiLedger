@@ -7,6 +7,7 @@ user-scoped table missing from `db.USER_SCOPED_TABLES`. Without that guard,
 adding a new user-table without remembering to extend `USER_SCOPED_TABLES`
 would silently break both the export and the `DELETE /api/auth/me` cascade.
 """
+
 import json
 
 from db import USER_SCOPED_TABLES, db
@@ -14,11 +15,13 @@ from db import USER_SCOPED_TABLES, db
 
 # ── Auth gate ────────────────────────────────────────────────────────────────
 
+
 def test_export_requires_auth(client):
     assert client.get("/api/export").status_code == 401
 
 
 # ── Response shape ───────────────────────────────────────────────────────────
+
 
 def test_export_for_new_user_returns_empty_tables(alice):
     r = alice.get("/api/export")
@@ -46,16 +49,27 @@ def test_export_attachment_header(alice):
 
 # ── Round-trip ───────────────────────────────────────────────────────────────
 
+
 def _seed_alice(alice):
-    acct = alice.post("/api/accounts", json={
-        "name": "Main", "type": "current", "currency": "GBP",
-    }).json()
+    acct = alice.post(
+        "/api/accounts",
+        json={
+            "name": "Main",
+            "type": "current",
+            "currency": "GBP",
+        },
+    ).json()
     alice.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 1234.56})
     alice.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 1400.00})
-    alice.post("/api/budget", json={
-        "account_id": acct["id"], "name": "Rent",
-        "amount": -800.0, "frequency": "monthly",
-    })
+    alice.post(
+        "/api/budget",
+        json={
+            "account_id": acct["id"],
+            "name": "Rent",
+            "amount": -800.0,
+            "frequency": "monthly",
+        },
+    )
     alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
     return acct
 
@@ -91,11 +105,17 @@ def test_export_is_valid_json_bytes(alice):
 
 # ── Cross-user isolation ─────────────────────────────────────────────────────
 
+
 def test_alice_export_excludes_bobs_data(alice, bob):
     _seed_alice(alice)
-    bob_acct = bob.post("/api/accounts", json={
-        "name": "Bob's Stash", "type": "savings", "currency": "USD",
-    }).json()
+    bob_acct = bob.post(
+        "/api/accounts",
+        json={
+            "name": "Bob's Stash",
+            "type": "savings",
+            "currency": "USD",
+        },
+    ).json()
     bob.post(f"/api/accounts/{bob_acct['id']}/balance", json={"balance": 99.0})
 
     alice_body = alice.get("/api/export").json()
@@ -108,11 +128,14 @@ def test_alice_export_excludes_bobs_data(alice, bob):
     # Balance history is reached via the accounts join — verify the join
     # doesn't accidentally pull rows from accounts owned by other users.
     assert all(row["balance_cents"] != 9900 for row in alice_body["balance_history"])
-    assert all(row["balance_cents"] not in (123456, 140000)
-               for row in bob_body["balance_history"])
+    assert all(
+        row["balance_cents"] not in (123456, 140000)
+        for row in bob_body["balance_history"]
+    )
 
 
 # ── Schema-drift guard ───────────────────────────────────────────────────────
+
 
 def test_user_scoped_tables_covers_every_user_keyed_table(app):
     """If a new table with `user_id` or `account_id` lands in the schema
@@ -126,7 +149,8 @@ def test_user_scoped_tables_covers_every_user_keyed_table(app):
 
     with db() as conn:
         tables = [
-            r["name"] for r in conn.execute(
+            r["name"]
+            for r in conn.execute(
                 "SELECT name FROM sqlite_master "
                 "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             ).fetchall()
@@ -135,7 +159,10 @@ def test_user_scoped_tables_covers_every_user_keyed_table(app):
         for table in tables:
             if table in EXEMPT:
                 continue
-            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            cols = {
+                r["name"]
+                for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
             if "user_id" in cols or "account_id" in cols:
                 assert table in USER_SCOPED_TABLES, (
                     f"table '{table}' is user-scoped (has user_id or account_id) "
@@ -149,9 +176,12 @@ def test_user_scoped_tables_does_not_list_phantom_tables(app):
     exist in the schema — otherwise the export would raise OperationalError."""
     with db() as conn:
         existing = {
-            r["name"] for r in conn.execute(
+            r["name"]
+            for r in conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'"
             ).fetchall()
         }
         for table in USER_SCOPED_TABLES:
-            assert table in existing, f"USER_SCOPED_TABLES names missing table '{table}'"
+            assert table in existing, (
+                f"USER_SCOPED_TABLES names missing table '{table}'"
+            )

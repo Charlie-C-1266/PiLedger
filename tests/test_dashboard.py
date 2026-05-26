@@ -4,17 +4,23 @@ Tests for the three dashboard aggregation endpoints:
   GET /api/history/all
   GET /api/projections
 """
+
 import math
 
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 
+
 def test_summary_empty(alice):
     body = alice.get("/api/summary").json()
     assert body == {
-        "total": 0.0, "total_current": 0.0, "total_savings": 0.0,
-        "total_loans": 0.0, "account_count": 0,
-        "base_currency": "GBP", "missing_rates": [],
+        "total": 0.0,
+        "total_current": 0.0,
+        "total_savings": 0.0,
+        "total_loans": 0.0,
+        "account_count": 0,
+        "base_currency": "GBP",
+        "missing_rates": [],
     }
 
 
@@ -23,7 +29,9 @@ def test_summary_requires_auth(client):
 
 
 def test_summary_current_accounts(alice):
-    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()[
+        "id"
+    ]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
     body = alice.get("/api/summary").json()
     assert body["total_current"] == 1000.0
@@ -33,7 +41,10 @@ def test_summary_current_accounts(alice):
 
 
 def test_summary_savings_accounts(alice):
-    aid = alice.post("/api/accounts", json={"name": "Marcus", "type": "savings", "interest_rate": 4.0}).json()["id"]
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Marcus", "type": "savings", "interest_rate": 4.0},
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 5000.0})
     body = alice.get("/api/summary").json()
     assert body["total_savings"] == 5000.0
@@ -41,8 +52,12 @@ def test_summary_savings_accounts(alice):
 
 
 def test_summary_mixed_accounts(alice):
-    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()["id"]
-    s = alice.post("/api/accounts", json={"name": "Savings", "type": "savings"}).json()["id"]
+    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()[
+        "id"
+    ]
+    s = alice.post("/api/accounts", json={"name": "Savings", "type": "savings"}).json()[
+        "id"
+    ]
     alice.post(f"/api/accounts/{c}/balance", json={"balance": 1500.0})
     alice.post(f"/api/accounts/{s}/balance", json={"balance": 3000.0})
     body = alice.get("/api/summary").json()
@@ -60,7 +75,9 @@ def test_summary_account_without_balance_contributes_zero_to_total(alice):
 
 
 def test_summary_uses_latest_balance_only(alice):
-    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 100.0})
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 200.0})
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 300.0})
@@ -69,7 +86,9 @@ def test_summary_uses_latest_balance_only(alice):
 
 
 def test_summary_user_isolation(alice, bob):
-    aid = alice.post("/api/accounts", json={"name": "Alice", "type": "current"}).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "Alice", "type": "current"}).json()[
+        "id"
+    ]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 10_000.0})
     body = bob.get("/api/summary").json()
     assert body["total"] == 0.0
@@ -77,6 +96,7 @@ def test_summary_user_isolation(alice, bob):
 
 
 # ── History / all ─────────────────────────────────────────────────────────────
+
 
 def test_history_all_empty(alice):
     assert alice.get("/api/history/all").json() == []
@@ -87,7 +107,9 @@ def test_history_all_requires_auth(client):
 
 
 def test_history_all_returns_accounts_that_have_entries(alice):
-    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current", "color": "#f97316"}).json()["id"]
+    aid = alice.post(
+        "/api/accounts", json={"name": "Monzo", "type": "current", "color": "#f97316"}
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
     data = alice.get("/api/history/all").json()
     assert len(data) == 1
@@ -101,11 +123,16 @@ def test_history_all_excludes_accounts_without_entries(alice):
 
 
 def test_history_all_days_filter_excludes_old_entries(alice):
-    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()["id"]
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2000-01-01T00:00:00Z",
-    })
+    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2000-01-01T00:00:00Z",
+        },
+    )
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 200.0})
 
     data = alice.get("/api/history/all?days=30").json()
@@ -116,22 +143,30 @@ def test_history_all_days_filter_excludes_old_entries(alice):
 
 
 def test_history_all_account_absent_when_all_entries_are_old(alice):
-    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()["id"]
-    alice.post(f"/api/accounts/{aid}/balance", json={
-        "balance": 100.0,
-        "recorded_at": "2000-01-01T00:00:00Z",
-    })
+    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={
+            "balance": 100.0,
+            "recorded_at": "2000-01-01T00:00:00Z",
+        },
+    )
     data = alice.get("/api/history/all?days=30").json()
     assert data == []
 
 
 def test_history_all_user_isolation(alice, bob):
-    aid = alice.post("/api/accounts", json={"name": "Alice", "type": "current"}).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "Alice", "type": "current"}).json()[
+        "id"
+    ]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
     assert bob.get("/api/history/all").json() == []
 
 
 # ── Projections ───────────────────────────────────────────────────────────────
+
 
 def test_projections_empty_when_no_savings_accounts(alice):
     alice.post("/api/accounts", json={"name": "Current", "type": "current"})
@@ -143,7 +178,10 @@ def test_projections_requires_auth(client):
 
 
 def test_projections_returns_correct_structure(alice):
-    aid = alice.post("/api/accounts", json={"name": "Marcus", "type": "savings", "interest_rate": 4.1}).json()["id"]
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Marcus", "type": "savings", "interest_rate": 4.1},
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 8000.0})
     proj = alice.get("/api/projections?months=12").json()[0]
     assert proj["name"] == "Marcus"
@@ -154,7 +192,9 @@ def test_projections_returns_correct_structure(alice):
 
 
 def test_projections_1yr_compound_interest_calculation(alice):
-    aid = alice.post("/api/accounts", json={"name": "Saver", "type": "savings", "interest_rate": 4.1}).json()["id"]
+    aid = alice.post(
+        "/api/accounts", json={"name": "Saver", "type": "savings", "interest_rate": 4.1}
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 8000.0})
     proj = alice.get("/api/projections").json()[0]
 
@@ -163,7 +203,9 @@ def test_projections_1yr_compound_interest_calculation(alice):
 
 
 def test_projections_5yr_compound_interest_calculation(alice):
-    aid = alice.post("/api/accounts", json={"name": "Saver", "type": "savings", "interest_rate": 3.5}).json()["id"]
+    aid = alice.post(
+        "/api/accounts", json={"name": "Saver", "type": "savings", "interest_rate": 3.5}
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 10_000.0})
     proj = alice.get("/api/projections").json()[0]
 
@@ -173,7 +215,9 @@ def test_projections_5yr_compound_interest_calculation(alice):
 
 
 def test_projections_points_length_matches_months_parameter(alice):
-    aid = alice.post("/api/accounts", json={"name": "S", "type": "savings", "interest_rate": 5.0}).json()["id"]
+    aid = alice.post(
+        "/api/accounts", json={"name": "S", "type": "savings", "interest_rate": 5.0}
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
     for months in (12, 24, 60):
         data = alice.get(f"/api/projections?months={months}").json()
@@ -181,14 +225,19 @@ def test_projections_points_length_matches_months_parameter(alice):
 
 
 def test_projections_first_point_equals_current_balance(alice):
-    aid = alice.post("/api/accounts", json={"name": "S", "type": "savings", "interest_rate": 5.0}).json()["id"]
+    aid = alice.post(
+        "/api/accounts", json={"name": "S", "type": "savings", "interest_rate": 5.0}
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 2500.0})
     proj = alice.get("/api/projections").json()[0]
     assert proj["points"][0]["balance"] == 2500.0
 
 
 def test_projections_zero_interest_stays_flat(alice):
-    aid = alice.post("/api/accounts", json={"name": "Flat Saver", "type": "savings", "interest_rate": 0.0}).json()["id"]
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Flat Saver", "type": "savings", "interest_rate": 0.0},
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 5000.0})
     proj = alice.get("/api/projections?months=24").json()[0]
     assert proj["1yr"] == 5000.0
@@ -197,13 +246,19 @@ def test_projections_zero_interest_stays_flat(alice):
 
 
 def test_projections_no_balance_recorded_uses_zero(alice):
-    alice.post("/api/accounts", json={"name": "Empty Saver", "type": "savings", "interest_rate": 5.0})
+    alice.post(
+        "/api/accounts",
+        json={"name": "Empty Saver", "type": "savings", "interest_rate": 5.0},
+    )
     proj = alice.get("/api/projections").json()[0]
     assert proj["initial_balance"] == 0.0
     assert proj["1yr"] == 0.0
 
 
 def test_projections_user_isolation(alice, bob):
-    aid = alice.post("/api/accounts", json={"name": "Alice Saver", "type": "savings", "interest_rate": 4.0}).json()["id"]
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Alice Saver", "type": "savings", "interest_rate": 4.0},
+    ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 5000.0})
     assert bob.get("/api/projections").json() == []

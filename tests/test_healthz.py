@@ -8,6 +8,7 @@ that scrapers can check independently of the status code, the running
 version string, and a monotonic uptime counter that never goes
 backwards.
 """
+
 import time
 
 from constants import VERSION

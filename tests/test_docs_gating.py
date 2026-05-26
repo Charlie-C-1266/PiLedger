@@ -19,6 +19,7 @@ the entire API.
 
 # ── Default FastAPI mounts must NOT be reachable ─────────────────────────────
 
+
 def test_root_openapi_json_disabled(client):
     """The FastAPI default `/openapi.json` is disabled — the replacement
     lives under `/api/openapi.json` and is auth-gated. A 404 here is the
@@ -28,6 +29,7 @@ def test_root_openapi_json_disabled(client):
 
 
 # ── /docs gating ─────────────────────────────────────────────────────────────
+
 
 def test_docs_redirects_to_login_when_unauthenticated(client):
     r = client.get("/docs", follow_redirects=False)
@@ -49,6 +51,7 @@ def test_docs_renders_swagger_ui_for_authenticated_user(alice):
 
 # ── /redoc gating ────────────────────────────────────────────────────────────
 
+
 def test_redoc_redirects_to_login_when_unauthenticated(client):
     r = client.get("/redoc", follow_redirects=False)
     assert r.status_code == 302
@@ -64,6 +67,7 @@ def test_redoc_renders_for_authenticated_user(alice):
 
 
 # ── /api/openapi.json gating ─────────────────────────────────────────────────
+
 
 def test_openapi_json_requires_auth(client):
     """JSON API endpoint — 401, not redirect, matches the rest of /api/."""

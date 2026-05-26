@@ -42,6 +42,7 @@ def _login(c, password="password123"):
 
 # ── Happy path under the cap ────────────────────────────────────────────────
 
+
 def test_under_limit_succeeds(rate_limited_client):
     # Five correct logins in burst all succeed.
     for _ in range(5):
@@ -50,6 +51,7 @@ def test_under_limit_succeeds(rate_limited_client):
 
 
 # ── The cap kicks in ────────────────────────────────────────────────────────
+
 
 def test_sixth_attempt_returns_429(rate_limited_client):
     # First five attempts with the wrong password return 401 (auth failure).
@@ -71,6 +73,7 @@ def test_cap_applies_regardless_of_password_validity(rate_limited_client):
 
 
 # ── The cap does NOT apply to other endpoints ───────────────────────────────
+
 
 def test_register_is_not_rate_limited(rate_limited_client):
     # Burn the login budget, then confirm registration is unaffected.
@@ -94,6 +97,7 @@ def test_login_page_get_is_not_rate_limited(rate_limited_client):
 
 
 # ── Defence-in-depth: 429 still carries the security headers ────────────────
+
 
 def test_429_response_carries_security_headers(rate_limited_client):
     for _ in range(5):

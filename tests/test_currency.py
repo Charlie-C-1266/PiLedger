@@ -4,6 +4,7 @@ manual FX rates, and FX-aware totals)."""
 
 # ── Account currency ──────────────────────────────────────────────────────────
 
+
 def test_account_defaults_to_gbp(alice):
     body = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()
     assert body["currency"] == "GBP"
@@ -29,13 +30,16 @@ def test_unsupported_currency_rejected(alice):
 
 
 def test_account_patch_can_change_currency(alice):
-    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
     alice.put(f"/api/accounts/{aid}", json={"currency": "EUR"})
     listed = alice.get("/api/accounts").json()
     assert next(a["currency"] for a in listed if a["id"] == aid) == "EUR"
 
 
 # ── Base currency ─────────────────────────────────────────────────────────────
+
 
 def test_base_currency_default(alice):
     assert alice.get("/api/prefs").json()["base_currency"] == "GBP"
@@ -54,16 +58,22 @@ def test_invalid_base_currency_rejected(alice):
 
 # ── Rates table ───────────────────────────────────────────────────────────────
 
+
 def test_rates_empty_by_default(alice):
     body = alice.get("/api/rates").json()
     assert body == {"base_currency": "GBP", "rates": []}
 
 
 def test_rates_round_trip(alice):
-    alice.put("/api/rates", json={"rates": [
-        {"currency": "USD", "rate": 0.78},
-        {"currency": "EUR", "rate": 0.85},
-    ]})
+    alice.put(
+        "/api/rates",
+        json={
+            "rates": [
+                {"currency": "USD", "rate": 0.78},
+                {"currency": "EUR", "rate": 0.85},
+            ]
+        },
+    )
     body = alice.get("/api/rates").json()
     assert body["base_currency"] == "GBP"
     by_cur = {r["currency"]: r["rate"] for r in body["rates"]}
@@ -72,10 +82,15 @@ def test_rates_round_trip(alice):
 
 def test_rates_replace_semantics(alice):
     # PUT replaces the whole table — entries not in the payload are dropped.
-    alice.put("/api/rates", json={"rates": [
-        {"currency": "USD", "rate": 0.78},
-        {"currency": "EUR", "rate": 0.85},
-    ]})
+    alice.put(
+        "/api/rates",
+        json={
+            "rates": [
+                {"currency": "USD", "rate": 0.78},
+                {"currency": "EUR", "rate": 0.85},
+            ]
+        },
+    )
     alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.80}]})
     body = alice.get("/api/rates").json()
     assert len(body["rates"]) == 1
@@ -90,10 +105,15 @@ def test_rate_against_base_rejected(alice):
 
 
 def test_duplicate_rate_rejected(alice):
-    r = alice.put("/api/rates", json={"rates": [
-        {"currency": "USD", "rate": 0.78},
-        {"currency": "USD", "rate": 0.80},
-    ]})
+    r = alice.put(
+        "/api/rates",
+        json={
+            "rates": [
+                {"currency": "USD", "rate": 0.78},
+                {"currency": "USD", "rate": 0.80},
+            ]
+        },
+    )
     assert r.status_code == 400
 
 
@@ -114,9 +134,12 @@ def test_rates_user_isolation(alice, bob):
 
 # ── FX-aware summary ──────────────────────────────────────────────────────────
 
+
 def test_summary_converts_to_base_using_rates(alice):
     # GBP account + USD account, with USD → GBP at 0.5 for an easy assertion.
-    gbp = alice.post("/api/accounts", json={"name": "G", "type": "current"}).json()["id"]
+    gbp = alice.post("/api/accounts", json={"name": "G", "type": "current"}).json()[
+        "id"
+    ]
     usd = alice.post(
         "/api/accounts",
         json={"name": "U", "type": "current", "currency": "USD"},
@@ -143,13 +166,15 @@ def test_summary_flags_missing_rates(alice):
 
 
 def test_summary_loans_subtract_in_base(alice):
-    asset = alice.post("/api/accounts", json={"name": "A", "type": "current"}).json()["id"]
+    asset = alice.post("/api/accounts", json={"name": "A", "type": "current"}).json()[
+        "id"
+    ]
     loan = alice.post(
         "/api/accounts",
         json={"name": "L", "type": "loan", "currency": "EUR"},
     ).json()["id"]
     alice.post(f"/api/accounts/{asset}/balance", json={"balance": 1000})
-    alice.post(f"/api/accounts/{loan}/balance",  json={"balance": 500})
+    alice.post(f"/api/accounts/{loan}/balance", json={"balance": 500})
     alice.put("/api/rates", json={"rates": [{"currency": "EUR", "rate": 0.9}]})
 
     body = alice.get("/api/summary").json()
@@ -160,15 +185,21 @@ def test_summary_loans_subtract_in_base(alice):
 
 # ── Base-currency change rescales rates ──────────────────────────────────────
 
+
 def test_base_change_rescales_rates(alice):
     # Set up GBP base with USD→GBP=0.5 and EUR→GBP=0.9. Then switch base to USD.
     # In the new world:
     #   - GBP→USD should be 1/0.5 = 2.0
     #   - EUR→USD should be 0.9/0.5 = 1.8
-    alice.put("/api/rates", json={"rates": [
-        {"currency": "USD", "rate": 0.5},
-        {"currency": "EUR", "rate": 0.9},
-    ]})
+    alice.put(
+        "/api/rates",
+        json={
+            "rates": [
+                {"currency": "USD", "rate": 0.5},
+                {"currency": "EUR", "rate": 0.9},
+            ]
+        },
+    )
     alice.put("/api/prefs", json={"base_currency": "USD"})
     body = alice.get("/api/rates").json()
     assert body["base_currency"] == "USD"
