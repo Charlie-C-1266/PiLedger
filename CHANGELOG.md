@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.0] — 2026-05-26
+
+### Changed
+
+- **New account colours default to the active theme accent.** The colour picker in the Add Account modal now defaults to the current theme's accent swatch (e.g. emerald `#059669` when the emerald theme is active) instead of the hardcoded indigo `#6366f1`. Charts built from account colours will therefore match the chosen theme for any accounts created going forward. Existing accounts keep their stored colours. The Edit Account fallback also uses the theme accent.
+
+Affected files: `src/static/app.js` (`themeAccent()` helper, `openAddAccountModal`, `openEditModal`), `src/static/index.html` (default `<input type="color">` value), `src/constants.py` (`VERSION` bumped to `0.29.0`).
+
+---
+
 ## [0.28.1] — 2026-05-26
 
 ### Fixed

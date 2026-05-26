@@ -64,6 +64,11 @@ const THEMES = [
 
 const prefs = { theme: 'olive', dark_mode: false, base_currency: 'GBP' };
 
+function themeAccent() {
+  const t = THEMES.find(t => t.id === prefs.theme);
+  return t ? t.swatch : '#708238';
+}
+
 // Supported currencies — id must match the backend Currency literal in
 // constants.py. `dec` is what Intl.NumberFormat uses for minimumFractionDigits
 // (JPY has no minor unit and would otherwise render fractional yen).
@@ -924,7 +929,7 @@ function openAddAccountModal() {
   document.getElementById('add-interest').value = '';
   document.getElementById('add-min-payment').value = '';
   document.getElementById('add-balance').value = '';
-  document.getElementById('add-color').value = '#6366f1';
+  document.getElementById('add-color').value = themeAccent();
   populateCurrencySelect(document.getElementById('add-currency'), prefs.base_currency);
   toggleAddInterest();
   openModal('add-account-modal');
@@ -1013,7 +1018,7 @@ function openEditModal(id) {
   const hasRate = (a.type === 'savings' || a.type === 'loan');
   document.getElementById('edit-name').value     = a.name;
   document.getElementById('edit-interest').value = a.interest_rate;
-  document.getElementById('edit-color').value    = a.color || '#6366f1';
+  document.getElementById('edit-color').value    = a.color || themeAccent();
   populateSubtypeSelect(document.getElementById('edit-subtype'), a.type, a.subtype || 'general');
   document.getElementById('edit-interest-group').style.display = hasRate ? '' : 'none';
   document.getElementById('edit-interest-label').textContent =
