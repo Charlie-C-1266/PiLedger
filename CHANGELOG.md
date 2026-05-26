@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.27.0] — 2026-05-26
+
+### Changed
+
+- **Frontend: DOM-element factory functions replace innerHTML rendering.** Five render targets — account cards, projection stat cards, budget item cards, theme swatches, and FX rate rows — are now built via factory functions (`createAccountCard`, `createProjectionStatCard`, `createBudgetAccountCard`, `createBudgetItemRow`, `createThemeSwatch`, `createRateRow`) that return real DOM elements. Containers use `replaceChildren()` instead of `innerHTML =`, which avoids destroying and recreating every child on re-render and removes the need for manual `esc()` calls on user-controlled strings (text is set via `textContent`, which is safe by default). A small `el(tag, attrs, ...children)` helper keeps the factory functions concise. The breakdown table (`renderBreakdownTable`) stays as innerHTML because the `<thead>`/`<tbody>`/`<tr>` nesting would be excessively verbose as factory calls for no security benefit.
+
+- **Frontend: JSDoc type annotations mirror Pydantic response models.** Sixteen `@typedef` declarations at the top of `app.js` now document every API response shape (`AccountOut`, `SummaryOut`, `BudgetItemOut`, `PrefsOut`, `RatesOut`, `HistoryAccountOut`, `SavingsProjection`, `BudgetProjectionAccount`, `BudgetProjectionResult`, etc.). Render and load functions carry `@param` annotations so VSCode and other LSPs can type-check against the API contract. No runtime effect.
+
+- **Frontend: hash-based router for deep-linkable views.** The Overview and Budget Planner views are now driven by `#overview` and `#budget` URL hashes. `showView()` sets the hash, a `hashchange` listener calls `_applyView()`, and the boot sequence reads `currentView()` so a `/#budget` bookmark or shared link lands directly on the Budget Planner. The nav tabs continue to work via the existing `data-action="showView"` delegation. Future views (e.g. Transactions) only need a new entry in the `VIEWS` array and a corresponding `#view-id` section in `index.html`.
+
+Affected files: `src/static/app.js` (all four improvements), `src/constants.py` (`VERSION` bumped to `0.27.0`). After: `uv run pytest` → **294 passed**; `uv run pytest tests/e2e` → **38 passed**; `uv run ruff check .` → clean; `uv run ruff format --check .` → clean; `uv run mypy` → clean.
+
+---
+
 ## [0.26.1] — 2026-05-26
 
 ### Tests

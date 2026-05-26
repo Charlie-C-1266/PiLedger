@@ -1,5 +1,21 @@
 'use strict';
 
+// ─── API response types (mirror Pydantic models in schemas.py) ──────────────
+/** @typedef {{ id: number, username: string }} UserOut */
+/** @typedef {{ theme: string, dark_mode: boolean, base_currency: string }} PrefsOut */
+/** @typedef {{ id: number, user_id: number, name: string, type: 'current'|'savings'|'loan', subtype: string, currency: string, interest_rate: number, color: string, created_at: string, current_balance: ?number, last_updated: ?string }} AccountOut */
+/** @typedef {{ total: number, total_current: number, total_savings: number, total_loans: number, account_count: number, base_currency: string, missing_rates: string[] }} SummaryOut */
+/** @typedef {{ balance: number, notes: ?string, recorded_at: string }} BalanceEntryOut */
+/** @typedef {{ balance: number, date: string }} HistoryPointOut */
+/** @typedef {{ id: number, name: string, color: string, type: 'current'|'savings'|'loan', currency: string, history: HistoryPointOut[] }} HistoryAccountOut */
+/** @typedef {{ id: number, user_id: number, account_id: number, name: string, amount: number, frequency: 'weekly'|'monthly'|'quarterly'|'annually', created_at: string }} BudgetItemOut */
+/** @typedef {{ currency: string, rate: number, updated_at: ?string }} RateOut */
+/** @typedef {{ base_currency: string, rates: RateOut[] }} RatesOut */
+/** @typedef {{ date: string, balance: number }} ProjectionPoint */
+/** @typedef {{ id: number, name: string, color: string, currency: string, initial_balance: number, interest_rate: number, '1yr': number, '2yr': number, '5yr': number, points: ProjectionPoint[] }} SavingsProjection */
+/** @typedef {{ id: number, name: string, type: 'current'|'savings'|'loan', color: string, currency: string, current_balance: ?number, monthly_net: number, points: ProjectionPoint[], final_balance: number }} BudgetProjectionAccount */
+/** @typedef {{ months: number, accounts: BudgetProjectionAccount[], net_worth: ProjectionPoint[], base_currency: string }} BudgetProjectionResult */
+
 // ─── State ────────────────────────────────────────────────────────────────────
 const state = {
   // Overview
@@ -239,8 +255,26 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-// ─── Navigation ───────────────────────────────────────────────────────────────
-function showView(name) {
+/** Create an HTML element. Attributes are set via setAttribute; children are
+ *  appended (strings become text nodes, nullish values are skipped). */
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs))
+    if (v != null && v !== false) e.setAttribute(k, String(v));
+  for (const c of children)
+    if (c != null && c !== false) e.append(typeof c === 'string' ? c : c);
+  return e;
+}
+
+// ─── Navigation (hash-based router) ─────────────────────────────────────────
+const VIEWS = ['overview', 'budget'];
+
+function currentView() {
+  const h = location.hash.replace('#', '');
+  return VIEWS.includes(h) ? h : 'overview';
+}
+
+function _applyView(name) {
   document.getElementById('view-overview').style.display = name === 'overview' ? '' : 'none';
   document.getElementById('view-budget').style.display   = name === 'budget'   ? '' : 'none';
   document.querySelectorAll('.nav-tab').forEach(t =>
@@ -248,6 +282,14 @@ function showView(name) {
   );
   if (name === 'budget') loadBudgetView();
 }
+
+function showView(name) {
+  if (!VIEWS.includes(name)) name = 'overview';
+  if (location.hash === '#' + name) { _applyView(name); return; }
+  location.hash = name;
+}
+
+window.addEventListener('hashchange', () => _applyView(currentView()));
 
 // ─── Overview — load & render ─────────────────────────────────────────────────
 async function loadAll() {
@@ -304,61 +346,60 @@ function setAccountFilter(type) {
   renderAccounts(state.accounts);
 }
 
+/** @param {AccountOut} a */
+function createAccountCard(a) {
+  const cur = a.currency || 'GBP';
+  const isLoan = a.type === 'loan';
+
+  const nameDiv = el('div', { class: 'account-name' }, a.name);
+  const typeBadge = el('span', { class: `badge badge-${a.type}` }, a.type);
+  const headerLeft = el('div', null, nameDiv, typeBadge);
+  if (a.subtype && a.subtype !== 'general')
+    headerLeft.append(el('span', { class: 'badge badge-subtype' }, subtypeLabel(a.type, a.subtype)));
+  if (cur !== prefs.base_currency)
+    headerLeft.append(el('span', { class: 'badge badge-currency' }, cur));
+
+  const editBtn = el('button', { class: 'btn-icon', 'data-action': 'openEditModal', 'data-arg': String(a.id), title: 'Edit' });
+  editBtn.innerHTML = '&#9998;';
+
+  const card = el('div', { class: 'card account-card', style: `--accent-color:${a.color}` },
+    el('div', { class: 'account-header' }, headerLeft, editBtn),
+    el('div', { class: 'account-balance' }, fmt(a.current_balance, cur)),
+    el('div', { class: 'account-updated' }, (isLoan ? 'Owed · ' : 'Updated: ') + fmtDate(a.last_updated)),
+  );
+  if (a.interest_rate > 0 && (a.type === 'savings' || isLoan))
+    card.append(el('div', { class: 'account-rate' + (isLoan ? ' account-rate--loan' : '') },
+      `${a.interest_rate}% ${isLoan ? 'APR' : 'AER'}`));
+  card.append(el('button', { class: 'btn btn-primary btn-sm mt-8', 'data-action': 'openUpdateModal', 'data-arg': String(a.id) }, 'Update Balance'));
+  return card;
+}
+
+/** @param {AccountOut[]} accounts */
 function renderAccounts(accounts) {
   const grid = document.getElementById('accounts-grid');
   if (!accounts.length) {
-    grid.innerHTML = `
-      <div class="empty-state">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity=".3">
-          <rect x="4" y="10" width="40" height="30" rx="4" stroke="#64748b" stroke-width="2.5"/>
-          <path d="M4 18h40" stroke="#64748b" stroke-width="2.5"/>
-          <circle cx="13" cy="28" r="3" fill="#64748b"/>
-        </svg>
-        <p>No accounts yet — click <strong>Add Account</strong> to get started.</p>
-      </div>`;
+    const empty = el('div', { class: 'empty-state' });
+    empty.innerHTML = `<svg width="48" height="48" viewBox="0 0 48 48" fill="none" opacity=".3">
+      <rect x="4" y="10" width="40" height="30" rx="4" stroke="#64748b" stroke-width="2.5"/>
+      <path d="M4 18h40" stroke="#64748b" stroke-width="2.5"/>
+      <circle cx="13" cy="28" r="3" fill="#64748b"/>
+    </svg>`;
+    empty.append(el('p', null, 'No accounts yet — click ', el('strong', null, 'Add Account'), ' to get started.'));
+    grid.replaceChildren(empty);
     return;
   }
-  // Narrow to the active type filter (if any). The summary tiles each map to
-  // one AccountType; the 'all' tile is represented internally as null.
   const visible = state.accountFilter
     ? accounts.filter(a => a.type === state.accountFilter)
     : accounts;
   if (!visible.length) {
     const labels = { savings: 'savings', current: 'current', loan: 'loan' };
-    grid.innerHTML = `
-      <div class="empty-state">
-        <p>No ${esc(labels[state.accountFilter] || '')} accounts to show.
-           <button type="button" class="btn btn-ghost btn-sm" data-action="setAccountFilter" data-arg="all">Show all</button></p>
-      </div>`;
+    const showAll = el('button', { type: 'button', class: 'btn btn-ghost btn-sm', 'data-action': 'setAccountFilter', 'data-arg': 'all' }, 'Show all');
+    const empty = el('div', { class: 'empty-state' },
+      el('p', null, `No ${labels[state.accountFilter] || ''} accounts to show. `, showAll));
+    grid.replaceChildren(empty);
     return;
   }
-  grid.innerHTML = visible.map(a => {
-    const sub = (a.subtype && a.subtype !== 'general')
-      ? `<span class="badge badge-subtype">${esc(subtypeLabel(a.type, a.subtype))}</span>`
-      : '';
-    // Show the currency badge only when it differs from the base — keeps
-    // single-currency users from seeing redundant GBP/GBP/GBP tags.
-    const cur = a.currency || 'GBP';
-    const curBadge = cur !== prefs.base_currency
-      ? `<span class="badge badge-currency">${esc(cur)}</span>`
-      : '';
-    return `
-    <div class="card account-card" style="--accent-color:${esc(a.color)}">
-      <div class="account-header">
-        <div>
-          <div class="account-name">${esc(a.name)}</div>
-          <span class="badge badge-${esc(a.type)}">${esc(a.type)}</span>${sub}${curBadge}
-        </div>
-        <button class="btn-icon" data-action="openEditModal" data-arg="${a.id}" title="Edit">&#9998;</button>
-      </div>
-      <div class="account-balance">${fmt(a.current_balance, cur)}</div>
-      <div class="account-updated">${a.type === 'loan' ? 'Owed · ' : 'Updated: '}${fmtDate(a.last_updated)}</div>
-      ${a.interest_rate > 0 && (a.type === 'savings' || a.type === 'loan')
-        ? `<div class="account-rate${a.type === 'loan' ? ' account-rate--loan' : ''}">${a.interest_rate}% ${a.type === 'loan' ? 'APR' : 'AER'}</div>`
-        : ''}
-      <button class="btn btn-primary btn-sm mt-8" data-action="openUpdateModal" data-arg="${a.id}">Update Balance</button>
-    </div>`;
-  }).join('');
+  grid.replaceChildren(...visible.map(createAccountCard));
 }
 
 // ─── Overview charts ──────────────────────────────────────────────────────────
@@ -623,20 +664,24 @@ function renderProjectionChart(data, months) {
     },
   });
 
-  document.getElementById('projection-stats').innerHTML = data.map(a => {
+  /** @param {SavingsProjection} a */
+  function createProjectionStatCard(a) {
     const cur = a.currency || 'GBP';
-    return `
-    <div class="card projection-card" style="--accent-color:${esc(a.color)}">
-      <div class="proj-name">${esc(a.name)}</div>
-      <div class="proj-rate">${a.interest_rate}% AER (monthly compounding)</div>
-      <div class="proj-rows">
-        <div class="proj-row"><span>Now</span><span class="proj-value">${fmt(a.initial_balance, cur)}</span><span></span></div>
-        <div class="proj-row"><span>1 year</span><span class="proj-value">${fmt(a['1yr'], cur)}</span><span class="proj-interest">+${fmt(a['1yr'] - a.initial_balance, cur)}</span></div>
-        <div class="proj-row"><span>2 years</span><span class="proj-value">${fmt(a['2yr'], cur)}</span><span class="proj-interest">+${fmt(a['2yr'] - a.initial_balance, cur)}</span></div>
-        <div class="proj-row"><span>5 years</span><span class="proj-value">${fmt(a['5yr'], cur)}</span><span class="proj-interest">+${fmt(a['5yr'] - a.initial_balance, cur)}</span></div>
-      </div>
-    </div>`;
-  }).join('');
+    const row = (label, value, interest) => {
+      const r = el('div', { class: 'proj-row' }, el('span', null, label), el('span', { class: 'proj-value' }, fmt(value, cur)));
+      r.append(interest != null ? el('span', { class: 'proj-interest' }, '+' + fmt(interest, cur)) : el('span'));
+      return r;
+    };
+    return el('div', { class: 'card projection-card', style: `--accent-color:${a.color}` },
+      el('div', { class: 'proj-name' }, a.name),
+      el('div', { class: 'proj-rate' }, `${a.interest_rate}% AER (monthly compounding)`),
+      el('div', { class: 'proj-rows' },
+        row('Now', a.initial_balance, null),
+        row('1 year', a['1yr'], a['1yr'] - a.initial_balance),
+        row('2 years', a['2yr'], a['2yr'] - a.initial_balance),
+        row('5 years', a['5yr'], a['5yr'] - a.initial_balance)));
+  }
+  document.getElementById('projection-stats').replaceChildren(...data.map(createProjectionStatCard));
 }
 
 function emptyChart(canvas, msg) {
@@ -755,61 +800,54 @@ function renderBudgetChart(projection) {
 }
 
 // ─── Budget items list ────────────────────────────────────────────────────────
+
+/** @param {BudgetItemOut} item @param {string} accCur */
+function createBudgetItemRow(item, accCur) {
+  const editBtn = el('button', { class: 'btn-icon', 'data-action': 'openEditBudgetModal', 'data-arg': String(item.id), title: 'Edit' });
+  editBtn.innerHTML = '&#9998;';
+  const delBtn = el('button', { class: 'btn-icon', 'data-action': 'openDeleteBudgetConfirm', 'data-arg': String(item.id), title: 'Remove' });
+  delBtn.innerHTML = '&#10005;';
+  return el('div', { class: 'bi-row' },
+    el('div', { class: 'bi-info' },
+      el('span', { class: 'bi-name' }, item.name),
+      el('span', { class: 'bi-freq' }, item.frequency)),
+    el('span', { class: `bi-amount ${item.amount < 0 ? 'outflow' : 'inflow'}` }, fmtSigned(item.amount, accCur)),
+    editBtn, delBtn);
+}
+
+/** @param {BudgetProjectionAccount} acc @param {BudgetItemOut[]} accItems */
+function createBudgetAccountCard(acc, accItems) {
+  const accCur = acc.currency || 'GBP';
+  const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : 'neutral';
+  const netLabel = acc.monthly_net !== 0 ? fmtSigned(acc.monthly_net, accCur) + '/mo' : 'No items';
+
+  const card = el('div', { class: 'card budget-account-card', style: `--accent-color:${acc.color}` },
+    el('div', { class: 'bac-header' },
+      el('div', null,
+        el('div', { class: 'account-name' }, acc.name),
+        el('span', { class: `badge badge-${acc.type}` }, acc.type)),
+      el('div', { class: 'bac-meta' },
+        el('span', { class: `bac-net ${netClass}` }, netLabel),
+        el('button', { class: 'btn btn-primary btn-sm', 'data-action': 'openAddBudgetModal', 'data-arg': String(acc.id) }, '+ Add'))));
+  if (accItems.length)
+    card.append(el('div', { class: 'bi-list' }, ...accItems.map(i => createBudgetItemRow(i, accCur))));
+  else
+    card.append(el('p', { class: 'bi-empty' }, 'No budget items yet.'));
+  return card;
+}
+
+/** @param {BudgetItemOut[]} items @param {BudgetProjectionResult} projection */
 function renderBudgetItems(items, projection) {
   const grid = document.getElementById('budget-items-grid');
-
   if (!projection.accounts.length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><p>Add an account to start planning your budget.</p></div>`;
+    grid.replaceChildren(el('div', { class: 'empty-state', style: 'grid-column:1/-1' },
+      el('p', null, 'Add an account to start planning your budget.')));
     return;
   }
-
   const byAccount = {};
-  items.forEach(i => {
-    if (!byAccount[i.account_id]) byAccount[i.account_id] = [];
-    byAccount[i.account_id].push(i);
-  });
-
-  const freqLabel = { weekly: 'weekly', monthly: 'monthly', quarterly: 'quarterly', annually: 'annually' };
-
-  grid.innerHTML = projection.accounts.map(acc => {
-    const accItems = byAccount[acc.id] || [];
-    const netClass = acc.monthly_net > 0 ? 'positive' : acc.monthly_net < 0 ? 'negative' : 'neutral';
-    const netLabel = acc.monthly_net !== 0
-      ? fmtSigned(acc.monthly_net, acc.currency || 'GBP') + '/mo'
-      : 'No items';
-
-    const accCur = acc.currency || 'GBP';
-    const rows = accItems.map(item => {
-      const isOut = item.amount < 0;
-      return `
-        <div class="bi-row">
-          <div class="bi-info">
-            <span class="bi-name">${esc(item.name)}</span>
-            <span class="bi-freq">${freqLabel[item.frequency]}</span>
-          </div>
-          <span class="bi-amount ${isOut ? 'outflow' : 'inflow'}">${fmtSigned(item.amount, accCur)}</span>
-          <button class="btn-icon" data-action="openEditBudgetModal" data-arg="${item.id}" title="Edit">&#9998;</button>
-          <button class="btn-icon" data-action="openDeleteBudgetConfirm" data-arg="${item.id}" title="Remove">&#10005;</button>
-        </div>`;
-    }).join('');
-
-    return `
-      <div class="card budget-account-card" style="--accent-color:${esc(acc.color)}">
-        <div class="bac-header">
-          <div>
-            <div class="account-name">${esc(acc.name)}</div>
-            <span class="badge badge-${esc(acc.type)}">${esc(acc.type)}</span>
-          </div>
-          <div class="bac-meta">
-            <span class="bac-net ${netClass}">${netLabel}</span>
-            <button class="btn btn-primary btn-sm" data-action="openAddBudgetModal" data-arg="${acc.id}">+ Add</button>
-          </div>
-        </div>
-        ${accItems.length
-          ? `<div class="bi-list">${rows}</div>`
-          : `<p class="bi-empty">No budget items yet.</p>`}
-      </div>`;
-  }).join('');
+  items.forEach(i => { (byAccount[i.account_id] ||= []).push(i); });
+  grid.replaceChildren(...projection.accounts.map(acc =>
+    createBudgetAccountCard(acc, byAccount[acc.id] || [])));
 }
 
 // ─── Monthly breakdown table ──────────────────────────────────────────────────
@@ -1130,14 +1168,14 @@ document.addEventListener('keydown', e => {
 // ─── Settings modal ──────────────────────────────────────────────────────────
 function renderThemeGrid() {
   const grid = document.getElementById('theme-grid');
-  grid.innerHTML = THEMES.map(t => `
-    <button type="button"
-            class="theme-swatch ${t.id === prefs.theme ? 'active' : ''}"
-            data-theme-id="${t.id}"
-            data-action="setTheme" data-arg="${t.id}">
-      <span class="theme-swatch-dot" style="background:${t.swatch}"></span>
-      <span class="theme-swatch-name">${esc(t.label)}</span>
-    </button>`).join('');
+  grid.replaceChildren(...THEMES.map(t =>
+    el('button', {
+      type: 'button',
+      class: `theme-swatch${t.id === prefs.theme ? ' active' : ''}`,
+      'data-theme-id': t.id, 'data-action': 'setTheme', 'data-arg': t.id,
+    },
+      el('span', { class: 'theme-swatch-dot', style: `background:${t.swatch}` }),
+      el('span', { class: 'theme-swatch-name' }, t.label))));
 }
 
 function renderModePill() {
@@ -1182,6 +1220,22 @@ function renderCurrencySettings() {
   renderRatesTable();
 }
 
+function createRateRow(c, base) {
+  const m = currencyMeta(c);
+  const r = fxState.rates[c];
+  const input = el('input', {
+    type: 'number', class: 'rate-input', 'data-currency': c,
+    step: '0.0001', min: '0', placeholder: '—',
+  });
+  if (r != null) input.value = r;
+  return el('div', { class: 'rate-row', 'data-currency': c },
+    el('span', { class: 'rate-from' }, `1 ${c}`),
+    el('span', { class: 'rate-eq' }, '='),
+    input,
+    el('span', { class: 'rate-to' }, base),
+    el('span', { class: 'rate-name' }, m.label.replace(/^[A-Z]+ — /, '')));
+}
+
 function renderRatesTable() {
   const base = prefs.base_currency || 'GBP';
   const rows = _usedCurrencies()
@@ -1192,7 +1246,7 @@ function renderRatesTable() {
   const saveBtn = document.getElementById('rates-save-btn');
 
   if (!rows.length) {
-    table.innerHTML = '';
+    table.replaceChildren();
     note.textContent = 'Add an account in another currency to manage exchange rates here.';
     saveBtn.style.display = 'none';
     return;
@@ -1200,21 +1254,7 @@ function renderRatesTable() {
 
   saveBtn.style.display = '';
   note.textContent = 'Rates are how the dashboard converts to your base currency for net-worth totals.';
-  table.innerHTML = rows.map(c => {
-    const m = currencyMeta(c);
-    const r = fxState.rates[c];
-    const value = r != null ? r : '';
-    return `
-      <div class="rate-row" data-currency="${c}">
-        <span class="rate-from">1 ${esc(c)}</span>
-        <span class="rate-eq">=</span>
-        <input type="number" class="rate-input" data-currency="${c}"
-               step="0.0001" min="0" placeholder="—"
-               value="${value}" />
-        <span class="rate-to">${esc(base)}</span>
-        <span class="rate-name">${esc(m.label.replace(/^[A-Z]+ — /, ''))}</span>
-      </div>`;
-  }).join('');
+  table.replaceChildren(...rows.map(c => createRateRow(c, base)));
 }
 
 async function saveRatesFromTable() {
@@ -1404,4 +1444,5 @@ document.addEventListener('change', e => {
   await loadPrefs();
   await loadRates();
   await loadAll();
+  _applyView(currentView());
 })();
