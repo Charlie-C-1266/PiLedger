@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.25.0] — 2026-05-26
+
+### Added
+
+- **Explicit `schema_version` stamp in a `meta` table (P1-1).** `db.init()` no longer relies solely on `PRAGMA table_info` sniffing to decide which migrations to run. A new `meta(key, value)` table is created alongside the other tables, and a `schema_version` row tracks the current schema version as an integer. On first run against a legacy database (pre-v0.25, no `meta` table), `init()` runs all existing sniff-based migrations — which are idempotent — then stamps `schema_version = 1`. On a fresh database the sniff-based migrations are all no-ops and the stamp lands immediately. Subsequent runs read the stamp and skip the legacy path entirely; future migrations gate on `if version < N` instead of column-presence checks, which is both cheaper (no PRAGMA per migration) and less fragile (a table-rewrite that preserves column names won't accidentally re-trigger an earlier migration). `SCHEMA_VERSION` is exported from `db.py` as the single source of truth. The `meta` table is added to the `EXEMPT` set in `tests/test_export.py`'s schema-drift guard since it's infrastructure, not user-scoped data. New tests in `tests/test_migrations.py` (4 cases): legacy DB gets stamped after migration, fresh DB gets stamped on first init, second init skips legacy migrations, and `meta` table exists on a fresh DB.
+
+Affected files: `src/db.py` (new `meta` table, `SCHEMA_VERSION` constant, `_get_schema_version` / `_set_schema_version` / `_run_legacy_migrations` helpers, restructured `init()`), `tests/test_migrations.py` (+4 cases), `tests/test_export.py` (`meta` added to `EXEMPT`), `src/constants.py` (`VERSION` bumped to `0.25.0`). After: `uv run pytest` → **286 passed** (was 282, +4); `uv run pytest tests/e2e` → **38 passed**; `uv run ruff check .` → clean.
+
+---
+
 ## [0.24.0] — 2026-05-26
 
 ### Added
