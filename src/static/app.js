@@ -1419,8 +1419,8 @@ function toggleMenu() {
   const dd = document.getElementById('header-dropdown');
   const btn = document.getElementById('btn-menu');
   const opening = dd.hasAttribute('hidden');
-  if (opening) { dd.removeAttribute('hidden'); dd.classList.add('open'); }
-  else         { dd.setAttribute('hidden', ''); dd.classList.remove('open'); }
+  if (opening) dd.removeAttribute('hidden');
+  else         dd.setAttribute('hidden', '');
   btn.setAttribute('aria-expanded', String(opening));
 }
 
@@ -1429,7 +1429,6 @@ function _closeMenu() {
   const btn = document.getElementById('btn-menu');
   if (!dd || dd.hasAttribute('hidden')) return;
   dd.setAttribute('hidden', '');
-  dd.classList.remove('open');
   btn.setAttribute('aria-expanded', 'false');
 }
 
