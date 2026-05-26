@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.28.0] — 2026-05-26
+
+### Added
+
+- **Navigation dropdown menu.** The dashboard header controls (username, sign out, dark mode toggle, settings) are collapsed into a single hamburger menu dropdown. The header is now `[Logo] [Net Worth] [+ Add Account] [Menu]`, keeping primary actions visible while decluttering the toolbar. The dropdown contains: username label, dark/light mode toggle, Documentation link, Settings, and Sign out. Closes on click-outside, Escape, or navigation. Motivation: the header had five separate controls competing for space, especially tight on mobile.
+
+- **Public documentation viewer at `/guide`.** The 10 existing markdown docs in `docs/` are now browsable through an in-app documentation page with a sidebar and rendered prose. Accessible without signing in (linked from the login page) and from the logged-in dropdown menu. Uses vendored `marked.min.js` (~40KB) for client-side markdown rendering, matching the Chart.js vendoring pattern. A new `GET /api/docs/{slug}` endpoint serves raw markdown with an allowlist guard against path traversal. The guide page detects auth state and shows "Back to app" for logged-in users or "Sign in" for anonymous visitors. Responsive: sidebar collapses to a slide-in panel on mobile.
+
+Affected files: `src/static/index.html`, `src/static/style.css`, `src/static/app.js` (header dropdown), `src/static/guide.html`, `src/static/guide.css`, `src/static/guide.js` (documentation viewer), `src/static/vendor/marked.min.js` (vendored), `src/static/login.html` (docs link), `src/app.py` (`GET /guide`, `GET /api/docs/{slug}`), `src/constants.py` (`DOCS_DIR`, `DOC_SLUGS`, `VERSION` bumped to `0.28.0`), `tests/test_docs_gating.py` (+6 cases), `tests/test_static_assets.py` (+4 cases).
+
+---
+
 ## [0.27.1] — 2026-05-26
 
 ### Removed

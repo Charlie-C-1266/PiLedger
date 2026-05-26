@@ -7,7 +7,7 @@ from typing import Literal
 # Application version. Returned by `GET /healthz` so uptime monitors and
 # operators can confirm what's actually running without `ssh && git log`.
 # Bump in lock-step with the CHANGELOG header on every release.
-VERSION = "0.27.1"
+VERSION = "0.28.0"
 
 
 # ─── Paths / cookies ──────────────────────────────────────────────────────────
@@ -19,6 +19,24 @@ DB: str = os.environ.get(
     # Resolve via one parent traversal from this module's location.
     os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, "piledger.db")),
 )
+DOCS_DIR: str = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), os.pardir, "docs")
+)
+DOC_SLUGS: frozenset[str] = frozenset(
+    {
+        "getting-started",
+        "architecture",
+        "authentication",
+        "backups",
+        "database",
+        "deployment",
+        "frontend",
+        "api-reference",
+        "security",
+        "testing",
+    }
+)
+
 SESSION_COOKIE = "piledger_session"
 SESSION_DAYS = 30
 # Set COOKIE_SECURE=true in production when serving over HTTPS
