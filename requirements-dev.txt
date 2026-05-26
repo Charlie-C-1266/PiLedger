@@ -1,4 +1,0 @@
-pytest>=9.0
-httpx>=0.25
-pytest-playwright>=0.5
-ruff>=0.6

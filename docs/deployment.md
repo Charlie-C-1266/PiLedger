@@ -11,31 +11,24 @@ This is the deeper reference for running PiLedger in production-like environment
 
 Two equivalent recipes — pick whichever package manager you prefer.
 
+**With [`uv`](https://docs.astral.sh/uv/) (recommended):**
+
+```bash
+cd /path/to/piledger
+
+uv sync             # installs runtime + dev deps from the lockfile into .venv/
+```
+
 **With `pip` + `venv` (standard library only):**
 
 ```bash
 cd /path/to/piledger
 
 python3 -m venv venv
-./venv/bin/pip install -r requirements.txt
-
-# (Optional) test + lint dependencies
-./venv/bin/pip install -r requirements-dev.txt
+./venv/bin/pip install -r requirements.txt   # runtime deps only (pinned from uv.lock)
 ```
 
-**With [`uv`](https://docs.astral.sh/uv/) (faster cold installs):**
-
-```bash
-cd /path/to/piledger
-
-uv venv venv
-uv pip install -r requirements.txt
-
-# (Optional) test + lint dependencies
-uv pip install -r requirements-dev.txt
-```
-
-Both flows produce the same `venv/` layout, so `./start.sh`, the systemd snippet below, and `./venv/bin/pytest` all work identically regardless of which manager you used.
+The `uv` flow creates `.venv/` by default; the `pip` flow creates `venv/`. Both work with `./start.sh` and the systemd snippet below. For dev tools (pytest, ruff, mypy, etc.) in the pip flow, install them manually or use `uv sync` instead.
 
 ## Environment variables
 
