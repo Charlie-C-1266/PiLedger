@@ -412,9 +412,9 @@ def test_monthly_frequency_multiplier_is_identity(alice):
 def test_mixed_frequencies_accumulate_correctly(alice):
     """Multiple budget items with different frequencies on one account
     should all be normalised to monthly and summed."""
-    aid = alice.post(
-        "/api/accounts", json={"name": "Mixed", "type": "current"}
-    ).json()["id"]
+    aid = alice.post("/api/accounts", json={"name": "Mixed", "type": "current"}).json()[
+        "id"
+    ]
     alice.post(
         "/api/budget",
         json={
