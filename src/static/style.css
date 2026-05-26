@@ -370,6 +370,8 @@ body {
 .chart-wrap {
   position: relative;
   height: 270px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .chart-type-toggle {

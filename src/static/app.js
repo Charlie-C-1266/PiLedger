@@ -447,6 +447,14 @@ function renderAccounts(accounts) {
 Chart.defaults.font.family = "'Inter', sans-serif";
 refreshChartDefaults();
 
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    for (const c of Object.values(charts)) if (c) c.resize();
+  }, 200);
+});
+
 const BASE_OPTS = {
   responsive: true,
   maintainAspectRatio: false,

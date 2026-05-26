@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.29.1] — 2026-05-26
+
+### Fixed
+
+- **Charts resize when the browser window is resized.** Chart containers (`.chart-wrap`) lacked an explicit width and `overflow: hidden`, so Chart.js's resize observer did not fire reliably when the CSS grid columns reflowed. Added `width: 100%; overflow: hidden` to the container and a debounced `window.resize` handler that calls `.resize()` on all active charts as a fallback for edge cases like grid breakpoint transitions.
+
+Affected files: `src/static/style.css` (`.chart-wrap`), `src/static/app.js` (resize handler), `src/constants.py` (`VERSION` bumped to `0.29.1`).
+
+---
+
 ## [0.29.0] — 2026-05-26
 
 ### Changed
