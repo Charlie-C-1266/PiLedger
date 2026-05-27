@@ -35,7 +35,7 @@ export default function Overview() {
   const currency = summary?.base_currency ?? "GBP";
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
   const positiveAccounts = (accounts ?? []).filter(
-    (a) => (a.current_balance ?? 0) > 0
+    (a) => (a.current_balance ?? 0) >= 0
   );
 
   // Donut slices from positive-balance accounts

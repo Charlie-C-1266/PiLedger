@@ -15,7 +15,7 @@ export default function Accounts() {
   const [variant, setVariant] = useState<StackVariant>("fan");
 
   const currency = summary?.base_currency ?? "GBP";
-  const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) > 0);
+  const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) >= 0);
   const negative = (accounts ?? []).filter((a) => (a.current_balance ?? 0) < 0);
   const debtTotal = negative.reduce(
     (s, a) => s + Math.abs(a.current_balance ?? 0),
