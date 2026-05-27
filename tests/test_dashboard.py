@@ -18,6 +18,11 @@ def test_summary_empty(alice):
         "total_current": 0.0,
         "total_savings": 0.0,
         "total_loans": 0.0,
+        "total_credit": 0.0,
+        "total_invest": 0.0,
+        "assets": 0.0,
+        "debts": 0.0,
+        "savings_rate": 0.0,
         "account_count": 0,
         "base_currency": "GBP",
         "missing_rates": [],
@@ -262,3 +267,104 @@ def test_projections_user_isolation(alice, bob):
     ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 5000.0})
     assert bob.get("/api/projections").json() == []
+
+
+# ── Net-worth history ────────────────────────────────────────────────────────
+
+
+def test_networth_requires_auth(client):
+    assert client.get("/api/history/networth").status_code == 401
+
+
+def test_networth_empty_no_accounts(alice):
+    assert alice.get("/api/history/networth").json() == []
+
+
+def test_networth_single_account_single_entry(alice):
+    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 2500.0})
+    points = alice.get("/api/history/networth?range=7D").json()
+    assert len(points) == 1
+    assert points[0]["value"] == 2500.0
+
+
+def test_networth_multiple_accounts_same_date(alice):
+    a1 = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    a2 = alice.post(
+        "/api/accounts", json={"name": "Savings", "type": "savings"}
+    ).json()["id"]
+    alice.post(f"/api/accounts/{a1}/balance", json={"balance": 1000.0})
+    alice.post(f"/api/accounts/{a2}/balance", json={"balance": 3000.0})
+    points = alice.get("/api/history/networth?range=30D").json()
+    assert len(points) == 1
+    assert points[0]["value"] == 4000.0
+
+
+def test_networth_liabilities_subtracted(alice):
+    a1 = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    a2 = alice.post(
+        "/api/accounts",
+        json={"name": "Credit Card", "type": "credit", "subtype": "credit_card"},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{a1}/balance", json={"balance": 5000.0})
+    alice.post(f"/api/accounts/{a2}/balance", json={"balance": 1200.0})
+    points = alice.get("/api/history/networth?range=30D").json()
+    assert points[-1]["value"] == 3800.0
+
+
+def test_networth_invalid_range_rejected(alice):
+    r = alice.get("/api/history/networth?range=2W")
+    assert r.status_code == 400
+
+
+def test_networth_user_isolation(alice, bob):
+    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 9000.0})
+    assert bob.get("/api/history/networth").json() == []
+
+
+def test_networth_carry_forward(alice):
+    from datetime import datetime, timedelta, timezone
+
+    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()[
+        "id"
+    ]
+    old = (datetime.now(timezone.utc) - timedelta(days=20)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={"balance": 1000.0, "recorded_at": old},
+    )
+    recent = (datetime.now(timezone.utc) - timedelta(days=2)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    alice.post(
+        f"/api/accounts/{aid}/balance",
+        json={"balance": 1500.0, "recorded_at": recent},
+    )
+    points = alice.get("/api/history/networth?range=7D").json()
+    assert len(points) == 1
+    assert points[0]["value"] == 1500.0
+
+
+def test_networth_multi_currency(alice):
+    alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.80}]})
+    gbp = alice.post(
+        "/api/accounts", json={"name": "GBP Acc", "type": "current", "currency": "GBP"}
+    ).json()["id"]
+    usd = alice.post(
+        "/api/accounts", json={"name": "USD Acc", "type": "current", "currency": "USD"}
+    ).json()["id"]
+    alice.post(f"/api/accounts/{gbp}/balance", json={"balance": 1000.0})
+    alice.post(f"/api/accounts/{usd}/balance", json={"balance": 500.0})
+    points = alice.get("/api/history/networth?range=30D").json()
+    assert points[-1]["value"] == 1400.0

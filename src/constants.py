@@ -7,7 +7,7 @@ from typing import Literal
 # Application version. Returned by `GET /healthz` so uptime monitors and
 # operators can confirm what's actually running without `ssh && git log`.
 # Bump in lock-step with the CHANGELOG header on every release.
-VERSION = "0.29.1"
+VERSION = "0.30.0"
 
 
 # ─── Paths / cookies ──────────────────────────────────────────────────────────
@@ -58,7 +58,9 @@ HEX_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
 
 # ─── Domain enums ─────────────────────────────────────────────────────────────
 
-AccountType = Literal["current", "savings", "loan"]
+AccountType = Literal["current", "savings", "loan", "credit", "invest"]
+RangeKey = Literal["7D", "30D", "90D", "1Y"]
+RANGE_TO_DAYS: dict[str, int] = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365}
 Frequency = Literal["weekly", "monthly", "quarterly", "annually"]
 
 # UK-market account sub-types. "general" is the catch-all for users who don't
@@ -88,12 +90,18 @@ AccountSubtype = Literal[
     "workplace_pension",
     # Loan
     "bank_loan",
-    "credit_card",
     "mortgage",
     "student_loan",
     "car_finance",
     "overdraft",
     "bnpl",
+    # Credit
+    "credit_card",
+    "store_card",
+    "charge_card",
+    # Invest
+    "trading_account",
+    "crypto",
 ]
 
 # Which sub-types each parent type accepts. Used by the API to reject
@@ -201,12 +209,26 @@ SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
         {
             "general",
             "bank_loan",
-            "credit_card",
             "mortgage",
             "student_loan",
             "car_finance",
             "overdraft",
             "bnpl",
+        }
+    ),
+    "credit": frozenset(
+        {
+            "general",
+            "credit_card",
+            "store_card",
+            "charge_card",
+        }
+    ),
+    "invest": frozenset(
+        {
+            "general",
+            "trading_account",
+            "crypto",
         }
     ),
 }

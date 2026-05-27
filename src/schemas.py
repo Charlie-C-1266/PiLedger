@@ -135,6 +135,84 @@ class BudgetItemPatch(_In):
     frequency: Optional[Frequency] = None
 
 
+class TransactionIn(_In):
+    account_id: Annotated[int, Field(ge=1)]
+    amount: Annotated[float, Field(ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)]
+    occurred_at: Optional[str] = None
+    merchant: Annotated[str, Field(min_length=1, max_length=200)]
+    category: Annotated[str, Field(max_length=100)] = ""
+    note: Annotated[str, Field(max_length=500)] = ""
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        try:
+            datetime.strptime(v, ISO_FMT)
+            return v
+        except ValueError:
+            pass
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
+
+
+class TransactionPatch(_In):
+    account_id: Optional[int] = Field(default=None, ge=1)
+    amount: Optional[float] = Field(
+        default=None, ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False
+    )
+    occurred_at: Optional[str] = None
+    merchant: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    category: Optional[str] = Field(default=None, max_length=100)
+    note: Optional[str] = Field(default=None, max_length=500)
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        try:
+            datetime.strptime(v, ISO_FMT)
+            return v
+        except ValueError:
+            pass
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
+
+
+class GoalIn(_In):
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    target: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
+    saved: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
+    monthly: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
+    color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#0F766E"
+
+
+class GoalPatch(_In):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    target: Optional[float] = Field(
+        default=None, gt=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    saved: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    monthly: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
+
+
 class PrefsPatch(_In):
     """Partial update — only fields present are written."""
 
@@ -220,11 +298,13 @@ class SummaryOut(BaseModel):
     total_current: float
     total_savings: float
     total_loans: float
+    total_credit: float = 0.0
+    total_invest: float = 0.0
+    assets: float = 0.0
+    debts: float = 0.0
+    savings_rate: float = 0.0
     account_count: int
     base_currency: Currency = "GBP"
-    # Currencies present on the user's accounts that have no rate set (excluding
-    # the base itself, which is implicitly 1.0). The frontend uses this to warn
-    # that the net-worth total may be missing accounts.
     missing_rates: list[Currency] = Field(default_factory=list)
 
 
@@ -250,6 +330,34 @@ class BudgetItemOut(BaseModel):
     amount: float
     frequency: Frequency
     created_at: str
+
+
+class TransactionOut(BaseModel):
+    id: int
+    user_id: int
+    account_id: int
+    amount: float
+    occurred_at: str
+    merchant: str
+    category: str
+    note: str
+    created_at: str
+
+
+class GoalOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    target: float
+    saved: float
+    monthly: float
+    color: str
+    created_at: str
+
+
+class NetWorthPointOut(BaseModel):
+    date: str
+    value: float
 
 
 # Projection responses include keys like "1yr" / "2yr" / "5yr" that aren't valid

@@ -5,6 +5,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.30.0] — 2026-05-27
+
+### Added
+
+- **Transaction CRUD endpoints.** `GET /api/transactions` (with search, account filter, category filter, sort, pagination), `POST /api/transactions`, `PUT /api/transactions/{tid}`, `DELETE /api/transactions/{tid}`. Transactions link to accounts via `account_id` with ownership enforcement. Money stored as integer cents, exposed as float dollars. `occurred_at` defaults to UTC now when omitted. Search filters by merchant or category (case-insensitive LIKE), sort by date (default) or absolute amount, paginate with `page`/`per_page` (max 200).
+
+- **Goal CRUD endpoints.** `GET /api/goals`, `POST /api/goals`, `PUT /api/goals/{gid}`, `DELETE /api/goals/{gid}`. Goals track savings targets with `target`, `saved`, `monthly` fields (all cents-backed). The `PUT` endpoint supports partial updates including monthly contribution slider changes for the frontend.
+
+- **Net-worth time-series endpoint.** `GET /api/history/networth?range=7D|30D|90D|1Y` returns `{date, value}[]` derived from `balance_history`. Aggregates all account balances by date, subtracts liabilities (loan/credit types), converts multi-currency portfolios to the user's base currency via stored exchange rates. Carries forward pre-window balances so the chart is populated even when entries are sparse.
+
+- **Expanded `AccountType` enum.** Added `credit` and `invest` types with dedicated subtype sets (`credit_card`, `store_card`, `charge_card` for credit; `trading_account`, `crypto` for invest). Existing accounts with type `loan` and subtype `credit_card` are migrated to the `credit` type automatically.
+
+- **Enhanced summary endpoint.** `GET /api/summary` now returns `total_credit`, `total_invest`, `assets`, `debts`, and `savings_rate` fields alongside the existing totals.
+
+- **Schema version 2 migration.** New `transactions` and `goals` tables, widened `accounts` CHECK constraint for new types, automatic `credit_card` migration from `loan` to `credit`.
+
+Affected files: `src/app.py`, `src/schemas.py`, `src/db.py`, `src/constants.py`, `tests/test_transactions.py` (new), `tests/test_goals.py` (new), `tests/test_dashboard.py`, `tests/test_delete_me.py`, `tests/test_subtypes.py`.
+
+---
+
 ## [0.29.1] — 2026-05-26
 
 ### Fixed

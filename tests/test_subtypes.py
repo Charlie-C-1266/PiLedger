@@ -76,7 +76,6 @@ def test_savings_account_accepts_savings_subtypes(alice):
 def test_loan_account_accepts_loan_subtypes(alice):
     for sub in (
         "bank_loan",
-        "credit_card",
         "mortgage",
         "student_loan",
         "car_finance",
@@ -90,8 +89,26 @@ def test_loan_account_accepts_loan_subtypes(alice):
         assert r.json()["subtype"] == sub
 
 
+def test_credit_account_accepts_credit_subtypes(alice):
+    for sub in ("credit_card", "store_card", "charge_card"):
+        r = alice.post(
+            "/api/accounts", json={"name": sub, "type": "credit", "subtype": sub}
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["subtype"] == sub
+
+
+def test_invest_account_accepts_invest_subtypes(alice):
+    for sub in ("trading_account", "crypto"):
+        r = alice.post(
+            "/api/accounts", json={"name": sub, "type": "invest", "subtype": sub}
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["subtype"] == sub
+
+
 def test_general_is_valid_for_every_type(alice):
-    for t in ("current", "savings", "loan"):
+    for t in ("current", "savings", "loan", "credit", "invest"):
         r = alice.post(
             "/api/accounts", json={"name": t, "type": t, "subtype": "general"}
         )

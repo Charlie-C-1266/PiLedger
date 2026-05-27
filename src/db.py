@@ -27,6 +27,8 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "balance_history",
     "budget_items",
     "exchange_rates",
+    "transactions",
+    "goals",
 )
 
 
@@ -96,7 +98,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 1
+SCHEMA_VERSION: int = 2
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -231,6 +233,61 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.commit()
 
 
+def _migrate_to_2(conn: sqlite3.Connection) -> None:
+    """Add credit/invest account types, transactions table, goals table."""
+    sql_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='accounts'"
+    ).fetchone()
+    if sql_row and "'credit'" not in (sql_row[0] or ""):
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.executescript("""
+            CREATE TABLE accounts_new (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                name          TEXT    NOT NULL,
+                type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan','credit','invest')),
+                subtype       TEXT    DEFAULT 'general',
+                currency      TEXT    NOT NULL DEFAULT 'GBP',
+                interest_rate REAL    DEFAULT 0,
+                color         TEXT    DEFAULT '#6366f1',
+                created_at    TEXT    DEFAULT (datetime('now'))
+            );
+            INSERT INTO accounts_new SELECT * FROM accounts;
+            DROP TABLE accounts;
+            ALTER TABLE accounts_new RENAME TO accounts;
+        """)
+        conn.execute("PRAGMA foreign_keys = ON")
+
+    conn.execute(
+        "UPDATE accounts SET type='credit' WHERE type='loan' AND subtype='credit_card'"
+    )
+
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS transactions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+            amount_cents INTEGER NOT NULL,
+            occurred_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+            merchant     TEXT    NOT NULL,
+            category     TEXT    NOT NULL DEFAULT '',
+            note         TEXT    DEFAULT '',
+            created_at   TEXT    DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS goals (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name          TEXT    NOT NULL,
+            target_cents  INTEGER NOT NULL,
+            saved_cents   INTEGER NOT NULL DEFAULT 0,
+            monthly_cents INTEGER NOT NULL DEFAULT 0,
+            color         TEXT    DEFAULT '#0F766E',
+            created_at    TEXT    DEFAULT (datetime('now'))
+        );
+    """)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -260,7 +317,7 @@ def init() -> None:
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name          TEXT    NOT NULL,
-                type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
+                type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan','credit','invest')),
                 subtype       TEXT    DEFAULT 'general',
                 currency      TEXT    NOT NULL DEFAULT 'GBP',
                 interest_rate REAL    DEFAULT 0,
@@ -291,6 +348,27 @@ def init() -> None:
                     CHECK(frequency IN ('weekly','monthly','quarterly','annually')),
                 created_at   TEXT    DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS transactions (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+                amount_cents INTEGER NOT NULL,
+                occurred_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                merchant     TEXT    NOT NULL,
+                category     TEXT    NOT NULL DEFAULT '',
+                note         TEXT    DEFAULT '',
+                created_at   TEXT    DEFAULT (datetime('now'))
+            );
+            CREATE TABLE IF NOT EXISTS goals (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name          TEXT    NOT NULL,
+                target_cents  INTEGER NOT NULL,
+                saved_cents   INTEGER NOT NULL DEFAULT 0,
+                monthly_cents INTEGER NOT NULL DEFAULT 0,
+                color         TEXT    DEFAULT '#0F766E',
+                created_at    TEXT    DEFAULT (datetime('now'))
+            );
         """)
         conn.commit()
 
@@ -305,11 +383,10 @@ def init() -> None:
             return
 
         # ── Version-gated migrations ─────────────────────────────────
-        # Future migrations go here:
-        #
-        # if version < 2:
-        #     _migrate_to_2(conn)
-        #     version = 2
+
+        if version < 2:
+            _migrate_to_2(conn)
+            version = 2
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
