@@ -36,7 +36,7 @@ export default function TxnRow({ txn, accountName, currency = "GBP" }: Props) {
         </div>
       </div>
       {accountName && <div className={styles.account}>{accountName}</div>}
-      <div className={`${styles.amount} ${positive ? styles.up : ""}`}>
+      <div className={`${styles.amount} ${positive ? styles.up : styles.down}`}>
         {positive ? "+" : "−"}
         {fmt(Math.abs(txn.amount), currency).replace(/^[−-]/, "")}
       </div>

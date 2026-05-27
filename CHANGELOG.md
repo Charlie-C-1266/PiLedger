@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.2] — 2026-05-27
+
+### Fixed
+
+- **Negative transactions now shown in red.** Expense amounts (negative) were displayed in the default text colour, making them hard to distinguish from income. Now uses `--pl-down` (red) for negative and `--pl-up` (green) for positive amounts across all transaction rows.
+
+### Added
+
+- **Account selector in Add Transaction modal.** Transactions can now be linked to a specific account via a dropdown when creating them. Previously the modal silently used the first account with no user choice.
+
+Affected files: `frontend/src/components/TxnRow.tsx` (down class), `frontend/src/components/TxnRow.module.css` (.down style), `frontend/src/components/AddModal.tsx` (account select), `frontend/src/components/AddModal.module.css` (.select style), `src/constants.py` (`VERSION` bumped to `1.2.2`).
+
+---
+
 ## [1.2.1] — 2026-05-27
 
 ### Added
