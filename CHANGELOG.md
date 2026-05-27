@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.33.0] — 2026-05-27
+
+### Added
+
+- **Layout shell and navigation.** App now renders inside a `Shell` component with a sidebar, header, and responsive breakpoints. Three layout modes driven by viewport width: full sidebar (≥1080px, 220px wide), compact icon-only rail (720–1079px, 64px), and mobile (< 720px, horizontal tab strip replacing the sidebar). Sidebar contains brand mark, four nav items (Overview, Accounts, Transactions, Goals), spacer, Settings, and a signed-in card. Header shows date + greeting on desktop with search pill, theme toggle, and "+ Add" button; mobile header shows brand + toggle + add.
+
+- **NavItem component.** Active state uses `theme.surface` background with `theme.accent` icon tint. Compact mode center-aligns icons and exposes labels via `title` tooltip.
+
+- **Inline SVG icon set.** Nine stroke icons at 16×16, 1.4px stroke width: Grid, Wallet, List, Flag, Settings, Plus, Sun, Moon, Search.
+
+- **Theme toggle wired up.** Sun/moon button in the header fires `toggleMode()` from the ThemeProvider, switching light/dark with the 220ms transition.
+
+Affected files: `frontend/src/components/` (new: `Shell.tsx`, `Sidebar.tsx`, `Header.tsx`, `NavItem.tsx`, `TabStrip.tsx`, plus CSS modules and `icons/`), `frontend/src/App.tsx` (wraps routes in Shell layout), `src/constants.py` (`VERSION` bumped to `0.33.0`).
+
+---
+
 ## [0.32.0] — 2026-05-27
 
 ### Added

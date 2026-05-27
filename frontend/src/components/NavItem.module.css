@@ -1,0 +1,41 @@
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--pl-text-soft);
+  font: 500 13px/1 "Plus Jakarta Sans", sans-serif;
+  transition: background 160ms, color 160ms;
+}
+
+.item:hover {
+  color: var(--pl-text);
+}
+
+.active {
+  background: var(--pl-surface);
+  color: var(--pl-text);
+  box-shadow: var(--pl-shadow);
+}
+
+.active .icon {
+  color: var(--pl-accent);
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact {
+  justify-content: center;
+  padding: 10px;
+}
