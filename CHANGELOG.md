@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.34.0] — 2026-05-27
+
+### Added
+
+- **Typed API client.** Fetch wrappers for every backend endpoint: accounts, transactions (with filter/sort/pagination params), goals, summary, net-worth series, user, and preferences. All return typed responses matching the backend Pydantic schemas.
+
+- **TanStack Query hooks.** `useAccounts()`, `useTransactions(filters)`, `useGoals()`, `useSummary()`, `useNetWorthSeries(range)` — each returns `{ data, isLoading, error }` with 30s stale time and refetch-on-window-focus. `QueryClientProvider` wired into the app root.
+
+- **Currency formatters.** `fmt(value, currency)` → `"£1,234.56"` and `fmtShort(value, currency)` → `"£1.2k"` with proper minus glyph (U+2212), per-currency symbols, and JPY zero-decimal handling.
+
+- **TypeScript interfaces.** `Account`, `Transaction`, `TransactionFilters`, `Goal`, `Summary`, `NetWorthPoint`, `User`, `Prefs`, `RangeKey`, `AccountType` matching the backend API contract.
+
+Affected files: `frontend/src/types.ts` (new), `frontend/src/api/client.ts` (new), `frontend/src/hooks/` (5 new hooks), `frontend/src/lib/currency.ts` (new), `frontend/src/main.tsx` (QueryClientProvider), `src/constants.py` (`VERSION` bumped to `0.34.0`).
+
+---
+
 ## [0.33.0] — 2026-05-27
 
 ### Added
