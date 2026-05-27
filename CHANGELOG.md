@@ -5,7 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [1.3.0] — 2026-05-27
+## [1.2.1] — 2026-05-27
 
 ### Added
 
@@ -15,7 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - **`createAccount` API function** added to the client.
 
-Affected files: `frontend/src/components/AddMenu.tsx` (new), `frontend/src/components/AddMenu.module.css` (new), `frontend/src/components/AddAccountModal.tsx` (new), `frontend/src/components/Header.tsx` (dropdown wiring), `frontend/src/components/Header.module.css` (addWrap positioning), `frontend/src/components/Shell.tsx` (modal state management), `frontend/src/api/client.ts` (createAccount), `src/constants.py` (`VERSION` bumped to `1.3.0`).
+Affected files: `frontend/src/components/AddMenu.tsx` (new), `frontend/src/components/AddMenu.module.css` (new), `frontend/src/components/AddAccountModal.tsx` (new), `frontend/src/components/Header.tsx` (dropdown wiring), `frontend/src/components/Header.module.css` (addWrap positioning), `frontend/src/components/Shell.tsx` (modal state management), `frontend/src/api/client.ts` (createAccount), `src/constants.py` (`VERSION` bumped to `1.2.1`).
 
 ---
 
