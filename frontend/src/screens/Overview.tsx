@@ -13,7 +13,7 @@ import Donut from "../components/charts/Donut";
 import HBar from "../components/charts/HBar";
 import StatCard from "../components/StatCard";
 import RangePills from "../components/RangePills";
-import CardStack, { VariantPicker } from "../components/CardStack";
+import CardStack, { TypeFilterPicker, VariantPicker } from "../components/CardStack";
 import TxnRow from "../components/TxnRow";
 import styles from "./Overview.module.css";
 
@@ -138,27 +138,17 @@ export default function Overview() {
                   : "Hover the stack to fan/reveal"}
               </div>
             </div>
-            <VariantPicker value={stackVariant} onChange={setStackVariant} />
-          </div>
-          {accountTypes.length > 1 && (
-            <div className={styles.typeFilter}>
-              <button
-                className={`${styles.typePill} ${!accountTypeFilter ? styles.typePillActive : ""}`}
-                onClick={() => setAccountTypeFilter("")}
-              >
-                All
-              </button>
-              {accountTypes.map((t) => (
-                <button
-                  key={t}
-                  className={`${styles.typePill} ${t === accountTypeFilter ? styles.typePillActive : ""}`}
-                  onClick={() => setAccountTypeFilter(t === accountTypeFilter ? "" : t)}
-                >
-                  {ACCOUNT_TYPE_LABELS[t]}
-                </button>
-              ))}
+            <div className={styles.stackControls}>
+              {accountTypes.length > 1 && (
+                <TypeFilterPicker
+                  options={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
+                  value={accountTypeFilter}
+                  onChange={(v) => setAccountTypeFilter(v as AccountType | "")}
+                />
+              )}
+              <VariantPicker value={stackVariant} onChange={setStackVariant} />
             </div>
-          )}
+          </div>
           <CardStack
             accounts={stackAccounts}
             variant={stackVariant}

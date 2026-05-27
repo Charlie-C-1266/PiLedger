@@ -18,6 +18,14 @@
   padding: 22px 26px 0;
 }
 
+.stackControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .microLabel {
   font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: 0.4px;

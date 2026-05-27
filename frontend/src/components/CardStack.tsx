@@ -117,3 +117,33 @@ export function VariantPicker({
     </div>
   );
 }
+
+export function TypeFilterPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: { key: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className={styles.picker}>
+      <button
+        className={`${styles.pill} ${!value ? styles.pillActive : ""}`}
+        onClick={() => onChange("")}
+      >
+        All
+      </button>
+      {options.map(({ key, label }) => (
+        <button
+          key={key}
+          className={`${styles.pill} ${key === value ? styles.pillActive : ""}`}
+          onClick={() => onChange(key === value ? "" : key)}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}

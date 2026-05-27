@@ -9,10 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- **Account type filter on card stack.** The "Your accounts" section on the Overview page now shows filter pills (All / Current / Savings / Loan / Credit / Invest) when the user has more than one account type. Selecting a type shows only those accounts in the stack; "All" resets to the full list. Pills only appear for types that have at least one account.
+- **Account type filter on card stack.** Both the Overview and Accounts pages now show filter pills (All / Current / Savings / Loan / Credit / Invest) alongside the fan/cascade/wave/grid picker when the user has more than one account type. Selecting a type shows only those accounts in the stack; clicking again or "All" resets. Pills only appear for types that have at least one account.
 - **Removed card stack cap.** The fan/cascade/wave/grid views previously capped at 6 accounts. All accounts are now shown regardless of count. The fan and cascade animations scale their spacing dynamically so cards don't overflow even with many accounts.
 
-Affected files: `frontend/src/components/CardStack.tsx` (removed slice cap, adaptive spacing), `frontend/src/screens/Overview.tsx` (type filter state, filter pills, passes all accounts), `frontend/src/screens/Overview.module.css` (type filter pill styles).
+Affected files: `frontend/src/components/CardStack.tsx` (removed slice cap, adaptive spacing, new `TypeFilterPicker` component), `frontend/src/screens/Overview.tsx` (type filter inline with variant picker), `frontend/src/screens/Overview.module.css` (stackControls layout), `frontend/src/screens/Accounts.tsx` (type filter state and layout), `frontend/src/screens/Accounts.module.css` (stackControls layout).
 
 ---
 

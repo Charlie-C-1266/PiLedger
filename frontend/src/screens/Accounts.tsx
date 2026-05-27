@@ -1,25 +1,44 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
 import { fmt } from "../lib/currency";
-import CardStack, { VariantPicker } from "../components/CardStack";
+import CardStack, { TypeFilterPicker, VariantPicker } from "../components/CardStack";
 import AccountTile from "../components/AccountTile";
 import UpdateBalanceModal from "../components/UpdateBalanceModal";
 import type { StackVariant } from "../components/CardStack";
-import type { Account } from "../types";
+import type { Account, AccountType } from "../types";
 import styles from "./Accounts.module.css";
+
+const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  current: "Current",
+  savings: "Savings",
+  loan: "Loan",
+  credit: "Credit",
+  invest: "Invest",
+};
 
 export default function Accounts() {
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary } = useSummary();
   const [variant, setVariant] = useState<StackVariant>("fan");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
   const [editAccount, setEditAccount] = useState<Account | null>(null);
 
   const currency = summary?.base_currency ?? "GBP";
   const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) >= 0);
   const negative = (accounts ?? []).filter((a) => (a.current_balance ?? 0) < 0);
+
+  const stackAccounts = useMemo(() => {
+    if (!accountTypeFilter) return positive;
+    return positive.filter((a) => a.type === accountTypeFilter);
+  }, [positive, accountTypeFilter]);
+
+  const accountTypes = useMemo(() => {
+    const set = new Set(positive.map((a) => a.type));
+    return (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter((t) => set.has(t));
+  }, [positive]);
   const debtTotal = negative.reduce(
     (s, a) => s + Math.abs(a.current_balance ?? 0),
     0
@@ -36,9 +55,18 @@ export default function Accounts() {
             </div>
             <div className={styles.heroHeading}>Everything you hold</div>
           </div>
-          <VariantPicker value={variant} onChange={setVariant} />
+          <div className={styles.stackControls}>
+            {accountTypes.length > 1 && (
+              <TypeFilterPicker
+                options={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
+                value={accountTypeFilter}
+                onChange={(v) => setAccountTypeFilter(v as AccountType | "")}
+              />
+            )}
+            <VariantPicker value={variant} onChange={setVariant} />
+          </div>
         </div>
-        <CardStack accounts={positive} variant={variant} height={340} />
+        <CardStack accounts={stackAccounts} variant={variant} height={340} />
       </div>
 
       {/* All accounts list — click to update balance */}
