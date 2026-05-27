@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { recordBalance } from "../api/client";
+import { recordBalance, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
+import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import type { Account } from "../types";
 import styles from "./AddModal.module.css";
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 interface Props {
   account: Account;
@@ -12,28 +15,54 @@ interface Props {
 
 export default function UpdateBalanceModal({ account, onClose }: Props) {
   const [balance, setBalance] = useState("");
+  const [color, setColor] = useState(account.color || "#6366f1");
+  const [customColor, setCustomColor] = useState("");
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
+  const sw = colorToGradient(color);
+  const cardPreview = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
+
+  const handleCustomColorChange = (val: string) => {
+    setCustomColor(val);
+    if (HEX_RE.test(val)) {
+      setColor(val);
+    }
+  };
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    queryClient.invalidateQueries({ queryKey: ["summary"] });
+    queryClient.invalidateQueries({ queryKey: ["networth"] });
+  };
+
+  const balanceMutation = useMutation({
     mutationFn: (val: number) => recordBalance(account.id, val),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
-      queryClient.invalidateQueries({ queryKey: ["networth"] });
-      onClose();
-    },
   });
 
-  const handleSave = () => {
-    const parsed = parseFloat(balance);
-    if (isNaN(parsed)) return;
-    mutation.mutate(parsed);
+  const colorMutation = useMutation({
+    mutationFn: (newColor: string) => updateAccount(account.id, { color: newColor }),
+  });
+
+  const handleSave = async () => {
+    const colorChanged = color !== (account.color || "#6366f1");
+    const balanceParsed = parseFloat(balance);
+    const hasBalance = !isNaN(balanceParsed);
+
+    if (!hasBalance && !colorChanged) return;
+
+    if (hasBalance) await balanceMutation.mutateAsync(balanceParsed);
+    if (colorChanged) await colorMutation.mutateAsync(color);
+
+    invalidate();
+    onClose();
   };
+
+  const pending = balanceMutation.isPending || colorMutation.isPending;
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>Update balance</h2>
+        <h2 className={styles.title}>Update account</h2>
         <p className={styles.subtitle}>
           {account.name}
           {account.current_balance != null && (
@@ -50,6 +79,40 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
           autoFocus
         />
 
+        <div className={styles.colorSection}>
+          <span className={styles.colorLabel}>Card colour</span>
+          <div className={styles.colorRow}>
+            <div
+              className={styles.colorPreview}
+              style={{ background: cardPreview }}
+              aria-label="Card colour preview"
+            />
+            <div className={styles.colorSwatches}>
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  className={`${styles.colorSwatch} ${c === color ? styles.colorSwatchActive : ""}`}
+                  style={{ background: c }}
+                  onClick={() => {
+                    setColor(c);
+                    setCustomColor("");
+                  }}
+                  aria-label={`Select colour ${c}`}
+                  title={c}
+                />
+              ))}
+            </div>
+          </div>
+          <input
+            className={`${styles.input} ${styles.colorHexInput}`}
+            placeholder="Custom hex  e.g. #a78bfa"
+            value={customColor}
+            onChange={(e) => handleCustomColorChange(e.target.value)}
+            maxLength={7}
+            spellCheck={false}
+          />
+        </div>
+
         <div className={styles.footer}>
           <button className={styles.cancel} onClick={onClose}>
             Cancel
@@ -57,9 +120,9 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
           <button
             className={styles.save}
             onClick={handleSave}
-            disabled={mutation.isPending}
+            disabled={pending}
           >
-            {mutation.isPending ? "Saving…" : "Update balance"}
+            {pending ? "Saving…" : "Update account"}
           </button>
         </div>
       </div>

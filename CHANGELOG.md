@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] — 2026-05-27
+
+### Added
+
+- **Edit account colour from the update modal.** Clicking an account card now shows a colour picker (same presets and hex input as the Add Account modal) alongside the balance field. Changing the colour calls `PUT /api/accounts/{id}` which was already supported by the backend but had no frontend path. The balance field remains optional — you can update just the colour, just the balance, or both.
+
+Affected files: `frontend/src/components/UpdateBalanceModal.tsx` (colour picker UI, `updateAccount` mutation), `frontend/src/api/client.ts` (new `updateAccount` function).
+
+---
+
 ## [1.3.4] — 2026-05-27
 
 ### Fixed
