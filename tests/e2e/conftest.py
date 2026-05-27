@@ -145,10 +145,10 @@ def signed_in_page(page, live_server, registered_user):
     page.locator("#login-username").fill(registered_user["username"])
     page.locator("#login-password").fill(registered_user["password"])
     page.locator("#login-btn").click()
-    # Dashboard renders the username in the header once /api/auth/me resolves —
-    # that's a reliable "page is interactive" signal.
-    page.wait_for_url("**/")
-    page.locator("#header-username").wait_for(state="visible")
+    # After login the React SPA loads at /overview. Wait for the root
+    # element to be populated — that signals React has mounted.
+    page.wait_for_url("**/overview")
+    page.locator("h1").wait_for(state="visible")
     return page
 
 

@@ -78,6 +78,9 @@ export default function Overview() {
               <span className={styles.metaMute}>net position</span>
             </div>
           )}
+          <span className="sr-only">
+            Net worth chart, {range} range, current value {fmt(summary?.total ?? 0, currency)}
+          </span>
           <LineChart
             data={nwSeries ?? []}
             height={240}

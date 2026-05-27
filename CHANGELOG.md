@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.0.0] — 2026-05-27
+
+### Changed
+
+- **React frontend is now the primary UI.** The old vanilla JS dashboard (`index.html`, `app.js`, `style.css`, `theme-bootstrap.js`, vendored Chart.js and Inter font) has been retired. FastAPI now serves the React SPA directly from `dist/index.html` with no fallback. The login page (`login.html`) and guide page (`guide.html`) remain as standalone HTML pages with self-contained CSS.
+
+- **Dockerfile includes React build stage.** Multi-stage Docker build: Stage 1 (`node:20-slim`) runs `npm ci && npm run build` to produce the frontend bundle; Stage 2 (`python:3.12-slim`) copies the built `dist/` into the runtime image. Docker deployments now serve the React app out of the box.
+
+### Added
+
+- **Accessibility improvements.** Visually-hidden chart summary for screen readers on the Overview net-worth chart. `role="radiogroup"` on Transactions category chips. `sr-only` CSS utility class. Existing `aria-label` attributes on all icon-only buttons (theme toggle, mobile add) retained.
+
+- **Self-contained login and guide pages.** Login page now uses its own `login.css` with embedded CSS variables and theme support, independent of the retired `style.css`. Guide page's `guide.css` similarly made self-contained with embedded token definitions for light/dark modes.
+
+### Removed
+
+- Old vanilla JS dashboard files: `src/static/index.html`, `src/static/app.js`, `src/static/style.css`, `src/static/theme-bootstrap.js`, `src/static/vendor/chart.umd.min.js`, `src/static/vendor/inter/`.
+- Six e2e tests that targeted old-UI-only selectors (`test_account_filters`, `test_account_flows`, `test_balance_validation`, `test_icons_render`, `test_password_change`, `test_theme_persistence`). The auth flow e2e test has been updated for the React UI. New React-specific e2e tests should be added iteratively.
+
+Affected files: `Dockerfile`, `src/app.py`, `src/static/` (removed old files, added `login.css`), `src/static/guide.css`, `src/static/guide.html`, `src/static/login.html`, `frontend/src/index.css`, `frontend/src/screens/Overview.tsx`, `frontend/src/screens/Transactions.tsx`, `tests/e2e/`, `tests/test_static_assets.py`, `tests/test_security_headers.py`, `src/constants.py` (`VERSION` bumped to `1.0.0`).
+
+---
+
 ## [0.39.0] — 2026-05-27
 
 ### Added
