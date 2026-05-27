@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.36.0] — 2026-05-27
+
+### Added
+
+- **Overview screen.** The default landing page, replacing the stub heading with a full dashboard composed of six sections in a two-column layout (1fr 380px desktop, single column mobile):
+  1. **Net-worth hero card** — big formatted value, range pills (7D/30D/90D/1Y), Recharts area chart with hover scrubbing that swaps the displayed value, accent gradient fill, delta pill.
+  2. **Stat row** — three cards showing Assets (up colour), Debts (down colour), and Savings rate (accent colour).
+  3. **Card stack** — "Your accounts" section with variant picker (fan/cascade/wave/grid) rendering positive-balance accounts as AccountTiles with animated transitions.
+  4. **Recent activity** — 6 most recent transactions as TxnRow components with an "+ Add transaction" pill.
+  5. **Distribution donut** — SVG donut of account balances with hover-synced centre label and 5-row legend.
+  6. **Goals progress** — one row per goal with name, percent, HBar, and "£saved of £target · Nmo left" footer.
+
+Affected files: `frontend/src/screens/Overview.tsx` (replaced stub), `frontend/src/screens/Overview.module.css` (new), `src/constants.py` (`VERSION` bumped to `0.36.0`).
+
+---
+
 ## [0.35.0] — 2026-05-27
 
 ### Added
