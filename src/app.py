@@ -1382,12 +1382,31 @@ def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────
 
+_DIST_DIR = os.path.join(_STATIC_DIR, "dist")
+_DIST_INDEX = os.path.join(_DIST_DIR, "index.html")
+_HAS_REACT = os.path.isfile(_DIST_INDEX)
+
+
+def _serve_spa(session: Optional[str]) -> Response:
+    if not session_uid(session):
+        return RedirectResponse("/login", status_code=302)
+    if _HAS_REACT:
+        return FileResponse(_DIST_INDEX)
+    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
+
 
 @app.get("/")
 def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
-    if not session_uid(session):
-        return RedirectResponse("/login", status_code=302)
-    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
+    return _serve_spa(session)
+
+
+@app.get("/overview")
+@app.get("/accounts")
+@app.get("/transactions")
+@app.get("/goals")
+@app.get("/settings")
+def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
+    return _serve_spa(session)
 
 
 app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
