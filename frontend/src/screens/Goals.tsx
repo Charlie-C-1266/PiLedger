@@ -6,6 +6,7 @@ import { useSummary } from "../hooks/useSummary";
 import { updateGoal } from "../api/client";
 import { fmt } from "../lib/currency";
 import HBar from "../components/charts/HBar";
+import AddGoalModal from "../components/AddGoalModal";
 import type { Goal } from "../types";
 import styles from "./Goals.module.css";
 
@@ -100,17 +101,27 @@ export default function Goals() {
   const { data: goals } = useGoals();
   const { data: summary } = useSummary();
   const currency = summary?.base_currency ?? "GBP";
+  const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className={styles.grid}>
-      {(goals ?? []).map((g) => (
-        <GoalCard key={g.id} goal={g} currency={currency} />
-      ))}
-      {goals?.length === 0 && (
-        <div className={styles.empty}>
-          No goals yet. Create one to start tracking your savings.
-        </div>
-      )}
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Goals</h1>
+        <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+          + Add goal
+        </button>
+      </div>
+      <div className={styles.grid}>
+        {(goals ?? []).map((g) => (
+          <GoalCard key={g.id} goal={g} currency={currency} />
+        ))}
+        {goals?.length === 0 && (
+          <div className={styles.empty}>
+            No goals yet. Create one to start tracking your savings.
+          </div>
+        )}
+      </div>
+      {showModal && <AddGoalModal onClose={() => setShowModal(false)} />}
     </div>
   );
 }

@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-05-27
+
+### Added
+
+- **Add Goal modal.** The Goals screen now has a "+ Add goal" button that opens a modal for creating new goals. Fields: name, target amount, already saved (optional), monthly contribution (optional), and a colour picker using the five approved accent colours. Saves via `POST /api/goals` with automatic cache invalidation. The Goals screen also gained a page header with the title and add button.
+
+Affected files: `frontend/src/components/AddGoalModal.tsx` (new), `frontend/src/screens/Goals.tsx` (add button + modal), `frontend/src/screens/Goals.module.css` (header styles), `src/constants.py` (`VERSION` bumped to `1.1.0`).
+
+---
+
 ## [1.0.0] — 2026-05-27
 
 ### Changed
