@@ -8,9 +8,10 @@ import styles from "./Header.module.css";
 interface Props {
   mobile?: boolean;
   onAdd?: (target: AddTarget) => void;
+  username?: string;
 }
 
-export default function Header({ mobile, onAdd }: Props) {
+export default function Header({ mobile, onAdd, username }: Props) {
   const { mode, toggleMode } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -54,7 +55,7 @@ export default function Header({ mobile, onAdd }: Props) {
     <header className={styles.header}>
       <div className={styles.left}>
         <div className={styles.date}>{today}</div>
-        <div className={styles.greeting}>Hey there 👋</div>
+        <div className={styles.greeting}>Hey there{username ? `, ${username}` : ""} 👋</div>
       </div>
       <div className={styles.actions}>
         <div className={styles.searchPill}>

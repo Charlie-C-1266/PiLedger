@@ -4,9 +4,10 @@ import styles from "./Sidebar.module.css";
 
 interface Props {
   compact?: boolean;
+  username?: string;
 }
 
-export default function Sidebar({ compact }: Props) {
+export default function Sidebar({ compact, username }: Props) {
   return (
     <aside className={`${styles.sidebar} ${compact ? styles.compact : ""}`}>
       <div className={styles.brand}>
@@ -24,7 +25,7 @@ export default function Sidebar({ compact }: Props) {
       {!compact && (
         <div className={styles.userCard}>
           <div className={styles.userLabel}>Signed in</div>
-          <div className={styles.userName}>User</div>
+          <div className={styles.userName}>{username ?? "…"}</div>
         </div>
       )}
     </aside>

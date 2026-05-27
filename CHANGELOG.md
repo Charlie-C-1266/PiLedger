@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.3] — 2026-05-27
+
+### Fixed
+
+- **Hardcoded "User" in sidebar and greeting.** The "Signed in" label in the sidebar footer displayed the literal string "User" instead of the authenticated user's username, and the header greeting read "Hey there 👋" with no name. Added a `useMe` hook that calls `GET /api/auth/me`, wired it into `Shell` (which already owns the layout), and threaded the `username` down to `Sidebar` and `Header` as a new optional prop. While the API resolves, both surfaces show a neutral placeholder (`…` in the sidebar; the plain greeting in the header), so there is no flash of stale data.
+
+Affected files: `frontend/src/hooks/useMe.ts` (new), `frontend/src/components/Shell.tsx`, `frontend/src/components/Sidebar.tsx`, `frontend/src/components/Header.tsx`.
+
+---
+
 ## [1.3.2] — 2026-05-27
 
 ### Fixed
