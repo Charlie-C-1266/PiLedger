@@ -17,6 +17,27 @@ Each entry must include:
 
 Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. New versions go at the top of the file.
 
+## Releases
+
+**Minor and major version bumps are tagged releases.** When a PR bumps the minor or major version (new feature or breaking change), the merged commit on `main` must be tagged with an annotated release. Patch bumps (bug fixes) are not tagged.
+
+After the user confirms a minor/major PR has been merged:
+
+1. `git checkout main && git pull` to get the merge commit.
+2. Compile release notes from `CHANGELOG.md` — include every entry between the new version header and the previous tagged release. If multiple patch versions accumulated since the last tag, roll them all into one set of notes.
+3. Create an annotated tag:
+   ```bash
+   git tag -a vX.Y.Z -m "$(cat <<'EOF'
+   vX.Y.Z release notes title
+
+   <release notes body>
+   EOF
+   )"
+   ```
+4. Push the tag: `git push origin vX.Y.Z`.
+
+Release notes should be concise — a short summary per changelog entry, not a copy-paste of the full changelog. Group by Added / Fixed / Changed if there are entries of multiple types.
+
 ## Branching and pull requests
 
 **Every change must be delivered as a pull request — never commit directly to `main`.** This applies to all changes: features, fixes, refactors, doc updates, and changes to this file itself. The PR workflow gives the user a chance to review the diff in GitHub's UI before anything lands on `main`.
