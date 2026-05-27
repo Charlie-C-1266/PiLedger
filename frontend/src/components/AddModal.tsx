@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createTransaction } from "../api/client";
+import { useAccounts } from "../hooks/useAccounts";
 import styles from "./AddModal.module.css";
 
 const CATEGORIES = [
@@ -20,6 +21,10 @@ interface Props {
 }
 
 export default function AddModal({ accountId, onClose }: Props) {
+  const { data: accounts } = useAccounts();
+  const [selectedAccount, setSelectedAccount] = useState<number | "">(
+    accountId ?? ""
+  );
   const [merchant, setMerchant] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -36,9 +41,9 @@ export default function AddModal({ accountId, onClose }: Props) {
 
   const handleSave = () => {
     const parsed = parseFloat(amount);
-    if (!merchant.trim() || isNaN(parsed) || !accountId) return;
+    if (!merchant.trim() || isNaN(parsed) || !selectedAccount) return;
     mutation.mutate({
-      account_id: accountId,
+      account_id: Number(selectedAccount),
       amount: parsed,
       merchant: merchant.trim(),
       category,
@@ -50,6 +55,21 @@ export default function AddModal({ accountId, onClose }: Props) {
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h2 className={styles.title}>Add transaction</h2>
 
+        <select
+          className={styles.select}
+          value={selectedAccount}
+          onChange={(e) =>
+            setSelectedAccount(e.target.value ? Number(e.target.value) : "")
+          }
+        >
+          <option value="">Select account</option>
+          {(accounts ?? []).map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+
         <input
           className={styles.input}
           placeholder="Tesco, Spotify…"
@@ -60,7 +80,7 @@ export default function AddModal({ accountId, onClose }: Props) {
 
         <input
           className={styles.input}
-          placeholder="£0.00"
+          placeholder="Amount (e.g. -42.50 for expense, 1500 for income)"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           inputMode="decimal"

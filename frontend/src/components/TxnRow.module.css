@@ -58,3 +58,7 @@
 .up {
   color: var(--pl-up);
 }
+
+.down {
+  color: var(--pl-down);
+}
