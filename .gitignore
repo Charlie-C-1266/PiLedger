@@ -31,6 +31,7 @@ htmlcov/
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 frontend/node_modules/
+frontend/*.tsbuildinfo
 src/static/dist/
 
 # ── OS / editor ────────────────────────────────────────────────────────────────

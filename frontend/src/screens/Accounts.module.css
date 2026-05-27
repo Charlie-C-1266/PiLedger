@@ -8,7 +8,6 @@
   background: var(--pl-surface);
   border-radius: 16px;
   box-shadow: var(--pl-shadow);
-  overflow: hidden;
 }
 
 .heroHeader {
@@ -16,6 +15,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 22px 26px 0;
+}
+
+.stackControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .microLabel {

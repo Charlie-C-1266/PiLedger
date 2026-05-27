@@ -251,3 +251,11 @@
   font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);
 }
+
+.stackControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
