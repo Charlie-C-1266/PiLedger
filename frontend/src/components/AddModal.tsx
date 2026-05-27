@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createTransaction } from "../api/client";
+import {
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
+import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
 
 const CATEGORIES = [
@@ -17,24 +22,44 @@ const CATEGORIES = [
 
 interface Props {
   accountId: number | null;
+  transaction?: Transaction;
   onClose: () => void;
 }
 
-export default function AddModal({ accountId, onClose }: Props) {
+export default function AddModal({ accountId, transaction, onClose }: Props) {
+  const editing = !!transaction;
   const { data: accounts } = useAccounts();
   const [selectedAccount, setSelectedAccount] = useState<number | "">(
-    accountId ?? ""
+    transaction?.account_id ?? accountId ?? ""
   );
-  const [merchant, setMerchant] = useState("");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
+  const [merchant, setMerchant] = useState(transaction?.merchant ?? "");
+  const [amount, setAmount] = useState(
+    transaction ? String(transaction.amount) : ""
+  );
+  const [category, setCategory] = useState(transaction?.category ?? "");
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: createTransaction,
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["summary"] });
+    queryClient.invalidateQueries({ queryKey: ["accounts"] });
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: editing
+      ? (data: Parameters<typeof createTransaction>[0]) =>
+          updateTransaction(transaction.id, data)
+      : createTransaction,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      invalidate();
+      onClose();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteTransaction(transaction!.id),
+    onSuccess: () => {
+      invalidate();
       onClose();
     },
   });
@@ -42,7 +67,7 @@ export default function AddModal({ accountId, onClose }: Props) {
   const handleSave = () => {
     const parsed = parseFloat(amount);
     if (!merchant.trim() || isNaN(parsed) || !selectedAccount) return;
-    mutation.mutate({
+    saveMutation.mutate({
       account_id: Number(selectedAccount),
       amount: parsed,
       merchant: merchant.trim(),
@@ -50,10 +75,14 @@ export default function AddModal({ accountId, onClose }: Props) {
     });
   };
 
+  const pending = saveMutation.isPending || deleteMutation.isPending;
+
   return (
     <div className={styles.backdrop} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.title}>Add transaction</h2>
+        <h2 className={styles.title}>
+          {editing ? "Edit transaction" : "Add transaction"}
+        </h2>
 
         <select
           className={styles.select}
@@ -99,15 +128,29 @@ export default function AddModal({ accountId, onClose }: Props) {
         </div>
 
         <div className={styles.footer}>
+          {editing && (
+            <button
+              className={styles.deleteBtn}
+              onClick={() => deleteMutation.mutate()}
+              disabled={pending}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            </button>
+          )}
+          <div className={styles.spacer} />
           <button className={styles.cancel} onClick={onClose}>
             Cancel
           </button>
           <button
             className={styles.save}
             onClick={handleSave}
-            disabled={mutation.isPending}
+            disabled={pending}
           >
-            {mutation.isPending ? "Saving…" : "Save transaction"}
+            {saveMutation.isPending
+              ? "Saving…"
+              : editing
+                ? "Update transaction"
+                : "Save transaction"}
           </button>
         </div>
       </div>

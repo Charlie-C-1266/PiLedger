@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] — 2026-05-27
+
+### Added
+
+- **Edit transaction modal.** Clicking a transaction row opens a modal (same style as the Add modal) pre-filled with the transaction's current values. Users can update the merchant, amount, account, or category and save the changes. A Delete button is also available in the edit modal. Transaction rows now show a hover highlight to indicate they are clickable.
+- **Balance adjustment on transaction update.** The PUT endpoint now adjusts linked account balances when a transaction's amount or account is changed — previously only create and delete triggered balance adjustments. Reversing the old amount and applying the new amount ensures balances stay accurate after edits.
+
+Affected files: `frontend/src/components/AddModal.tsx` (edit mode, delete support), `frontend/src/components/AddModal.module.css` (delete button, spacer), `frontend/src/components/TxnRow.tsx` (onClick prop), `frontend/src/components/TxnRow.module.css` (clickable hover style), `frontend/src/screens/Transactions.tsx` (editingTxn state), `src/app.py` (balance adjustment in PUT handler), `src/constants.py` (VERSION bumped to 1.3.0).
+
+---
+
 ## [1.2.3] — 2026-05-27
 
 ### Added

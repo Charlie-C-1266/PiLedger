@@ -6,6 +6,7 @@ interface Props {
   txn: Transaction;
   accountName?: string;
   currency?: string;
+  onClick?: () => void;
 }
 
 function avatar(merchant: string): string {
@@ -22,11 +23,11 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
 
-export default function TxnRow({ txn, accountName, currency = "GBP" }: Props) {
+export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: Props) {
   const positive = txn.amount >= 0;
 
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} ${onClick ? styles.clickable : ""}`} onClick={onClick}>
       <div className={styles.avatar}>{avatar(txn.merchant)}</div>
       <div className={styles.info}>
         <div className={styles.merchant}>{txn.merchant}</div>
