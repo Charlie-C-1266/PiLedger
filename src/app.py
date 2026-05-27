@@ -1279,9 +1279,10 @@ def update_transaction(
     uid: int = Depends(require_auth),
 ) -> TransactionOut:
     with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM transactions WHERE id=? AND user_id=?", (tid, uid)
-        ).fetchone():
+        old = conn.execute(
+            "SELECT * FROM transactions WHERE id=? AND user_id=?", (tid, uid)
+        ).fetchone()
+        if not old:
             raise HTTPException(404, "Not found")
         patch = data.model_dump(exclude_none=True)
         if "account_id" in patch:
@@ -1297,6 +1298,13 @@ def update_transaction(
             conn.execute(
                 f"UPDATE transactions SET {sets} WHERE id=?", [*patch.values(), tid]
             )
+            if "amount_cents" in patch or "account_id" in patch:
+                _adjust_account_balance(conn, old["account_id"], -old["amount_cents"])
+                _adjust_account_balance(
+                    conn,
+                    patch.get("account_id", old["account_id"]),
+                    patch.get("amount_cents", old["amount_cents"]),
+                )
             conn.commit()
         row = conn.execute("SELECT * FROM transactions WHERE id=?", (tid,)).fetchone()
     return _txn_row_to_out(row)

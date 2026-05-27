@@ -7,6 +7,7 @@ import { useSummary } from "../hooks/useSummary";
 import { SearchIcon } from "../components/icons";
 import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
+import type { Transaction } from "../types";
 import styles from "./Transactions.module.css";
 
 type SortKey = "date" | "amount";
@@ -22,6 +23,7 @@ export default function Transactions() {
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
+  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
 
   const { data: transactions } = useTransactions({
     search: search || undefined,
@@ -170,6 +172,7 @@ export default function Transactions() {
                   txn={txn}
                   accountName={acc?.name}
                   currency={acc?.currency ?? currency}
+                  onClick={() => setEditingTxn(txn)}
                 />
               </div>
             );
@@ -186,6 +189,14 @@ export default function Transactions() {
         <AddModal
           accountId={defaultAccountId}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {editingTxn && (
+        <AddModal
+          accountId={editingTxn.account_id}
+          transaction={editingTxn}
+          onClose={() => setEditingTxn(null)}
         />
       )}
     </div>
