@@ -1,0 +1,196 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 640px;
+}
+
+.pageTitle {
+  font: 700 28px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.6px;
+  color: var(--pl-text);
+}
+
+.card {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.dangerCard {
+  border: 1px solid var(--pl-down);
+}
+
+.sectionTitle {
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  margin-bottom: 18px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--pl-rule);
+}
+
+.label {
+  font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.hint {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  margin-top: 2px;
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: background 160ms;
+}
+
+.toggleBtn:hover {
+  background: var(--pl-rule);
+}
+
+.swatches {
+  display: flex;
+  gap: 8px;
+}
+
+.swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 160ms;
+}
+
+.swatch:hover {
+  transform: scale(1.1);
+}
+
+/* Form */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  outline: none;
+  transition: border-color 160ms;
+}
+
+.input:focus {
+  border-color: var(--pl-accent);
+}
+
+.input::placeholder {
+  color: var(--pl-text-mute);
+}
+
+.primaryBtn {
+  align-self: flex-start;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.primaryBtn:hover {
+  opacity: 0.9;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.outlineBtn {
+  padding: 10px 20px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pl-text-soft);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: background 160ms;
+}
+
+.outlineBtn:hover {
+  background: var(--pl-surface-alt);
+}
+
+.dangerBtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-down);
+  color: #fff;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.dangerBtn:hover {
+  opacity: 0.9;
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 240px;
+}
+
+.deleteActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.successMsg {
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-up);
+}
+
+.errorMsg {
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-down);
+}

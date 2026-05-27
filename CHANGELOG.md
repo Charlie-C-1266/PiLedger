@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] — 2026-05-27
+
+### Added
+
+- **Settings screen.** Replaces the stub with four sections: **Appearance** (theme mode toggle + accent colour picker with the 5 approved swatches), **Change password** (current + new password fields with validation and error/success feedback), **Session** (sign out button that clears the cookie and redirects to login), and **Danger zone** (delete account with password confirmation, red-bordered card). All actions use the existing backend API endpoints.
+
+- **API client functions** for `logout`, `changePassword`, `deleteAccount`, and `updatePrefs`.
+
+Affected files: `frontend/src/screens/Settings.tsx` (replaced stub), `frontend/src/screens/Settings.module.css` (new), `frontend/src/api/client.ts` (new functions), `src/constants.py` (`VERSION` bumped to `1.2.0`).
+
+---
+
 ## [1.1.0] — 2026-05-27
 
 ### Added
