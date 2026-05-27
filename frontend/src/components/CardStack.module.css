@@ -1,13 +1,15 @@
 .canvas {
   position: relative;
   width: 100%;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .stack {
   position: absolute;
   left: 50%;
   top: 50%;
+  width: 220px;
+  height: 132px;
   transform: translate(-50%, -50%);
 }
 
