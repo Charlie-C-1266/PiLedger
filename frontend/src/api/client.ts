@@ -72,6 +72,9 @@ export const createAccount = (data: {
   color?: string;
 }) => post<Account>("/api/accounts", data);
 
+export const updateAccount = (id: number, data: Partial<Account>) =>
+  put<Account>(`/api/accounts/${id}`, data);
+
 export const recordBalance = (accountId: number, balance: number) =>
   post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, { balance });
 
