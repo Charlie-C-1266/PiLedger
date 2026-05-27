@@ -71,6 +71,15 @@ def _seed_alice(alice):
         },
     )
     alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
+    alice.post(
+        "/api/transactions",
+        json={
+            "account_id": acct["id"],
+            "amount": -42.50,
+            "merchant": "Tesco",
+            "category": "Groceries",
+        },
+    )
     return acct
 
 
@@ -83,8 +92,12 @@ def test_export_round_trips_every_user_scoped_table(alice):
     assert body["accounts"][0]["name"] == "Main"
     assert body["accounts"][0]["currency"] == "GBP"
 
-    assert len(body["balance_history"]) == 2
-    assert {row["balance_cents"] for row in body["balance_history"]} == {123456, 140000}
+    assert len(body["balance_history"]) == 3
+    assert {row["balance_cents"] for row in body["balance_history"]} == {
+        123456,
+        140000,
+        135750,
+    }
 
     assert len(body["budget_items"]) == 1
     assert body["budget_items"][0]["amount_cents"] == -80000
@@ -92,6 +105,10 @@ def test_export_round_trips_every_user_scoped_table(alice):
     assert len(body["exchange_rates"]) == 1
     assert body["exchange_rates"][0]["currency"] == "USD"
     assert body["exchange_rates"][0]["rate"] == 0.78
+
+    assert len(body["transactions"]) == 1
+    assert body["transactions"][0]["merchant"] == "Tesco"
+    assert body["transactions"][0]["amount_cents"] == -4250
 
 
 def test_export_is_valid_json_bytes(alice):
