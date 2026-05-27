@@ -1,0 +1,253 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+}
+
+@media (max-width: 1079px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--pl-shadow);
+}
+
+@media (max-width: 719px) {
+  .card {
+    padding: 22px;
+  }
+}
+
+/* Hero */
+
+.heroHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.microLabel {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.heroValue {
+  font: 700 46px/1.05 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -1.2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+  margin-bottom: 8px;
+}
+
+@media (max-width: 719px) {
+  .heroValue {
+    font-size: 36px;
+  }
+}
+
+.heroMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.deltaPill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.metaMute {
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+/* Stat row */
+
+.statRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 719px) {
+  .statRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Section headers */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.sectionSub {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  margin-top: 2px;
+}
+
+/* Add pill */
+
+.addPill {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pl-accent-soft);
+  color: var(--pl-accent);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addPill:hover {
+  opacity: 0.85;
+}
+
+/* Transaction list */
+
+.txnList {
+  display: flex;
+  flex-direction: column;
+}
+
+.txnDivider + .txnDivider {
+  border-top: 1px solid var(--pl-rule);
+}
+
+/* Donut */
+
+.donutWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.donutCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.donutValue {
+  font: 700 22px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+/* Legend */
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 160ms;
+  cursor: default;
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legendName {
+  flex: 1;
+  font: 500 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.legendValue {
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-soft);
+}
+
+/* Goals */
+
+.goalsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.goalRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.goalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.goalName {
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.goalPct {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-soft);
+}
+
+.goalFooter {
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-mute);
+}
+
+/* Empty state */
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
