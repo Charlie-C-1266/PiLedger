@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
@@ -6,7 +6,7 @@ import { useNetWorthSeries } from "../hooks/useNetWorthSeries";
 import { useTransactions } from "../hooks/useTransactions";
 import { useGoals } from "../hooks/useGoals";
 import { fmt, fmtShort } from "../lib/currency";
-import type { RangeKey, NetWorthPoint } from "../types";
+import type { AccountType, RangeKey, NetWorthPoint } from "../types";
 import type { StackVariant } from "../components/CardStack";
 import LineChart from "../components/charts/LineChart";
 import Donut from "../components/charts/Donut";
@@ -16,6 +16,14 @@ import RangePills from "../components/RangePills";
 import CardStack, { VariantPicker } from "../components/CardStack";
 import TxnRow from "../components/TxnRow";
 import styles from "./Overview.module.css";
+
+const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  current: "Current",
+  savings: "Savings",
+  loan: "Loan",
+  credit: "Credit",
+  invest: "Invest",
+};
 
 export default function Overview() {
   const { theme } = useTheme();
@@ -29,6 +37,7 @@ export default function Overview() {
 
   const [hoverPoint, setHoverPoint] = useState<NetWorthPoint | null>(null);
   const [stackVariant, setStackVariant] = useState<StackVariant>("fan");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
   const [donutHover, setDonutHover] = useState<number | null>(null);
 
   const currency = summary?.base_currency ?? "GBP";
@@ -36,6 +45,17 @@ export default function Overview() {
   const positiveAccounts = (accounts ?? []).filter(
     (a) => (a.current_balance ?? 0) >= 0
   );
+
+  const stackAccounts = useMemo(() => {
+    const all = accounts ?? [];
+    if (!accountTypeFilter) return all;
+    return all.filter((a) => a.type === accountTypeFilter);
+  }, [accounts, accountTypeFilter]);
+
+  const accountTypes = useMemo(() => {
+    const set = new Set((accounts ?? []).map((a) => a.type));
+    return (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter((t) => set.has(t));
+  }, [accounts]);
 
   // Donut slices from positive-balance accounts — use each account's stored colour
   const donutSlices = positiveAccounts.map((a) => ({
@@ -120,8 +140,27 @@ export default function Overview() {
             </div>
             <VariantPicker value={stackVariant} onChange={setStackVariant} />
           </div>
+          {accountTypes.length > 1 && (
+            <div className={styles.typeFilter}>
+              <button
+                className={`${styles.typePill} ${!accountTypeFilter ? styles.typePillActive : ""}`}
+                onClick={() => setAccountTypeFilter("")}
+              >
+                All
+              </button>
+              {accountTypes.map((t) => (
+                <button
+                  key={t}
+                  className={`${styles.typePill} ${t === accountTypeFilter ? styles.typePillActive : ""}`}
+                  onClick={() => setAccountTypeFilter(t === accountTypeFilter ? "" : t)}
+                >
+                  {ACCOUNT_TYPE_LABELS[t]}
+                </button>
+              ))}
+            </div>
+          )}
           <CardStack
-            accounts={positiveAccounts}
+            accounts={stackAccounts}
             variant={stackVariant}
             height={290}
           />

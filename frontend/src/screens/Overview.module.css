@@ -251,3 +251,33 @@
   font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);
 }
+
+.typeFilter {
+  display: flex;
+  gap: 2px;
+  background: var(--pl-surface-alt);
+  border-radius: 8px;
+  padding: 3px;
+  margin: 0 24px 8px;
+  width: fit-content;
+}
+
+.typePill {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pl-text-mute);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+
+.typePill:hover {
+  color: var(--pl-text-soft);
+}
+
+.typePillActive {
+  background: var(--pl-text);
+  color: var(--pl-surface);
+}

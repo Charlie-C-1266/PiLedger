@@ -30,19 +30,23 @@ function tileTransform(
 
   if (variant === "fan") {
     if (anyHover) {
-      x = -i * 60 + 100;
+      const spacing = Math.min(60, 300 / n);
+      x = -i * spacing + ((n - 1) * spacing) / 2;
       y = 0;
-      rot = -8 + i * 3;
+      const rotRange = Math.min(3, 16 / n);
+      rot = -8 + i * rotRange;
     } else {
+      const yStep = Math.min(14, 80 / n);
       x = 0;
-      y = i * 14;
+      y = i * yStep;
       rot = -2 + i * 0.7;
     }
     if (isHovered) scale = 1.05;
   } else if (variant === "cascade") {
-    const total = n;
-    x = i * 30 - total * 15;
-    y = i * 22;
+    const xStep = Math.min(30, 180 / n);
+    const yStep = Math.min(22, 120 / n);
+    x = i * xStep - n * (xStep / 2);
+    y = i * yStep;
     if (isHovered) scale = 1.04;
   } else if (variant === "wave") {
     const t = n > 1 ? i / (n - 1) : 0.5;
@@ -61,13 +65,12 @@ function tileTransform(
 
 export default function CardStack({ accounts, variant, height = 290 }: Props) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
-  const tiles = accounts.slice(0, 6);
-  const n = tiles.length;
+  const n = accounts.length;
 
   if (variant === "grid") {
     return (
       <div className={styles.grid}>
-        {tiles.map((a) => (
+        {accounts.map((a) => (
           <AccountTile key={a.id} account={a} compact style={{ width: "100%", height: 132 }} />
         ))}
       </div>
@@ -77,7 +80,7 @@ export default function CardStack({ accounts, variant, height = 290 }: Props) {
   return (
     <div className={styles.canvas} style={{ height }}>
       <div className={styles.stack}>
-        {tiles.map((a, i) => (
+        {accounts.map((a, i) => (
           <AccountTile
             key={a.id}
             account={a}
