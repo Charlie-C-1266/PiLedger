@@ -1,0 +1,113 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 719px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+/* Top row */
+
+.topRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.goalName {
+  font: 700 20px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.eta {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  margin-top: 4px;
+}
+
+.badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 17px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Progress */
+
+.progress {
+  margin-top: 24px;
+}
+
+.amounts {
+  display: flex;
+  justify-content: space-between;
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-mute);
+  margin-bottom: 6px;
+}
+
+/* Contribution editor */
+
+.editor {
+  margin-top: 22px;
+  background: var(--pl-surface-alt);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.editorRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.editorLabel {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.editorValue {
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.editorFooter {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  margin-top: 8px;
+}
+
+/* Empty */
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
