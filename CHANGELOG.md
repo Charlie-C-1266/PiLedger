@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.35.0] — 2026-05-27
+
+### Added
+
+- **AccountTile component.** Faux credit-card tile with gradient background from the swatch map, decorative SVG circles, institution label, masked card number (JetBrains Mono), account name, and balance. `compact` prop hides the card-number row and shrinks the balance font.
+
+- **CardStack component.** Renders up to 6 AccountTiles in four layout variants (fan, cascade, wave, grid) with animated transitions via `transform 380ms cubic-bezier(.2,.7,.2,1)`. Hover interactions per variant with z-index elevation. Includes a `VariantPicker` segmented control.
+
+- **LineChart component.** Recharts v3 AreaChart with accent-coloured stroke, gradient area fill (22%/32% opacity for light/dark), right-edge Y-axis tick labels, dashed hover crosshair, active dot, and `onHover` callback for the parent to display scrubbed values.
+
+- **Donut component.** SVG donut with configurable size, thickness, and slice gap. Hover fades non-hovered slices to 0.25 opacity. Center slot for label/value content. `hoverIdx`/`onHover` props for legend sync.
+
+- **Sparkline component.** Tiny inline SVG chart with smooth Bezier interpolation and optional semi-transparent fill. Used on stat cards.
+
+- **HBar component.** Horizontal progress bar with 400ms cubic-bezier width transition. Configurable color, track, and height.
+
+- **TxnRow component.** Transaction row with avatar (merchant initials), merchant name, category/date sub-line, account name (desktop only), and amount with proper sign glyph. Responsive grid columns (4-col desktop, 3-col mobile).
+
+- **AddModal component.** Centered modal (max-width 440px) with backdrop blur, merchant + amount inputs, category chip picker, Save/Cancel footer. Wired to `createTransaction` API via TanStack Query mutation with automatic cache invalidation.
+
+- **RangePills component.** `7D / 30D / 90D / 1Y` segmented control with `role="radiogroup"` accessibility.
+
+- **StatCard component.** Uppercase label, big value, optional sparkline. Configurable colour.
+
+Affected files: `frontend/src/components/` (10 new components + CSS modules), `frontend/src/components/charts/` (4 new chart components), `src/constants.py` (`VERSION` bumped to `0.35.0`).
+
+---
+
 ## [0.34.0] — 2026-05-27
 
 ### Added
