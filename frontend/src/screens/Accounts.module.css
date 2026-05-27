@@ -8,7 +8,6 @@
   background: var(--pl-surface);
   border-radius: 16px;
   box-shadow: var(--pl-shadow);
-  overflow: hidden;
 }
 
 .heroHeader {
