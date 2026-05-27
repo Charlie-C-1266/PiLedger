@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.32.0] — 2026-05-27
+
+### Added
+
+- **Design token system and theme provider.** React context (`ThemeProvider`) that derives a full theme object from a `mode` (light/dark) and `accent` colour. Sets 13 CSS custom properties (`--pl-bg`, `--pl-surface`, `--pl-text`, `--pl-accent`, etc.) on `:root` so all components style against variables, never raw hex values. Light and dark token maps match the design handoff exactly. Includes `accentSoft` derivation via `color-mix(in oklab, ...)`.
+
+- **Per-account swatch map.** Lookup from account ID to gradient pair for the 12 accounts specified in the design handoff, with a `#444 → #777` fallback for unmapped accounts.
+
+- **Theme persistence.** Mode saved to `localStorage` and initialised from `prefers-color-scheme` on first load. Accent colour saved to `localStorage`. Both survive page reloads.
+
+- **Theme transition.** `background 220ms, color 220ms` on the root element when toggling between light and dark modes.
+
+Affected files: `frontend/src/theme/` (new: `tokens.ts`, `ThemeContext.ts`, `ThemeProvider.tsx`, `useTheme.ts`, `swatches.ts`), `frontend/src/main.tsx` (wraps app in `ThemeProvider`), `frontend/src/index.css` (CSS variable usage, transition), `src/constants.py` (`VERSION` bumped to `0.32.0`).
+
+---
+
 ## [0.31.0] — 2026-05-27
 
 ### Added
