@@ -1,0 +1,78 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 14px;
+  background: var(--pl-surface);
+  border-right: 1px solid var(--pl-rule);
+  overflow-y: auto;
+}
+
+.compact {
+  width: 64px;
+  align-items: center;
+  padding: 20px 8px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 24px;
+}
+
+.compact .brand {
+  justify-content: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 700 16px "Plus Jakarta Sans", sans-serif;
+  flex-shrink: 0;
+}
+
+.wordmark {
+  font: 700 17px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  letter-spacing: -0.4px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.userCard {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+}
+
+.userLabel {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+  margin-bottom: 4px;
+}
+
+.userName {
+  font: 600 13px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}

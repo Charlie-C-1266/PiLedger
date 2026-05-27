@@ -1,0 +1,40 @@
+.strip {
+  display: flex;
+  gap: 2px;
+  background: var(--pl-surface);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: var(--pl-shadow);
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--pl-text-mute);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  transition: background 160ms, color 160ms;
+}
+
+.tab:hover {
+  color: var(--pl-text-soft);
+}
+
+.active {
+  background: var(--pl-accent);
+  color: #fff;
+}
+
+.icon {
+  display: flex;
+}
+
+.label {
+  white-space: nowrap;
+}
