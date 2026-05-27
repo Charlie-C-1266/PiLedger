@@ -286,6 +286,46 @@ def test_deleting_account_cascades_transactions(alice):
     assert remaining[0]["id"] == t_keep["id"]
 
 
+# ── Balance adjustment ───────────────────────────────────────────────────────
+
+
+def test_create_transaction_adjusts_account_balance(alice):
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    _txn(alice, aid, amount=-50.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 950.0
+
+
+def test_income_transaction_increases_balance(alice):
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 500.0})
+    _txn(alice, aid, amount=1000.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 1500.0
+
+
+def test_delete_transaction_reverses_balance(alice):
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 2000.0})
+    txn = _txn(alice, aid, amount=-300.0)
+    accts = alice.get("/api/accounts").json()
+    assert next(a["current_balance"] for a in accts if a["id"] == aid) == 1700.0
+    alice.delete(f"/api/transactions/{txn['id']}")
+    accts = alice.get("/api/accounts").json()
+    assert next(a["current_balance"] for a in accts if a["id"] == aid) == 2000.0
+
+
+def test_transaction_on_zero_balance_account(alice):
+    aid = _acct(alice)
+    _txn(alice, aid, amount=250.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 250.0
+
+
 # ── Validation ───────────────────────────────────────────────────────────────
 
 

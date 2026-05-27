@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.3] — 2026-05-27
+
+### Added
+
+- **Transactions adjust account balances.** Creating a transaction now automatically updates the linked account's balance — a £1,000 income increases the balance by £1,000, a −£50 expense decreases it by £50. Deleting a transaction reverses the adjustment. Works from a zero starting balance (accounts with no prior balance history start at 0). Four new tests cover: expense decreases balance, income increases balance, delete reverses the change, and transaction on a zero-balance account.
+
+Affected files: `src/app.py` (`_adjust_account_balance` helper, updated `create_transaction` and `delete_transaction`), `tests/test_transactions.py` (4 new tests), `src/constants.py` (`VERSION` bumped to `1.2.3`).
+
+---
+
 ## [1.2.2] — 2026-05-27
 
 ### Fixed
