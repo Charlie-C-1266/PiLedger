@@ -1,13 +1,23 @@
+import { useState } from "react";
 import { useTheme } from "../theme/useTheme";
 import { SunIcon, MoonIcon, PlusIcon, SearchIcon } from "./icons";
+import AddMenu from "./AddMenu";
+import type { AddTarget } from "./AddMenu";
 import styles from "./Header.module.css";
 
 interface Props {
   mobile?: boolean;
+  onAdd?: (target: AddTarget) => void;
 }
 
-export default function Header({ mobile }: Props) {
+export default function Header({ mobile, onAdd }: Props) {
   const { mode, toggleMode } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleSelect = (target: AddTarget) => {
+    setMenuOpen(false);
+    onAdd?.(target);
+  };
 
   if (mobile) {
     return (
@@ -19,9 +29,16 @@ export default function Header({ mobile }: Props) {
           <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
             {mode === "light" ? <MoonIcon /> : <SunIcon />}
           </button>
-          <button className={styles.addBtnMobile} aria-label="Add">
-            <PlusIcon />
-          </button>
+          <div className={styles.addWrap}>
+            <button
+              className={styles.addBtnMobile}
+              aria-label="Add"
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              <PlusIcon />
+            </button>
+            {menuOpen && <AddMenu onSelect={handleSelect} onClose={() => setMenuOpen(false)} />}
+          </div>
         </div>
       </header>
     );
@@ -47,9 +64,12 @@ export default function Header({ mobile }: Props) {
         <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
           {mode === "light" ? <MoonIcon /> : <SunIcon />}
         </button>
-        <button className={styles.addBtn}>
-          <PlusIcon /> Add
-        </button>
+        <div className={styles.addWrap}>
+          <button className={styles.addBtn} onClick={() => setMenuOpen((o) => !o)}>
+            <PlusIcon /> Add
+          </button>
+          {menuOpen && <AddMenu onSelect={handleSelect} onClose={() => setMenuOpen(false)} />}
+        </div>
       </div>
     </header>
   );

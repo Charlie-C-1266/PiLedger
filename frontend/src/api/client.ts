@@ -63,6 +63,15 @@ export const deleteAccount = (password: string) =>
 
 export const getAccounts = () => json<Account[]>("/api/accounts");
 
+export const createAccount = (data: {
+  name: string;
+  type: string;
+  subtype?: string;
+  currency?: string;
+  interest_rate?: number;
+  color?: string;
+}) => post<Account>("/api/accounts", data);
+
 // Summary
 
 export const getSummary = () => json<Summary>("/api/summary");
