@@ -22,6 +22,12 @@
   font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: -0.4px;
   color: var(--pl-text);
+}
+
+.subtitle {
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  margin-bottom: 8px;
   margin-bottom: 20px;
 }
 

@@ -72,6 +72,9 @@ export const createAccount = (data: {
   color?: string;
 }) => post<Account>("/api/accounts", data);
 
+export const recordBalance = (accountId: number, balance: number) =>
+  post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, { balance });
+
 // Summary
 
 export const getSummary = () => json<Summary>("/api/summary");

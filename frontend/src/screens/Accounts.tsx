@@ -5,7 +5,9 @@ import { useSummary } from "../hooks/useSummary";
 import { fmt } from "../lib/currency";
 import CardStack, { VariantPicker } from "../components/CardStack";
 import AccountTile from "../components/AccountTile";
+import UpdateBalanceModal from "../components/UpdateBalanceModal";
 import type { StackVariant } from "../components/CardStack";
+import type { Account } from "../types";
 import styles from "./Accounts.module.css";
 
 export default function Accounts() {
@@ -13,6 +15,7 @@ export default function Accounts() {
   const { data: accounts } = useAccounts();
   const { data: summary } = useSummary();
   const [variant, setVariant] = useState<StackVariant>("fan");
+  const [editAccount, setEditAccount] = useState<Account | null>(null);
 
   const currency = summary?.base_currency ?? "GBP";
   const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) >= 0);
@@ -38,6 +41,23 @@ export default function Accounts() {
         <CardStack accounts={positive} variant={variant} height={340} />
       </div>
 
+      {/* All accounts list — click to update balance */}
+      {(accounts ?? []).length > 0 && (
+        <div>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>All accounts</span>
+            <span className={styles.sectionHint}>Click to update balance</span>
+          </div>
+          <div className={styles.accountGrid}>
+            {(accounts ?? []).map((a) => (
+              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Debts section */}
       {negative.length > 0 && (
         <div>
@@ -49,11 +69,12 @@ export default function Accounts() {
           </div>
           <div className={styles.debtGrid}>
             {negative.map((a) => (
-              <AccountTile
-                key={a.id}
-                account={a}
-                style={{ width: "100%", height: 150 }}
-              />
+              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+                <AccountTile
+                  account={a}
+                  style={{ width: "100%", height: 150 }}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -63,6 +84,13 @@ export default function Accounts() {
         <div className={styles.empty}>
           No accounts yet. Add one to get started.
         </div>
+      )}
+
+      {editAccount && (
+        <UpdateBalanceModal
+          account={editAccount}
+          onClose={() => setEditAccount(null)}
+        />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createAccount } from "../api/client";
+import { createAccount, recordBalance } from "../api/client";
 import styles from "./AddModal.module.css";
 
 const TYPES = [
@@ -18,20 +18,28 @@ interface Props {
 export default function AddAccountModal({ onClose }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState("current");
+  const [balance, setBalance] = useState("");
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: createAccount,
+    mutationFn: async () => {
+      const account = await createAccount({ name: name.trim(), type });
+      const parsed = parseFloat(balance);
+      if (!isNaN(parsed)) {
+        await recordBalance(account.id, parsed);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["networth"] });
       onClose();
     },
   });
 
   const handleSave = () => {
     if (!name.trim()) return;
-    mutation.mutate({ name: name.trim(), type });
+    mutation.mutate();
   };
 
   return (
@@ -45,6 +53,14 @@ export default function AddAccountModal({ onClose }: Props) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoFocus
+        />
+
+        <input
+          className={styles.input}
+          placeholder="Current balance (e.g. 2500.00)"
+          value={balance}
+          onChange={(e) => setBalance(e.target.value)}
+          inputMode="decimal"
         />
 
         <div className={styles.chips}>
