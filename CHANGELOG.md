@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.37.0] — 2026-05-27
+
+### Added
+
+- **Accounts screen.** Replaces the stub with a two-section page: a hero card showing the CardStack of positive-balance accounts with variant picker and a "N LINKED ACCOUNTS" / "Everything you hold" heading, plus a debts section showing negative-balance accounts in a responsive grid of full-size AccountTiles with the total in `theme.down` colour.
+
+Affected files: `frontend/src/screens/Accounts.tsx` (replaced stub), `frontend/src/screens/Accounts.module.css` (new), `src/constants.py` (`VERSION` bumped to `0.37.0`).
+
+---
+
 ## [0.36.0] — 2026-05-27
 
 ### Added

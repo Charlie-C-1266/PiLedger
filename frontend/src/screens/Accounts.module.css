@@ -1,0 +1,70 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.heroCard {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  box-shadow: var(--pl-shadow);
+  overflow: hidden;
+}
+
+.heroHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 26px 0;
+}
+
+.microLabel {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+  margin-bottom: 6px;
+}
+
+.heroHeading {
+  font: 700 30px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.8px;
+  color: var(--pl-text);
+}
+
+@media (max-width: 719px) {
+  .heroHeading {
+    font-size: 24px;
+  }
+}
+
+.debtHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.debtTotal {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.debtGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
