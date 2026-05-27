@@ -1,4 +1,4 @@
-import { getSwatch } from "../theme/swatches";
+import { colorToGradient } from "../theme/swatches";
 import { fmt } from "../lib/currency";
 import type { Account } from "../types";
 import styles from "./AccountTile.module.css";
@@ -24,7 +24,7 @@ export default function AccountTile({
   onMouseEnter,
   onMouseLeave,
 }: Props) {
-  const sw = getSwatch(String(account.id));
+  const sw = colorToGradient(account.color || "#6366f1");
   const bg = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
 
   return (

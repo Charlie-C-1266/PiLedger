@@ -6,7 +6,6 @@ import { useNetWorthSeries } from "../hooks/useNetWorthSeries";
 import { useTransactions } from "../hooks/useTransactions";
 import { useGoals } from "../hooks/useGoals";
 import { fmt, fmtShort } from "../lib/currency";
-import { getSwatch } from "../theme/swatches";
 import type { RangeKey, NetWorthPoint } from "../types";
 import type { StackVariant } from "../components/CardStack";
 import LineChart from "../components/charts/LineChart";
@@ -38,10 +37,10 @@ export default function Overview() {
     (a) => (a.current_balance ?? 0) >= 0
   );
 
-  // Donut slices from positive-balance accounts
+  // Donut slices from positive-balance accounts — use each account's stored colour
   const donutSlices = positiveAccounts.map((a) => ({
     value: a.current_balance ?? 0,
-    color: getSwatch(String(a.id)).start,
+    color: a.color || "#6366f1",
     label: a.name,
   }));
 

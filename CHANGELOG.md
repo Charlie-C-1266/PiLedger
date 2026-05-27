@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.1] — 2026-05-27
+
+### Added
+
+- **Per-account colour selection.** Accounts now carry a colour that is applied
+  to the card gradient and the distribution donut. A colour picker is shown in
+  the Add Account modal — 12 curated presets plus a free-form hex input — and a
+  live card-shaped preview updates in real time as you select.
+
+- **`colorToGradient` helper and `PRESET_COLORS` palette** in
+  `frontend/src/theme/swatches.ts`. Derives a lighter gradient-end shade from a
+  single hex colour so every account gets a polished two-stop gradient without
+  needing a second stored value.
+
+Affected files: `frontend/src/theme/swatches.ts` (new helper + presets, removed
+hardcoded swatch map), `frontend/src/components/AccountTile.tsx` (use
+`account.color` via `colorToGradient` instead of `getSwatch`),
+`frontend/src/screens/Overview.tsx` (donut slices use `account.color` directly),
+`frontend/src/components/AddAccountModal.tsx` (colour picker UI, passes `color`
+to `createAccount`), `frontend/src/components/AddModal.module.css` (colour
+picker styles), `src/constants.py` (`VERSION` bumped to `1.3.1`).
+
+---
+
 ## [1.3.0] — 2026-05-27
 
 ### Added
