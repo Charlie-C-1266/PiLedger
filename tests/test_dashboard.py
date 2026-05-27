@@ -100,6 +100,52 @@ def test_summary_user_isolation(alice, bob):
     assert body["account_count"] == 0
 
 
+def test_summary_loan_subtracted_from_total(alice):
+    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()[
+        "id"
+    ]
+    loan = alice.post(
+        "/api/accounts", json={"name": "Car Loan", "type": "loan"}
+    ).json()["id"]
+    alice.post(f"/api/accounts/{c}/balance", json={"balance": 10000.0})
+    alice.post(f"/api/accounts/{loan}/balance", json={"balance": 3000.0})
+    body = alice.get("/api/summary").json()
+    assert body["assets"] == 10000.0
+    assert body["debts"] == 3000.0
+    assert body["total"] == 7000.0
+
+
+def test_summary_negative_loan_balance_treated_as_positive_debt(alice):
+    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()[
+        "id"
+    ]
+    loan = alice.post("/api/accounts", json={"name": "Loan", "type": "loan"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{c}/balance", json={"balance": 5000.0})
+    alice.post(f"/api/accounts/{loan}/balance", json={"balance": -2000.0})
+    body = alice.get("/api/summary").json()
+    assert body["assets"] == 5000.0
+    assert body["debts"] == 2000.0
+    assert body["total"] == 3000.0
+
+
+def test_summary_credit_subtracted_from_total(alice):
+    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()[
+        "id"
+    ]
+    cc = alice.post(
+        "/api/accounts",
+        json={"name": "CC", "type": "credit", "subtype": "credit_card"},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{c}/balance", json={"balance": 8000.0})
+    alice.post(f"/api/accounts/{cc}/balance", json={"balance": 1500.0})
+    body = alice.get("/api/summary").json()
+    assert body["assets"] == 8000.0
+    assert body["debts"] == 1500.0
+    assert body["total"] == 6500.0
+
+
 # ── History / all ─────────────────────────────────────────────────────────────
 
 

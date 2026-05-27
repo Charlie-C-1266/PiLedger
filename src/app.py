@@ -811,9 +811,9 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
         elif r["type"] == "savings":
             savings_t += converted
         elif r["type"] == "loan":
-            loans_t += converted
+            loans_t += abs(converted)
         elif r["type"] == "credit":
-            credit_t += converted
+            credit_t += abs(converted)
         elif r["type"] == "invest":
             invest_t += converted
     assets = round(current_t + savings_t + invest_t, 2)
