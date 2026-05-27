@@ -33,6 +33,9 @@ html {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--pl-bg);
+  color: var(--pl-text);
+  transition: background 220ms, color 220ms;
 }
 
 body {
@@ -41,4 +44,8 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
