@@ -54,7 +54,7 @@ def test_headers_on_authed_summary(alice):
 
 
 def test_headers_on_static_asset(client):
-    resp = client.get("/static/style.css")
+    resp = client.get("/static/login.css")
     assert resp.status_code == 200
     _assert_default_headers(resp)
 

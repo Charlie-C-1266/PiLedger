@@ -139,7 +139,7 @@ export default function Transactions() {
 
         {/* Category chips */}
         {categories.length > 0 && (
-          <div className={styles.chipBar}>
+          <div className={styles.chipBar} role="radiogroup" aria-label="Filter by category">
             <button
               className={`${styles.chip} ${!categoryFilter ? styles.chipActive : ""}`}
               onClick={() => setCategoryFilter("")}

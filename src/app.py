@@ -1382,17 +1382,13 @@ def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────
 
-_DIST_DIR = os.path.join(_STATIC_DIR, "dist")
-_DIST_INDEX = os.path.join(_DIST_DIR, "index.html")
-_HAS_REACT = os.path.isfile(_DIST_INDEX)
+_DIST_INDEX = os.path.join(_STATIC_DIR, "dist", "index.html")
 
 
 def _serve_spa(session: Optional[str]) -> Response:
     if not session_uid(session):
         return RedirectResponse("/login", status_code=302)
-    if _HAS_REACT:
-        return FileResponse(_DIST_INDEX)
-    return FileResponse(os.path.join(_STATIC_DIR, "index.html"))
+    return FileResponse(_DIST_INDEX)
 
 
 @app.get("/")

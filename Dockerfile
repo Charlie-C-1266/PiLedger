@@ -1,14 +1,17 @@
 # syntax=docker/dockerfile:1.6
 
-# ── PiLedger runtime image ────────────────────────────────────────────────────
-# Slim Python 3.12 base. Multi-stage isn't worth the complexity here — the only
-# build output is wheels installed into site-packages, which slim already has
-# the toolchain to handle. Image size is dominated by Python + FastAPI, not the
-# app itself.
+# ── Stage 1: Build the React frontend ────────────────────────────────────────
+FROM node:20-slim AS frontend-build
+
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ── Stage 2: PiLedger runtime image ─────────────────────────────────────────
 FROM python:3.12-slim AS runtime
 
-# Avoid .pyc bloat in the image and unbuffered stdout so `docker logs` shows
-# uvicorn output in real time without us reaching for `python -u` everywhere.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -16,24 +19,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install runtime dependencies first as their own layer so editing application
-# code doesn't bust the dependency cache on every rebuild.
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Application source. The compose file mounts a named volume at /data for the
-# SQLite file, and PILEDGER_DB points at that path so user data survives image
-# rebuilds and container recreation. The single src-tree COPY also picks up
-# security.py (which the previous file-by-file COPY had missed since P0-3
-# landed — that bug now can't recur).
 COPY src ./src
-
-# Documentation markdown files served by the /guide viewer. Separate COPY so
-# editing a doc doesn't bust the (larger) src layer cache.
 COPY docs ./docs
 
-# Run as an unprivileged user. /data is writable so SQLite can create and
-# fsync the DB file inside the mounted volume; /app is read-only at runtime.
+# Copy the built React frontend into the static directory.
+# Vite's outDir is "../src/static/dist" relative to /build, i.e. /src/static/dist.
+COPY --from=frontend-build /src/static/dist ./src/static/dist
+
 RUN useradd --system --uid 10001 --home /home/piledger --create-home piledger \
     && mkdir -p /data \
     && chown -R piledger:piledger /data /app
@@ -43,10 +38,6 @@ ENV PILEDGER_DB=/data/piledger.db
 
 EXPOSE 8080
 
-# Health check hits /healthz — a dedicated unauthenticated probe that returns
-# {"ok": true, "version": "...", "uptime_s": N}. Asserts both HTTP 200 and a
-# truthy "ok" field so a half-broken process (e.g. SQLite gone wonky) that
-# could still serve a static /login can't fool the check.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD python -c "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3); sys.exit(0 if r.status==200 and json.load(r).get('ok') is True else 1)"
 
