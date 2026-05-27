@@ -63,6 +63,10 @@
   background: var(--pl-rule);
 }
 
+.addWrap {
+  position: relative;
+}
+
 .addBtn {
   display: flex;
   align-items: center;

@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.1] — 2026-05-27
+
+### Added
+
+- **Global "+ Add" dropdown menu.** The header's "+ Add" button (desktop and mobile) now opens a dropdown with three options: Account, Transaction, and Goal. Each option opens its respective creation modal. The menu closes on outside click.
+
+- **Add Account modal.** New modal for creating accounts with a name field and account type chips (Current, Savings, Credit, Investment, Loan). Invalidates accounts and summary caches on save.
+
+- **`createAccount` API function** added to the client.
+
+Affected files: `frontend/src/components/AddMenu.tsx` (new), `frontend/src/components/AddMenu.module.css` (new), `frontend/src/components/AddAccountModal.tsx` (new), `frontend/src/components/Header.tsx` (dropdown wiring), `frontend/src/components/Header.module.css` (addWrap positioning), `frontend/src/components/Shell.tsx` (modal state management), `frontend/src/api/client.ts` (createAccount), `src/constants.py` (`VERSION` bumped to `1.2.1`).
+
+---
+
 ## [1.2.0] — 2026-05-27
 
 ### Added
