@@ -27,18 +27,18 @@ export default function Accounts() {
   const [editAccount, setEditAccount] = useState<Account | null>(null);
 
   const currency = summary?.base_currency ?? "GBP";
-  const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) >= 0);
   const negative = (accounts ?? []).filter((a) => (a.current_balance ?? 0) < 0);
 
   const stackAccounts = useMemo(() => {
-    if (!accountTypeFilter) return positive;
-    return positive.filter((a) => a.type === accountTypeFilter);
-  }, [positive, accountTypeFilter]);
+    const all = accounts ?? [];
+    if (!accountTypeFilter) return all;
+    return all.filter((a) => a.type === accountTypeFilter);
+  }, [accounts, accountTypeFilter]);
 
   const accountTypes = useMemo(() => {
-    const set = new Set(positive.map((a) => a.type));
+    const set = new Set((accounts ?? []).map((a) => a.type));
     return (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter((t) => set.has(t));
-  }, [positive]);
+  }, [accounts]);
   const debtTotal = negative.reduce(
     (s, a) => s + Math.abs(a.current_balance ?? 0),
     0
