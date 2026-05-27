@@ -1222,6 +1222,23 @@ def list_transactions(
     return [_txn_row_to_out(r) for r in rows]
 
 
+def _adjust_account_balance(
+    conn: sqlite3.Connection, account_id: int, delta_cents: int
+) -> None:
+    """Add delta_cents to the account's latest balance and record a new entry."""
+    latest = conn.execute(
+        "SELECT balance_cents FROM balance_history WHERE account_id=?"
+        " ORDER BY recorded_at DESC, id DESC LIMIT 1",
+        (account_id,),
+    ).fetchone()
+    current = latest["balance_cents"] if latest else 0
+    conn.execute(
+        "INSERT INTO balance_history(account_id, balance_cents, recorded_at)"
+        " VALUES(?,?,?)",
+        (account_id, current + delta_cents, utcnow_iso()),
+    )
+
+
 @app.post("/api/transactions", status_code=201, response_model=TransactionOut)
 def create_transaction(
     data: TransactionIn,
@@ -1233,19 +1250,21 @@ def create_transaction(
         ).fetchone():
             raise HTTPException(404, "Account not found")
         ts = data.occurred_at or utcnow_iso()
+        amount_cents = to_cents(data.amount)
         cur = conn.execute(
             "INSERT INTO transactions(user_id, account_id, amount_cents,"
             " occurred_at, merchant, category, note) VALUES(?,?,?,?,?,?,?)",
             (
                 uid,
                 data.account_id,
-                to_cents(data.amount),
+                amount_cents,
                 ts,
                 data.merchant,
                 data.category,
                 data.note,
             ),
         )
+        _adjust_account_balance(conn, data.account_id, amount_cents)
         conn.commit()
         row = conn.execute(
             "SELECT * FROM transactions WHERE id=?", (cur.lastrowid,)
@@ -1286,10 +1305,13 @@ def update_transaction(
 @app.delete("/api/transactions/{tid}", response_model=OkOut)
 def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
     with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM transactions WHERE id=? AND user_id=?", (tid, uid)
-        ).fetchone():
+        txn = conn.execute(
+            "SELECT account_id, amount_cents FROM transactions WHERE id=? AND user_id=?",
+            (tid, uid),
+        ).fetchone()
+        if not txn:
             raise HTTPException(404, "Not found")
+        _adjust_account_balance(conn, txn["account_id"], -txn["amount_cents"])
         conn.execute("DELETE FROM transactions WHERE id=?", (tid,))
         conn.commit()
     return OkOut(ok=True)
