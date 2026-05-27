@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.3] — 2026-05-27
+
+### Fixed
+
+- **Transaction account column misalignment.** The account badge column in `TxnRow` shifted horizontally across rows because each row used its own independent CSS grid and the `amount` column was `auto`-sized — meaning rows with larger amounts pushed the account column leftward. Fixed by introducing a `.withAccount` CSS modifier that pins the account column to `120px` and the amount column to `96px`, guaranteeing identical column positions on every row. Long account names now truncate with an ellipsis; amounts are right-aligned within their fixed column.
+
+Affected files: `frontend/src/components/TxnRow.module.css`, `frontend/src/components/TxnRow.tsx`.
+
+---
+
 ## [1.3.2] — 2026-05-27
 
 ### Fixed
