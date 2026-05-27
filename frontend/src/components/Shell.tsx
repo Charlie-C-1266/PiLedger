@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { useAccounts } from "../hooks/useAccounts";
+import { useMe } from "../hooks/useMe";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import TabStrip from "./TabStrip";
@@ -23,6 +24,7 @@ export default function Shell() {
   const [layout, setLayout] = useState<Layout>(getLayout);
   const [modal, setModal] = useState<AddTarget | null>(null);
   const { data: accounts } = useAccounts();
+  const { data: me } = useMe();
 
   useEffect(() => {
     const onResize = () => setLayout(getLayout());
@@ -35,9 +37,9 @@ export default function Shell() {
 
   return (
     <div className={`${styles.shell} ${mobile ? styles.mobileShell : ""}`}>
-      {!mobile && <Sidebar compact={layout === "compact"} />}
+      {!mobile && <Sidebar compact={layout === "compact"} username={me?.username} />}
       <main className={`${styles.main} ${mobile ? styles.mainMobile : ""}`}>
-        <Header mobile={mobile} onAdd={setModal} />
+        <Header mobile={mobile} onAdd={setModal} username={me?.username} />
         {mobile && <TabStrip />}
         <Outlet />
       </main>
