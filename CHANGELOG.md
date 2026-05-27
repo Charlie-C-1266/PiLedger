@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.2] — 2026-05-27
+
+### Fixed
+
+- **Test suite audit.** Added 4 tests for transaction update balance adjustment (amount change, account move, combined, and non-financial field no-op). Fixed broken e2e `test_register_then_auto_login_lands_on_dashboard` that expected an `h1` element on the React SPA overview page — now checks for "NET WORTH" text which actually exists. Added transaction seed and assertion to the export round-trip test so exported transaction data correctness is verified.
+
+Affected files: `tests/test_transactions.py` (4 new balance-adjustment-on-update tests), `tests/e2e/test_auth_flow.py` (h1 → "NET WORTH" locator), `tests/e2e/conftest.py` (same fix in `signed_in_page` fixture), `tests/test_export.py` (transaction seed + assertion).
+
+---
+
 ## [1.3.1] — 2026-05-27
 
 ### Added

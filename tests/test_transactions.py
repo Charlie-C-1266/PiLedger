@@ -326,6 +326,63 @@ def test_transaction_on_zero_balance_account(alice):
     assert bal == 250.0
 
 
+# ── Balance adjustment on update ────────────────────────────────────────────
+
+
+def test_update_amount_adjusts_balance(alice):
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    txn = _txn(alice, aid, amount=-50.0)
+    alice.put(f"/api/transactions/{txn['id']}", json={"amount": -200.0})
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 800.0
+
+
+def test_update_account_moves_balance(alice):
+    a1 = _acct(alice, name="From")
+    a2 = _acct(alice, name="To")
+    alice.post(f"/api/accounts/{a1}/balance", json={"balance": 1000.0})
+    alice.post(f"/api/accounts/{a2}/balance", json={"balance": 500.0})
+    txn = _txn(alice, a1, amount=-100.0)
+    bal1 = next(
+        a["current_balance"] for a in alice.get("/api/accounts").json() if a["id"] == a1
+    )
+    assert bal1 == 900.0
+    alice.put(f"/api/transactions/{txn['id']}", json={"account_id": a2})
+    accts = alice.get("/api/accounts").json()
+    bal1 = next(a["current_balance"] for a in accts if a["id"] == a1)
+    bal2 = next(a["current_balance"] for a in accts if a["id"] == a2)
+    assert bal1 == 1000.0
+    assert bal2 == 400.0
+
+
+def test_update_amount_and_account_adjusts_both(alice):
+    a1 = _acct(alice, name="Old")
+    a2 = _acct(alice, name="New")
+    alice.post(f"/api/accounts/{a1}/balance", json={"balance": 2000.0})
+    alice.post(f"/api/accounts/{a2}/balance", json={"balance": 500.0})
+    txn = _txn(alice, a1, amount=-300.0)
+    alice.put(
+        f"/api/transactions/{txn['id']}", json={"account_id": a2, "amount": -100.0}
+    )
+    accts = alice.get("/api/accounts").json()
+    bal1 = next(a["current_balance"] for a in accts if a["id"] == a1)
+    bal2 = next(a["current_balance"] for a in accts if a["id"] == a2)
+    assert bal1 == 2000.0
+    assert bal2 == 400.0
+
+
+def test_update_merchant_does_not_adjust_balance(alice):
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    txn = _txn(alice, aid, amount=-50.0)
+    alice.put(f"/api/transactions/{txn['id']}", json={"merchant": "Sainsburys"})
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 950.0
+
+
 # ── Validation ───────────────────────────────────────────────────────────────
 
 
