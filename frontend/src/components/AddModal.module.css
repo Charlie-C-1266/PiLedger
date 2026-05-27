@@ -1,0 +1,111 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  padding: 28px;
+  border-radius: 20px;
+  background: var(--pl-surface);
+  box-shadow: var(--pl-shadow-lg);
+}
+
+.title {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+  margin-bottom: 20px;
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  outline: none;
+  transition: border-color 160ms;
+}
+
+.input:focus {
+  border-color: var(--pl-accent);
+}
+
+.input::placeholder {
+  color: var(--pl-text-mute);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.chip {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: background 160ms, color 160ms;
+}
+
+.chip:hover {
+  color: var(--pl-text);
+}
+
+.chipActive {
+  background: var(--pl-accent);
+  color: #fff;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pl-text-soft);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+}
+
+.save {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.save:hover {
+  opacity: 0.9;
+}
+
+.save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

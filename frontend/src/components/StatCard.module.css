@@ -1,0 +1,22 @@
+.card {
+  background: var(--pl-surface);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: var(--pl-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.value {
+  font: 700 24px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
