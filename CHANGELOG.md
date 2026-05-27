@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.38.0] — 2026-05-27
+
+### Added
+
+- **Transactions screen.** Full transaction browser with four sections: a stat strip (Showing count, Inflow, Outflow, Net), a filter bar (search pill, account dropdown, date/amount sort toggle, "+ Add" button), category chips for filtering, and a dense transaction list with TxnRow dividers. Search and account/sort filters are server-side via query params; category filter is client-side. The "+ Add" button opens the AddModal for creating new transactions with automatic list refresh.
+
+Affected files: `frontend/src/screens/Transactions.tsx` (replaced stub), `frontend/src/screens/Transactions.module.css` (new), `src/constants.py` (`VERSION` bumped to `0.38.0`).
+
+---
+
 ## [0.37.0] — 2026-05-27
 
 ### Added
