@@ -7,7 +7,7 @@ from typing import Literal
 # Application version. Returned by `GET /healthz` so uptime monitors and
 # operators can confirm what's actually running without `ssh && git log`.
 # Bump in lock-step with the CHANGELOG header on every release.
-VERSION = "0.38.0"
+VERSION = "0.39.0"
 
 
 # ─── Paths / cookies ──────────────────────────────────────────────────────────

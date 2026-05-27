@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.39.0] — 2026-05-27
+
+### Added
+
+- **Goals screen.** Two-column grid of goal cards (single column on mobile), each showing: goal name with ETA microline, colour-tinted percent badge (52×52), saved/target amounts above an HBar progress bar, and an inset contribution editor with a range slider (0–800, step 10) that live-recomputes the ETA on every change. Slider changes are debounced (400ms) and persisted to the API via `PUT /api/goals/{id}` with automatic cache invalidation.
+
+Affected files: `frontend/src/screens/Goals.tsx` (replaced stub), `frontend/src/screens/Goals.module.css` (new), `src/constants.py` (`VERSION` bumped to `0.39.0`).
+
+---
+
 ## [0.38.0] — 2026-05-27
 
 ### Added
