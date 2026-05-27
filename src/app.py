@@ -36,6 +36,8 @@ from constants import (
     LOGIN_RATE_LIMIT,
     MAX_DAYS,
     MAX_MONTHS,
+    RANGE_TO_DAYS,
+    RangeKey,
     SESSION_COOKIE,
     SESSION_DAYS,
     SUBTYPES_BY_TYPE,
@@ -70,10 +72,14 @@ from schemas import (
     BudgetItemOut,
     BudgetItemPatch,
     DeleteMeIn,
+    GoalIn,
+    GoalOut,
+    GoalPatch,
     HistoryAccountOut,
     HistoryPointOut,
     LoginIn,
     LoginOut,
+    NetWorthPointOut,
     OkOut,
     PasswordChangeIn,
     PrefsOut,
@@ -84,6 +90,9 @@ from schemas import (
     RegisterIn,
     RegisterOut,
     SummaryOut,
+    TransactionIn,
+    TransactionOut,
+    TransactionPatch,
     UserOut,
 )
 
@@ -789,7 +798,7 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
         ).fetchall()
         rates = _load_rates(conn, uid)
     base = (user["base_currency"] if user else None) or "GBP"
-    current_t = savings_t = loans_t = 0.0
+    current_t = savings_t = loans_t = credit_t = invest_t = 0.0
     missing: set[str] = set()
     for r in rows:
         cur = r["currency"] or "GBP"
@@ -803,12 +812,23 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
             savings_t += converted
         elif r["type"] == "loan":
             loans_t += converted
+        elif r["type"] == "credit":
+            credit_t += converted
+        elif r["type"] == "invest":
+            invest_t += converted
+    assets = round(current_t + savings_t + invest_t, 2)
+    debts = round(loans_t + credit_t, 2)
+    savings_rate = round(savings_t / assets * 100, 2) if assets > 0 else 0.0
     return SummaryOut(
-        # Net worth: assets minus liabilities, expressed in the user's base currency.
-        total=round(current_t + savings_t - loans_t, 2),
+        total=round(assets - debts, 2),
         total_current=round(current_t, 2),
         total_savings=round(savings_t, 2),
         total_loans=round(loans_t, 2),
+        total_credit=round(credit_t, 2),
+        total_invest=round(invest_t, 2),
+        assets=assets,
+        debts=debts,
+        savings_rate=savings_rate,
         account_count=len(rows),
         base_currency=base,
         missing_rates=sorted(missing),
@@ -851,6 +871,73 @@ def all_history(
                     )
                 )
     return result
+
+
+@app.get("/api/history/networth", response_model=list[NetWorthPointOut])
+def networth_history(
+    range_key: RangeKey = Query(default="30D", alias="range"),
+    uid: int = Depends(require_auth),
+) -> list[NetWorthPointOut]:
+    days = RANGE_TO_DAYS[range_key]
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
+    with db() as conn:
+        user = conn.execute(
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
+        ).fetchone()
+        base = (user["base_currency"] if user else None) or "GBP"
+        rates = _load_rates(conn, uid)
+        accounts = {
+            r["id"]: r
+            for r in conn.execute(
+                "SELECT id, type, currency FROM accounts WHERE user_id=?", (uid,)
+            ).fetchall()
+        }
+        if not accounts:
+            return []
+        acct_ids = tuple(accounts)
+        placeholders = ",".join("?" * len(acct_ids))
+        # Carry-forward: latest balance per account before the window
+        seeds = conn.execute(
+            f"SELECT account_id, balance_cents FROM balance_history"
+            f" WHERE id IN ("
+            f"  SELECT MAX(bh2.id) FROM balance_history bh2"
+            f"  WHERE bh2.account_id IN ({placeholders}) AND bh2.recorded_at < ?"
+            f"  GROUP BY bh2.account_id"
+            f" )",
+            (*acct_ids, since),
+        ).fetchall()
+        latest: dict[int, int] = {r["account_id"]: r["balance_cents"] for r in seeds}
+        entries = conn.execute(
+            f"SELECT account_id, balance_cents, recorded_at"
+            f" FROM balance_history"
+            f" WHERE account_id IN ({placeholders}) AND recorded_at >= ?"
+            f" ORDER BY recorded_at, id",
+            (*acct_ids, since),
+        ).fetchall()
+    if not entries and not latest:
+        return []
+    by_date: dict[str, list] = {}
+    for e in entries:
+        d = e["recorded_at"][:10]
+        by_date.setdefault(d, []).append(e)
+    points: list[NetWorthPointOut] = []
+    for d in sorted(by_date):
+        for e in by_date[d]:
+            latest[e["account_id"]] = e["balance_cents"]
+        nw = 0.0
+        for aid, cents in latest.items():
+            acc = accounts.get(aid)
+            if acc is None:
+                continue
+            amt = cents / 100
+            cur = acc["currency"] or "GBP"
+            converted = _convert_to_base(amt, cur, base, rates)
+            if acc["type"] in ("loan", "credit"):
+                nw -= converted
+            else:
+                nw += converted
+        points.append(NetWorthPointOut(date=d, value=round(nw, 2)))
+    return points
 
 
 @app.get("/api/projections")
@@ -1067,7 +1154,7 @@ def budget_projection(
         for acc in result:
             native = acc["points"][m]["balance"]
             v = _convert_to_base(native, acc["currency"], base, rates)
-            nw += -v if acc["type"] == "loan" else v
+            nw += -v if acc["type"] in ("loan", "credit") else v
         date = result[0]["points"][m]["date"] if result else now.strftime("%Y-%m-%d")
         net_worth.append({"month": m, "balance": round(nw, 2), "date": date})
 
@@ -1077,6 +1164,220 @@ def budget_projection(
         "net_worth": net_worth,
         "base_currency": base,
     }
+
+
+# ─── Transactions ────────────────────────────────────────────────────────────
+
+
+_TXN_SORT_MAP: dict[str, str] = {
+    "date": "occurred_at DESC, id DESC",
+    "amount": "ABS(amount_cents) DESC, id DESC",
+}
+
+
+def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
+    return TransactionOut(
+        id=row["id"],
+        user_id=row["user_id"],
+        account_id=row["account_id"],
+        amount=from_cents(row["amount_cents"]) or 0.0,
+        occurred_at=row["occurred_at"],
+        merchant=row["merchant"],
+        category=row["category"],
+        note=row["note"] or "",
+        created_at=row["created_at"],
+    )
+
+
+@app.get("/api/transactions", response_model=list[TransactionOut])
+def list_transactions(
+    search: Optional[str] = Query(default=None, max_length=200),
+    account: Optional[int] = Query(default=None, ge=1),
+    category: Optional[str] = Query(default=None, max_length=100),
+    sort: Optional[str] = Query(default="date"),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=50, ge=1, le=200),
+    uid: int = Depends(require_auth),
+) -> list[TransactionOut]:
+    clauses = ["user_id=?"]
+    params: list = [uid]
+    if search:
+        clauses.append("(merchant LIKE ? OR category LIKE ?)")
+        params += [f"%{search}%", f"%{search}%"]
+    if account is not None:
+        clauses.append("account_id=?")
+        params.append(account)
+    if category is not None:
+        clauses.append("category=?")
+        params.append(category)
+    order = _TXN_SORT_MAP.get(sort or "date", _TXN_SORT_MAP["date"])
+    offset = (page - 1) * per_page
+    sql = (
+        f"SELECT * FROM transactions WHERE {' AND '.join(clauses)}"
+        f" ORDER BY {order} LIMIT ? OFFSET ?"
+    )
+    params += [per_page, offset]
+    with db() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [_txn_row_to_out(r) for r in rows]
+
+
+@app.post("/api/transactions", status_code=201, response_model=TransactionOut)
+def create_transaction(
+    data: TransactionIn,
+    uid: int = Depends(require_auth),
+) -> TransactionOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (data.account_id, uid)
+        ).fetchone():
+            raise HTTPException(404, "Account not found")
+        ts = data.occurred_at or utcnow_iso()
+        cur = conn.execute(
+            "INSERT INTO transactions(user_id, account_id, amount_cents,"
+            " occurred_at, merchant, category, note) VALUES(?,?,?,?,?,?,?)",
+            (
+                uid,
+                data.account_id,
+                to_cents(data.amount),
+                ts,
+                data.merchant,
+                data.category,
+                data.note,
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM transactions WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
+    return _txn_row_to_out(row)
+
+
+@app.put("/api/transactions/{tid}", response_model=TransactionOut)
+def update_transaction(
+    tid: int,
+    data: TransactionPatch,
+    uid: int = Depends(require_auth),
+) -> TransactionOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM transactions WHERE id=? AND user_id=?", (tid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        patch = data.model_dump(exclude_none=True)
+        if "account_id" in patch:
+            if not conn.execute(
+                "SELECT 1 FROM accounts WHERE id=? AND user_id=?",
+                (patch["account_id"], uid),
+            ).fetchone():
+                raise HTTPException(404, "Account not found")
+        if "amount" in patch:
+            patch["amount_cents"] = to_cents(patch.pop("amount"))
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            conn.execute(
+                f"UPDATE transactions SET {sets} WHERE id=?", [*patch.values(), tid]
+            )
+            conn.commit()
+        row = conn.execute("SELECT * FROM transactions WHERE id=?", (tid,)).fetchone()
+    return _txn_row_to_out(row)
+
+
+@app.delete("/api/transactions/{tid}", response_model=OkOut)
+def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM transactions WHERE id=? AND user_id=?", (tid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        conn.execute("DELETE FROM transactions WHERE id=?", (tid,))
+        conn.commit()
+    return OkOut(ok=True)
+
+
+# ─── Goals ───────────────────────────────────────────────────────────────────
+
+
+def _goal_row_to_out(row: sqlite3.Row) -> GoalOut:
+    return GoalOut(
+        id=row["id"],
+        user_id=row["user_id"],
+        name=row["name"],
+        target=from_cents(row["target_cents"]) or 0.0,
+        saved=from_cents(row["saved_cents"]) or 0.0,
+        monthly=from_cents(row["monthly_cents"]) or 0.0,
+        color=row["color"],
+        created_at=row["created_at"],
+    )
+
+
+@app.get("/api/goals", response_model=list[GoalOut])
+def list_goals(uid: int = Depends(require_auth)) -> list[GoalOut]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM goals WHERE user_id=? ORDER BY created_at", (uid,)
+        ).fetchall()
+    return [_goal_row_to_out(r) for r in rows]
+
+
+@app.post("/api/goals", status_code=201, response_model=GoalOut)
+def create_goal(data: GoalIn, uid: int = Depends(require_auth)) -> GoalOut:
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO goals(user_id, name, target_cents, saved_cents,"
+            " monthly_cents, color) VALUES(?,?,?,?,?,?)",
+            (
+                uid,
+                data.name,
+                to_cents(data.target),
+                to_cents(data.saved),
+                to_cents(data.monthly),
+                data.color,
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM goals WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
+    return _goal_row_to_out(row)
+
+
+@app.put("/api/goals/{gid}", response_model=GoalOut)
+def update_goal(
+    gid: int,
+    data: GoalPatch,
+    uid: int = Depends(require_auth),
+) -> GoalOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        patch = data.model_dump(exclude_none=True)
+        if "target" in patch:
+            patch["target_cents"] = to_cents(patch.pop("target"))
+        if "saved" in patch:
+            patch["saved_cents"] = to_cents(patch.pop("saved"))
+        if "monthly" in patch:
+            patch["monthly_cents"] = to_cents(patch.pop("monthly"))
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            conn.execute(f"UPDATE goals SET {sets} WHERE id=?", [*patch.values(), gid])
+            conn.commit()
+        row = conn.execute("SELECT * FROM goals WHERE id=?", (gid,)).fetchone()
+    return _goal_row_to_out(row)
+
+
+@app.delete("/api/goals/{gid}", response_model=OkOut)
+def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        conn.execute("DELETE FROM goals WHERE id=?", (gid,))
+        conn.commit()
+    return OkOut(ok=True)
 
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────

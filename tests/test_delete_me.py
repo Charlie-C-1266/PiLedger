@@ -64,6 +64,15 @@ def _seed(client):
         },
     )
     client.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
+    client.post(
+        "/api/transactions",
+        json={
+            "account_id": acct["id"],
+            "amount": -25.0,
+            "merchant": "Tesco",
+        },
+    )
+    client.post("/api/goals", json={"name": "Rainy day", "target": 1000.0})
     return acct
 
 
