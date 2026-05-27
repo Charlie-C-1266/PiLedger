@@ -1,10 +1,17 @@
 .row {
   display: grid;
-  grid-template-columns: auto 1.4fr 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
   align-items: center;
   padding: 12px 0;
   transition: background 120ms;
+}
+
+/* When an account badge is present, lock the last two columns to fixed widths
+   so the account name column stays vertically aligned across rows regardless
+   of how wide the amount text happens to be. */
+.withAccount {
+  grid-template-columns: auto 1fr 120px 96px;
 }
 
 .clickable {
@@ -19,7 +26,8 @@
 }
 
 @media (max-width: 719px) {
-  .row {
+  .row,
+  .withAccount {
     grid-template-columns: auto 1fr auto;
   }
   .account {
@@ -58,6 +66,10 @@
 .account {
   font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .amount {
@@ -65,6 +77,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--pl-text);
   white-space: nowrap;
+  text-align: right;
 }
 
 .up {

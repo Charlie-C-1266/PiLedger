@@ -27,7 +27,7 @@ export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: 
   const positive = txn.amount >= 0;
 
   return (
-    <div className={`${styles.row} ${onClick ? styles.clickable : ""}`} onClick={onClick}>
+    <div className={`${styles.row} ${accountName ? styles.withAccount : ""} ${onClick ? styles.clickable : ""}`} onClick={onClick}>
       <div className={styles.avatar}>{avatar(txn.merchant)}</div>
       <div className={styles.info}>
         <div className={styles.merchant}>{txn.merchant}</div>
