@@ -43,6 +43,21 @@ function del<T>(url: string): Promise<T> {
 
 export const getMe = () => json<User>("/api/auth/me");
 export const getPrefs = () => json<Prefs>("/api/prefs");
+export const updatePrefs = (data: Partial<Prefs>) => put<Prefs>("/api/prefs", data);
+
+export const logout = () => post<{ ok: boolean }>("/api/auth/logout", {});
+
+export const changePassword = (data: {
+  current_password: string;
+  new_password: string;
+}) => put<{ ok: boolean }>("/api/auth/password", data);
+
+export const deleteAccount = (password: string) =>
+  json<{ ok: boolean }>("/api/auth/me", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
 
 // Accounts
 
