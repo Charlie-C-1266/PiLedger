@@ -158,3 +158,65 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ── Account colour picker ─────────────────────────────── */
+
+.colorSection {
+  margin-bottom: 20px;
+}
+
+.colorLabel {
+  display: block;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.colorRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.colorPreview {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+
+.colorSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 120ms, border-color 120ms;
+  outline: none;
+}
+
+.colorSwatch:hover {
+  transform: scale(1.15);
+}
+
+.colorSwatchActive {
+  border-color: var(--pl-text);
+  transform: scale(1.15);
+}
+
+.colorHexInput {
+  margin-bottom: 0;
+  font-family: "JetBrains Mono", "Courier New", monospace;
+  font-size: 12px;
+}

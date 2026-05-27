@@ -3,23 +3,34 @@ export interface Swatch {
   end: string;
 }
 
-export const accountSwatches: Record<string, Swatch> = {
-  emergency: { start: "#4F46E5", end: "#7B73F4" },
-  "chase-cur": { start: "#1F4FB6", end: "#4A7FE0" },
-  barclays: { start: "#0B7C66", end: "#2DA88E" },
-  santander: { start: "#C0392B", end: "#E26B5F" },
-  halifax: { start: "#3D5A80", end: "#6F8AB5" },
-  "cash-isa": { start: "#B4624A", end: "#D88B72" },
-  lisa: { start: "#7A5AF8", end: "#A28BFD" },
-  "isa-ss": { start: "#0F766E", end: "#3FA39A" },
-  "cc-stooze": { start: "#1E1E24", end: "#3A3A45" },
-  "cc-chase": { start: "#312E81", end: "#5B57B0" },
-  "loan-tesco": { start: "#7F1D1D", end: "#A24545" },
-  "loan-watch": { start: "#451A03", end: "#754530" },
-};
+/** Preset colours shown in the account colour picker. */
+export const PRESET_COLORS = [
+  "#6366f1", // Indigo (default)
+  "#3b82f6", // Blue
+  "#0891b2", // Cyan
+  "#0d9488", // Teal
+  "#16a34a", // Green
+  "#ca8a04", // Amber
+  "#ea580c", // Orange
+  "#dc2626", // Red
+  "#e11d48", // Rose
+  "#9333ea", // Purple
+  "#c026d3", // Fuchsia
+  "#475569", // Slate
+] as const;
 
-const fallbackSwatch: Swatch = { start: "#444444", end: "#777777" };
-
-export function getSwatch(accountId: string | number): Swatch {
-  return accountSwatches[String(accountId)] ?? fallbackSwatch;
+/**
+ * Derive a gradient pair from a single hex colour.
+ * The end colour is lightened by ~28 % for a subtle card gradient.
+ */
+export function colorToGradient(hex: string): Swatch {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const mix = 0.28;
+  const lr = Math.round(r + (255 - r) * mix);
+  const lg = Math.round(g + (255 - g) * mix);
+  const lb = Math.round(b + (255 - b) * mix);
+  const h = (n: number) => n.toString(16).padStart(2, "0");
+  return { start: hex, end: `#${h(lr)}${h(lg)}${h(lb)}` };
 }
