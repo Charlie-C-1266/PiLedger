@@ -1388,6 +1388,11 @@ _DIST_INDEX = os.path.join(_STATIC_DIR, "dist", "index.html")
 def _serve_spa(session: Optional[str]) -> Response:
     if not session_uid(session):
         return RedirectResponse("/login", status_code=302)
+    if not os.path.isfile(_DIST_INDEX):
+        raise HTTPException(
+            503,
+            "Frontend not built. Run: cd frontend && npm ci && npm run build",
+        )
     return FileResponse(_DIST_INDEX)
 
 
