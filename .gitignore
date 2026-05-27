@@ -29,6 +29,10 @@ htmlcov/
 # settings.local.json holds per-developer permission allowlists — not for sharing
 .claude/settings.local.json
 
+# ── Frontend ──────────────────────────────────────────────────────────────────
+frontend/node_modules/
+src/static/dist/
+
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

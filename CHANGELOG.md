@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.31.0] — 2026-05-27
+
+### Added
+
+- **React scaffold and build pipeline.** Initialised a Vite + React 19 + TypeScript frontend under `frontend/` with client-side routing (React Router), TanStack Query, and Recharts as dependencies for later phases. Five stub screens (Overview, Accounts, Transactions, Goals, Settings) are routed and rendered. Vite builds to `src/static/dist/` so FastAPI serves the SPA without a new static mount.
+
+- **Self-hosted fonts.** Plus Jakarta Sans (variable, 400–800) and JetBrains Mono (variable, 400–600) served as woff2 from `src/static/fonts/`, matching the existing self-hosted pattern (Inter). `@font-face` declarations in the React app's global CSS reference these via absolute `/static/fonts/` paths.
+
+- **SPA route handling.** FastAPI now serves the React `dist/index.html` for `/overview`, `/accounts`, `/transactions`, `/goals`, and `/settings` (authenticated users only). Falls back gracefully to the old vanilla JS `index.html` if no React build is present.
+
+- **CI frontend job.** GitHub Actions workflow now includes a `frontend` job that runs `npm ci`, ESLint, and `vite build` on every push/PR.
+
+Affected files: `frontend/` (new directory), `src/app.py` (SPA routes), `src/static/fonts/` (new font files), `.github/workflows/ci.yml` (frontend job), `.gitignore` (node_modules, dist), `src/constants.py` (`VERSION` bumped to `0.31.0`).
+
+---
+
 ## [0.30.0] — 2026-05-27
 
 ### Added
