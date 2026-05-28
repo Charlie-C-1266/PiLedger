@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.0] — 2026-05-28
+
+### Added
+
+- **Mobile UX — Slice 5: Chart touch events.** The custom SVG Donut (account distribution) was non-interactive on touch devices because it relied on `onMouseEnter` / `onMouseLeave`, which fire unreliably (or not at all) under touch. Segments now use pointer events and a tap-to-toggle highlight, so mobile users can explore which account owns which slice.
+
+  **Donut.tsx:** Mouse/pen hover uses `onPointerEnter` / `onPointerLeave` (touch pointers are ignored here so a tap doesn't highlight-then-clear on finger lift). A new internal `tappedIdx` state drives a sticky highlight: tapping/clicking a segment highlights it, tapping it again — or tapping the empty chart area — clears it, and tapping a different segment moves the highlight. Hover reverts to the sticky tapped slice when the pointer leaves. For accessibility, the SVG root gains `role="img"` and a generated `aria-label` summarising every segment and its percentage (overridable via a new optional `ariaLabel` prop); each segment is keyboard-focusable (`tabIndex`, `role="button"`, `aria-pressed`, Enter/Space to toggle) with a `:focus-visible` outline.
+
+  **LineChart.tsx:** Added `onTouchMove` / `onTouchEnd` handlers mirroring the existing mouse handlers so the net-worth hover label updates when a finger is dragged across the area chart.
+
+Affected files: `src/constants.py` (VERSION → 1.9.0), `frontend/src/components/charts/Donut.tsx`, `frontend/src/components/charts/Donut.module.css`, `frontend/src/components/charts/LineChart.tsx`.
+
+---
+
 ## [1.8.0] — 2026-05-28
 
 ### Added

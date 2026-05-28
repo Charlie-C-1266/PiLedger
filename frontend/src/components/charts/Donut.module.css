@@ -3,6 +3,21 @@
   display: inline-block;
 }
 
+.segment {
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 160ms;
+}
+
+.segment:focus {
+  outline: none;
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--pl-accent);
+  outline-offset: 2px;
+}
+
 .center {
   position: absolute;
   inset: 0;

@@ -41,6 +41,12 @@ export default function LineChart({
           }
         }}
         onMouseLeave={() => onHover?.(null)}
+        onTouchMove={(state) => {
+          if (onHover && state && typeof state.activeTooltipIndex === "number") {
+            onHover(data[state.activeTooltipIndex] ?? null);
+          }
+        }}
+        onTouchEnd={() => onHover?.(null)}
       >
         <defs>
           <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
