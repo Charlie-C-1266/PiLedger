@@ -15,6 +15,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Affected files: `frontend/src/components/FilterSheet.tsx` (new), `frontend/src/components/FilterSheet.module.css` (new), `frontend/src/components/icons/index.tsx` (new `FilterIcon`), `frontend/src/screens/Transactions.tsx` (mobile filter bar + sheet wiring, active-filter count), `frontend/src/screens/Transactions.module.css` (mobile single-row search, `filterBtn`, `filterBadge`).
 
+- **Mobile UX — Slice 7: Long-press to edit a transaction.** Transaction rows are the primary scrollable content on mobile, and a tap that landed at the end of a scroll stutter would open the editor unintentionally. On touch (and pen) devices, opening the edit modal now requires a deliberate ~500 ms **long-press**; a plain tap no longer does anything. A press-state (background tint + `scale(0.985)`) appears ~150 ms into the hold so the press registers visibly before the modal opens, and moving more than 10 px (i.e. scrolling) cancels it. **Desktop click-to-edit is unchanged** — mouse clicks still open the editor immediately.
+
+  Implemented with pointer events in `TxnRow`: `onPointerDown` starts the feedback + long-press timers for non-mouse pointers, `onPointerMove` past the 10 px threshold and `onPointerUp` / `onPointerCancel` / `onPointerLeave` clear them. The synthetic `click` that follows a tap or long-press is swallowed (touch edits only via hold; mouse edits via click). `user-select` / `-webkit-touch-callout` are disabled on the row so a hold doesn't trigger the OS text-selection callout.
+
+Affected files: `frontend/src/components/TxnRow.tsx`, `frontend/src/components/TxnRow.module.css`.
+
 ---
 
 ## [1.9.0] — 2026-05-28

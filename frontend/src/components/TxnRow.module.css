@@ -4,7 +4,7 @@
   gap: 12px;
   align-items: center;
   padding: 12px 0;
-  transition: background 120ms;
+  transition: background 120ms, transform 120ms;
 }
 
 /* When an account badge is present, lock the last two columns to fixed widths
@@ -19,10 +19,20 @@
   border-radius: 10px;
   padding: 12px 8px;
   margin: 0 -8px;
+  /* Long-press shouldn't trigger iOS/Android text selection or the callout. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .clickable:hover {
   background: var(--pl-surface-alt);
+}
+
+/* Touch long-press feedback: shows ~150ms in, before the editor opens. */
+.pressing {
+  background: var(--pl-surface-alt);
+  transform: scale(0.985);
 }
 
 @media (max-width: 719px) {
