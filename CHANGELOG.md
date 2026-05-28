@@ -5,6 +5,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.0] — 2026-05-28
+
+### Added
+
+- **Expanded transaction categories.** The built-in category list has been broadened from 8 generic labels to 18, covering common income types (Salary, Freelance, Interest Earned, Benefits) and additional expense areas (Clothing, Subscriptions, Pets, Gifts, Education, Travel) alongside the existing spending categories.
+- **Custom category management in Settings.** Users can now create and delete their own transaction categories from the Settings page. Custom categories appear alongside the built-in ones in the Add/Edit transaction modal. Up to 50 custom categories are supported per user; duplicate names are rejected with a clear error. Custom categories are persisted per-user in the database and included in data export and account deletion cascade.
+
+Affected files: `src/constants.py` (VERSION bump to 1.6.0, `DEFAULT_CATEGORIES`, `MAX_CUSTOM_CATEGORIES`), `src/db.py` (SCHEMA_VERSION bump to 3, `user_categories` table, `_migrate_to_3`), `src/schemas.py` (`CategoryIn`, `CustomCategoryOut`, `CategoriesOut`), `src/app.py` (`GET/POST /api/categories`, `DELETE /api/categories/{cid}`), `frontend/src/types.ts` (`CustomCategory`, `Categories` interfaces), `frontend/src/api/client.ts` (`getCategories`, `createCategory`, `deleteCategory`), `frontend/src/hooks/useCategories.ts` (new), `frontend/src/components/AddModal.tsx` (uses hook instead of hardcoded list), `frontend/src/screens/Settings.tsx` (category management card), `frontend/src/screens/Settings.module.css` (category UI styles), `tests/test_categories.py` (new).
+
+---
+
 ## [1.5.1] — 2026-05-28
 
 ### Fixed

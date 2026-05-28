@@ -194,3 +194,56 @@
   font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-down);
 }
+
+/* Category management */
+
+.categoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.categoryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pl-rule);
+}
+
+.categoryName {
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.categoryDeleteBtn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pl-down);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: background 160ms;
+}
+
+.categoryDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.categoryDeleteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.categoryInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.categoryInputRow .input {
+  flex: 1;
+  margin-bottom: 0;
+}

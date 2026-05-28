@@ -29,6 +29,7 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "exchange_rates",
     "transactions",
     "goals",
+    "user_categories",
 )
 
 
@@ -98,7 +99,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 2
+SCHEMA_VERSION: int = 3
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -288,6 +289,21 @@ def _migrate_to_2(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_3(conn: sqlite3.Connection) -> None:
+    """Add user_categories table for per-user custom transaction categories."""
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS user_categories (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name       TEXT    NOT NULL,
+            created_at TEXT    DEFAULT (datetime('now')),
+            UNIQUE(user_id, name)
+        );
+    """)
+    _set_schema_version(conn, 3)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -369,6 +385,13 @@ def init() -> None:
                 color         TEXT    DEFAULT '#0F766E',
                 created_at    TEXT    DEFAULT (datetime('now'))
             );
+            CREATE TABLE IF NOT EXISTS user_categories (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name       TEXT    NOT NULL,
+                created_at TEXT    DEFAULT (datetime('now')),
+                UNIQUE(user_id, name)
+            );
         """)
         conn.commit()
 
@@ -387,6 +410,10 @@ def init() -> None:
         if version < 2:
             _migrate_to_2(conn)
             version = 2
+
+        if version < 3:
+            _migrate_to_3(conn)
+            version = 3
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
