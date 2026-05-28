@@ -1,5 +1,18 @@
 # Frontend
 
+The frontend is a React 19 single-page application built with Vite and TypeScript. It talks to the FastAPI backend exclusively over the JSON API; all writes go through the API and all state is managed with TanStack Query (server cache) and local React state (UI).
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Framework | React 19 (with hooks) |
+| Language | TypeScript |
+| Bundler | Vite |
+| Data fetching | TanStack Query v5 |
+| Charts | Recharts |
+| Routing | React Router v6 |
+
 ## Login page (`login.html`)
 
 A self-contained page with no external JavaScript dependencies. It contains:
@@ -9,73 +22,84 @@ A self-contained page with no external JavaScript dependencies. It contains:
 - Inline error display using `role="alert"` on error elements.
 - After a successful registration the page automatically posts a login request and redirects to `/`, so the user never has to sign in manually after creating their account.
 
-## Dashboard (`index.html` + `app.js`)
+## SPA screens
 
-The dashboard is a single-page application with two views — **Overview** and **Budget Planner** — switched via a sticky nav tab inside the header. The header also shows the signed-in username, a Sign-out button, and a live **Net Worth** total.
+The SPA is mounted from `static/dist/index.html` (the Vite production build). React Router handles client-side navigation between five screens:
 
-On load `app.js` fires `loadAll()`, which makes three parallel requests for the Overview view:
+| Route | Component | Purpose |
+|---|---|---|
+| `/overview` | `Overview` | Net-worth chart, account card stack, recent transactions, goals progress rings, asset distribution donut |
+| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), assets-vs-debts sections, account type filter |
+| `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
+| `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
+| `/settings` | `Settings` | Theme, dark mode, base currency, exchange rates, password change, account deletion |
 
-```
-GET /api/accounts
-GET /api/summary
-GET /api/auth/me
-```
+All routes require a valid session. The server returns `302 → /login` for unauthenticated requests; the client also redirects on receiving `401` from any API call.
 
-If any of these returns `401` the `apiFetch` helper immediately redirects to `/login` and returns a promise that never resolves, preventing any further rendering.
+## Shell and navigation
 
-Once the initial data arrives, charts are loaded in a second parallel batch:
+`Shell.tsx` wraps every screen and renders:
 
-```
-GET /api/history/all
-GET /api/projections
-```
+- **Sidebar** — navigation rail with links to the five screens, the signed-in username at the bottom, and a Sign Out button. Uses `useMe()` to resolve the username from `GET /api/auth/me` on load.
+- **Header** — top bar with the current date, a greeting, a global search input, a dark-mode toggle, and an **+ Add** dropdown menu.
 
-The distribution chart is rendered synchronously from the account data already in memory.
+The sidebar collapses to a bottom tab strip (`TabStrip.tsx`) on narrow viewports.
 
-The Budget Planner view is lazy-loaded the first time the user opens that tab. `loadBudgetView()` makes two parallel requests:
+## Data fetching
 
-```
-GET /api/budget
-GET /api/budget/projection?months=<3|6|12>
-```
+All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query hooks in `src/hooks/` cache the responses and handle background refetching:
 
-### Summary cards (Overview)
+| Hook | Endpoint | Stale time |
+|---|---|---|
+| `useAccounts()` | `GET /api/accounts` | 30 s |
+| `useTransactions(filters)` | `GET /api/transactions` | 30 s |
+| `useGoals()` | `GET /api/goals` | 30 s |
+| `useSummary()` | `GET /api/summary` | 30 s |
+| `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
+| `useMe()` | `GET /api/auth/me` | Infinity |
 
-Four cards across the top of the Overview view: **Total Savings**, **Current Accounts**, **Total Debt**, and **Accounts** (count). On viewports below 960px the grid collapses to 2x2; below 500px to a single column.
+Any hook receiving a `401` response redirects to `/login` immediately.
 
-### Charts
+## Charts
 
-All charts use **Chart.js 4.4** in category-scale mode (no date adapter required).
+All charts use **Recharts** with responsive containers.
 
-| Chart | View | Type | Data source | Notes |
-|---|---|---|---|---|
-| Balance History | Overview | Stepped line | `GET /api/history/all` | One dataset per account. Dates are de-duplicated across all accounts and sorted; missing values for a given account are forward-filled from the previous known balance, producing an accurate step representation of how balances changed over time. |
-| Distribution | Overview | Doughnut | Account list (in memory) | Accounts with no recorded balance are excluded. **Loans are excluded** — this chart shows asset distribution, not liabilities. |
-| Savings Projections | Overview | Smooth line | `GET /api/projections` | One dataset per savings account. The section is hidden entirely if no savings accounts exist. |
-| Projected Balances | Budget | Multi-series line | `GET /api/budget/projection` | One dataset per account plus a bold dark **Net Worth** line layered on top. Loan lines are rendered with a dashed stroke so a downward trend reads as "debt being paid down" rather than an asset losing value. A faint dashed red zero-reference line is injected automatically if any account is projected to go negative. |
+| Chart | Screen | Type | Data source |
+|---|---|---|---|
+| Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
+| Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
+| Account balance | Accounts | Stepped line | `GET /api/accounts/{id}/history` |
+| Budget projection | Settings | Multi-series line | `GET /api/budget/projection?months=3\|6\|12` |
+| Savings projection | Overview | Smooth line | `GET /api/projections` |
 
-Chart instances are stored in the `charts` object (`history`, `distribution`, `projection`, `budget`) and explicitly destroyed before redrawing to prevent memory leaks when the user changes the time-window selector or budget period.
+The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart.
 
-### Modals
+## Modals
 
-Six modal dialogs handle all write operations:
+Write operations open modal dialogs. All modals close on overlay click or `Escape`.
 
 | Modal | Trigger | Operation |
 |---|---|---|
-| Add Account | Header button | Creates account; optionally records an opening balance in the same flow. For loans, also accepts a "Minimum Monthly Payment" and creates a matching monthly budget item. |
-| Update Balance | "Update Balance" on account card | Appends a new `balance_history` row; pre-fills the current balance |
-| Edit Account | Pencil icon on account card | Updates name, interest rate, or colour. Interest-rate label switches between "AER (%)" (savings) and "APR (%)" (loan). |
-| Confirm Delete Account | "Delete Account" inside Edit modal | Two-step confirmation before deleting |
-| Budget Item (add / edit) | "+ Add" on toolbar or account card; pencil on an item row | Creates or edits a recurring item. Loan-aware: when the selected account is a loan, the direction toggle and frequency dropdown are hidden, and the amount field is relabeled "Minimum Monthly Payment". |
-| Confirm Delete Budget Item | x icon on an item row | Two-step confirmation before removing |
+| Add Account | "+ Add" menu | Creates account; optionally records an opening balance. For loans, also accepts a minimum monthly payment and creates a matching budget item. |
+| Update Balance / Edit Colour | Click account card | Records a new `balance_history` row and/or updates the account colour. |
+| Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
+| Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |
+| Add / Edit Budget Item | Budget section on Settings | Creates or edits a recurring cash-flow item. |
+| Confirm Delete | Within any edit modal | Two-step confirmation before any destructive action. |
 
-Modals close on overlay click or `Escape`. The `Enter` key submits the active modal form (textareas excluded).
+## Theme system
 
-### State management
+`ThemeProvider.tsx` wraps the app and exposes a React context consumed by `useTheme()`. It reads initial preferences from `GET /api/prefs` and persists changes via `PUT /api/prefs`.
 
-A single plain object (`state`) holds:
+- **Accent colour** — 10 named themes (`olive`, `emerald`, `teal`, `sky`, `indigo`, `violet`, `rose`, `crimson`, `amber`, `slate`). Mapped to CSS custom properties via `tokens.ts`.
+- **Light / dark mode** — toggled from the header. A `theme-bootstrap.js` script runs before React mounts to apply the saved theme class, preventing a flash of unstyled content.
 
-- **Overview**: `accounts`, `editingId`, `updatingId`, `deletingId`.
-- **Budget**: `budgetPeriod` (3 / 6 / 12 months), `budgetItems`, `editingBudgetId` (`null` for add mode), `deletingBudgetId`, `biDir` (`'in'` or `'out'`).
+## Build
 
-After any write operation `loadAll()` (Overview) or `loadBudgetView()` (Budget) is called to refresh the relevant view.
+```bash
+cd frontend
+npm ci
+npm run build   # outputs to src/static/dist/
+```
+
+The FastAPI app serves `src/static/dist/index.html` for all SPA routes, and serves the rest of `src/static/` under the `/static/` path prefix.
