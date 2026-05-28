@@ -3,7 +3,8 @@ import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
 import { fmt } from "../lib/currency";
-import CardStack, { TypeFilterPicker, VariantPicker } from "../components/CardStack";
+import CardStack from "../components/CardStack";
+import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
 import UpdateBalanceModal from "../components/UpdateBalanceModal";
 import type { StackVariant } from "../components/CardStack";
@@ -28,6 +29,7 @@ export default function Accounts() {
 
   const currency = summary?.base_currency ?? "GBP";
   const negative = (accounts ?? []).filter((a) => (a.current_balance ?? 0) < 0);
+  const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) > 0);
 
   const stackAccounts = useMemo(() => {
     const all = accounts ?? [];
@@ -43,6 +45,7 @@ export default function Accounts() {
     (s, a) => s + Math.abs(a.current_balance ?? 0),
     0
   );
+  const assetTotal = positive.reduce((s, a) => s + (a.current_balance ?? 0), 0);
 
   return (
     <div className={styles.page}>
@@ -55,16 +58,13 @@ export default function Accounts() {
             </div>
             <div className={styles.heroHeading}>Everything you hold</div>
           </div>
-          <div className={styles.stackControls}>
-            {accountTypes.length > 1 && (
-              <TypeFilterPicker
-                options={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
-                value={accountTypeFilter}
-                onChange={(v) => setAccountTypeFilter(v as AccountType | "")}
-              />
-            )}
-            <VariantPicker value={variant} onChange={setVariant} />
-          </div>
+          <StackControls
+            variant={variant}
+            onVariantChange={setVariant}
+            typeOptions={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
+            typeValue={accountTypeFilter}
+            onTypeChange={(v) => setAccountTypeFilter(v as AccountType | "")}
+          />
         </div>
         <CardStack accounts={stackAccounts} variant={variant} height={340} />
       </div>
@@ -86,22 +86,38 @@ export default function Accounts() {
         </div>
       )}
 
+      {/* Assets section */}
+      {positive.length > 0 && (
+        <div>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>Assets</span>
+            <span className={styles.totalValue} style={{ color: theme.up }}>
+              {fmt(assetTotal, currency)}
+            </span>
+          </div>
+          <div className={styles.accountGrid}>
+            {positive.map((a) => (
+              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Debts section */}
       {negative.length > 0 && (
         <div>
-          <div className={styles.debtHeader}>
+          <div className={styles.sectionHeader}>
             <span className={styles.sectionTitle}>Debts</span>
-            <span className={styles.debtTotal} style={{ color: theme.down }}>
+            <span className={styles.totalValue} style={{ color: theme.down }}>
               {fmt(debtTotal, currency)}
             </span>
           </div>
-          <div className={styles.debtGrid}>
+          <div className={styles.accountGrid}>
             {negative.map((a) => (
               <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
-                <AccountTile
-                  account={a}
-                  style={{ width: "100%", height: 150 }}
-                />
+                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
               </div>
             ))}
           </div>

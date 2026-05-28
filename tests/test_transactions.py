@@ -170,6 +170,24 @@ def test_sort_by_amount(alice):
     assert results[0]["merchant"] == "Big"
 
 
+def test_sort_by_date_oldest(alice):
+    aid = _acct(alice)
+    _txn(alice, aid, merchant="First", occurred_at="2025-01-01T00:00:00Z")
+    _txn(alice, aid, merchant="Second", occurred_at="2025-06-01T00:00:00Z")
+    results = alice.get("/api/transactions?sort=date_asc").json()
+    assert results[0]["merchant"] == "First"
+    assert results[1]["merchant"] == "Second"
+
+
+def test_sort_by_amount_smallest(alice):
+    aid = _acct(alice)
+    _txn(alice, aid, merchant="Small", amount=-5.0)
+    _txn(alice, aid, merchant="Big", amount=-500.0)
+    _txn(alice, aid, merchant="Medium", amount=100.0)
+    results = alice.get("/api/transactions?sort=amount_asc").json()
+    assert results[0]["merchant"] == "Small"
+
+
 def test_pagination(alice):
     aid = _acct(alice)
     for i in range(5):

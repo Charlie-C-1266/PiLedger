@@ -9,10 +9,15 @@ import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
 import FilterSheet from "../components/FilterSheet";
 import { useIsMobile } from "../hooks/useIsMobile";
-import type { Transaction } from "../types";
+import type { Transaction, TxnSort } from "../types";
 import styles from "./Transactions.module.css";
 
-type SortKey = "date" | "amount";
+const SORT_OPTIONS: { key: TxnSort; label: string }[] = [
+  { key: "date", label: "Newest" },
+  { key: "date_asc", label: "Oldest" },
+  { key: "amount", label: "Largest" },
+  { key: "amount_asc", label: "Smallest" },
+];
 
 export default function Transactions() {
   const { theme } = useTheme();
@@ -23,7 +28,7 @@ export default function Transactions() {
   const mobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState<number | "">("");
-  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortKey, setSortKey] = useState<TxnSort>("date");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -148,14 +153,18 @@ export default function Transactions() {
                   </option>
                 ))}
               </select>
-              <button
-                className={styles.sortBtn}
-                onClick={() =>
-                  setSortKey((k) => (k === "date" ? "amount" : "date"))
-                }
+              <select
+                className={styles.accountSelect}
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as TxnSort)}
+                aria-label="Sort transactions"
               >
-                Sort: {sortKey === "date" ? "Newest" : "Largest"}
-              </button>
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
               <div className={styles.spacer} />
               <button
                 className={styles.addBtn}

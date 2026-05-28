@@ -28,11 +28,13 @@ export interface Transaction {
   created_at: string;
 }
 
+export type TxnSort = "date" | "date_asc" | "amount" | "amount_asc";
+
 export interface TransactionFilters {
   search?: string;
   account?: number;
   category?: string;
-  sort?: "date" | "amount";
+  sort?: TxnSort;
   page?: number;
   per_page?: number;
 }

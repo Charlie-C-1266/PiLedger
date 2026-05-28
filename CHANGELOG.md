@@ -21,6 +21,20 @@ Affected files: `frontend/src/components/FilterSheet.tsx` (new), `frontend/src/c
 
 Affected files: `frontend/src/components/TxnRow.tsx`, `frontend/src/components/TxnRow.module.css`.
 
+- **Transaction sort: Oldest and Smallest options.** The Transactions sort only offered Newest and Largest. Added **Oldest** (`occurred_at` ascending) and **Smallest** (ascending by absolute amount) so all four directions are available. On desktop the sort toggle button became a four-option dropdown; on mobile the filter sheet's sort control became a 2×2 grid of Newest / Oldest / Largest / Smallest. The backend `_TXN_SORT_MAP` gained `date_asc` and `amount_asc` keys (existing `date`/`amount` unchanged).
+
+  Affected files: `src/app.py` (`_TXN_SORT_MAP`), `tests/test_transactions.py` (two new sort tests), `frontend/src/types.ts` (`TxnSort` type), `frontend/src/screens/Transactions.tsx` + `.module.css` (sort `<select>`, removed `sortBtn`), `frontend/src/components/FilterSheet.tsx` + `.module.css` (four sort options, 2×2 grid).
+
+- **Accounts: Assets section.** The Accounts page highlighted Debts as their own section but had no equivalent for assets. Added a symmetric **Assets** section listing positive-balance accounts with a green total, mirroring the Debts block. Consolidated the now-shared `.debtHeader`/`.debtGrid`/`.debtTotal` styles into the existing `.sectionHeader`/`.accountGrid` plus a generic `.totalValue`.
+
+  Affected files: `frontend/src/screens/Accounts.tsx`, `frontend/src/screens/Accounts.module.css`.
+
+### Fixed
+
+- **Card-stack view controls broke the layout on mobile.** The fan/cascade/wave/grid variant picker and the account-type filter pills sat inline in the section header; on narrow screens they wrapped and consumed so much width that the heading was squeezed and content shifted left. On mobile (< 720 px) these controls are now collapsed behind a single 44 px filter-icon button that opens a bottom sheet (Layout + Filter-by-type chips, with a Done button); desktop keeps the inline pickers unchanged. Extracted into a new `StackControls` component used by both the Overview and Accounts card stacks.
+
+  Affected files: `frontend/src/components/StackControls.tsx` (new), `frontend/src/components/StackControls.module.css` (new), `frontend/src/screens/Overview.tsx` + `.module.css`, `frontend/src/screens/Accounts.tsx` + `.module.css`.
+
 ---
 
 ## [1.9.0] — 2026-05-28

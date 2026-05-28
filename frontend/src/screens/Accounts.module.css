@@ -17,14 +17,6 @@
   padding: 22px 26px 0;
 }
 
-.stackControls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
 .microLabel {
   font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: 0.4px;
@@ -63,28 +55,15 @@
   gap: 14px;
 }
 
-.debtHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
 .sectionTitle {
   font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: -0.4px;
   color: var(--pl-text);
 }
 
-.debtTotal {
+.totalValue {
   font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
   font-variant-numeric: tabular-nums;
-}
-
-.debtGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
 }
 
 .empty {
