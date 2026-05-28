@@ -2,30 +2,36 @@
 
 ## Changelog
 
-**Always update `CHANGELOG.md` when making code changes.**
+**Always update `CHANGELOG.md` when making code changes.** Version bumps are *decoupled* from individual PRs (see Releases) — a normal PR does **not** bump `VERSION` and does **not** add a version header. Instead it records its change under the `## [Unreleased]` section at the top of the file.
 
-Every meaningful change must be recorded before the work is considered done:
+Every meaningful change must be recorded before the work is considered done. Add the entry under `## [Unreleased]`, in the subsection matching its type:
 
-- Bug fixes → add a `### Fixed` entry under a new patch version (e.g. `0.5.1 → 0.5.2`)
-- New features → add an `### Added` entry under a new minor version (e.g. `0.5.x → 0.6.0`)
-- Breaking changes → add a `### Changed` or `### Removed` entry under a new major version
+- Bug fixes → `### Fixed`
+- New features → `### Added`
+- Breaking changes → `### Changed` or `### Removed`
+
+If `## [Unreleased]` doesn't exist yet (the previous release just cut it away), create it at the top with the relevant subsection.
 
 Each entry must include:
 1. What changed (the symptom or capability)
 2. Why it changed or what caused it (root cause for fixes, motivation for features)
 3. Which files were affected
 
-Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. New versions go at the top of the file.
+Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. The `## [Unreleased]` section stays at the top; released versions sit below it, newest first.
 
 ## Releases
 
-**Minor and major version bumps are tagged releases.** When a PR bumps the minor or major version (new feature or breaking change), the merged commit on `main` must be tagged with an annotated release. Patch bumps (bug fixes) are not tagged.
+**`VERSION` is bumped and tagged only when cutting a release — never per-PR.** This keeps the version number from churning with every small change. Between releases, `src/constants.py`'s `VERSION` reflects the **last released version** while `main` accumulates work under `## [Unreleased]`. Cutting a release is a deliberate act the user requests explicitly; do not cut one proactively.
 
-After the user confirms a minor/major PR has been merged:
+**Every release cut is tagged**, regardless of whether it lands on a patch, minor, or major version.
 
-1. `git checkout main && git pull` to get the merge commit.
-2. Compile release notes from `CHANGELOG.md` — include every entry between the new version header and the previous tagged release. If multiple patch versions accumulated since the last tag, roll them all into one set of notes.
-3. Create an annotated tag:
+To cut a release (only on explicit user request), follow the standard PR workflow below — the version bump goes through a release PR, not a direct commit to `main`:
+
+1. `git checkout main && git pull`, then branch (e.g. `release-X.Y.Z`).
+2. Choose `X.Y.Z` per SemVer from the accumulated `## [Unreleased]` entries: any breaking change → major; otherwise any new feature → minor; otherwise (only fixes) → patch.
+3. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [X.Y.Z] — YYYY-MM-DD` and add a fresh empty `## [Unreleased]` above it.
+4. Bump `VERSION` in `src/constants.py` to `X.Y.Z`.
+5. Open the release PR. **After the user confirms it is merged**, `git checkout main && git pull`, then tag the merge commit:
    ```bash
    git tag -a vX.Y.Z -m "$(cat <<'EOF'
    vX.Y.Z release notes title
@@ -33,8 +39,8 @@ After the user confirms a minor/major PR has been merged:
    <release notes body>
    EOF
    )"
+   git push origin vX.Y.Z
    ```
-4. Push the tag: `git push origin vX.Y.Z`.
 
 Release notes should be concise — a short summary per changelog entry, not a copy-paste of the full changelog. Group by Added / Fixed / Changed if there are entries of multiple types.
 
