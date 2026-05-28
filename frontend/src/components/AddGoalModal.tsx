@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createGoal } from "../api/client";
 import { ACCENT_OPTIONS } from "../theme/tokens";
+import { useIsMobile } from "../hooks/useIsMobile";
 import styles from "./AddModal.module.css";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function AddGoalModal({ onClose }: Props) {
+  const mobile = useIsMobile();
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [saved, setSaved] = useState("");
@@ -37,8 +39,15 @@ export default function AddGoalModal({ onClose }: Props) {
   };
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
+      onClick={onClose}
+    >
+      <div
+        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {mobile && <div className={styles.handle} />}
         <h2 className={styles.title}>Add goal</h2>
 
         <input

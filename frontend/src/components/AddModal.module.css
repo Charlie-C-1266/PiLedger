@@ -220,3 +220,31 @@
   font-family: "JetBrains Mono", "Courier New", monospace;
   font-size: 12px;
 }
+
+/* ── Mobile bottom sheet ───────────────────────────────── */
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.backdropMobile {
+  align-items: flex-end;
+}
+
+.sheet {
+  max-width: 100%;
+  padding: 12px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+  border-radius: 20px 20px 0 0;
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: slideUp 300ms ease-out;
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pl-rule);
+  margin: 0 auto 20px;
+}
