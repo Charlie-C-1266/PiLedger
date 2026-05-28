@@ -26,8 +26,11 @@ htmlcov/
 *.env
 
 # ── Claude Code ────────────────────────────────────────────────────────────────
-# settings.local.json holds per-developer permission allowlists — not for sharing
+# Everything under .claude/ is per-developer session config, not shared project
+# state: settings.local.json holds permission allowlists, commands/ holds custom
+# slash commands (e.g. grill-with-docs, which is also published upstream).
 .claude/settings.local.json
+.claude/commands/
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 frontend/node_modules/
