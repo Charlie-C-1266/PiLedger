@@ -8,14 +8,16 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 
 ## Features
 
-- **Multi-account tracking** — current, savings, and loan accounts with per-account currencies
+- **Multi-account tracking** — current, savings, loan, credit, and investment accounts with per-account currencies
+- **Transaction log** — searchable, filterable transaction history with automatic balance adjustments
+- **Savings goals** — named targets with progress tracking, monthly contributions, and ETA
 - **Balance history** — timestamped snapshots with step-line charts over selectable time windows
 - **Savings projections** — compound-interest forecasting at 1, 2, and 5 year horizons
 - **Budget planner** — recurring cash-flow items with month-by-month projected balances and net worth
 - **Multi-currency** — user-selected base currency with manual exchange rates; net-worth totals convert automatically
 - **Per-user isolation** — every query is scoped to the authenticated user; multi-tenant by default
 - **Self-contained** — SQLite database, no external services, runs fully offline once loaded
-- **Dark mode + 10 colour themes** — persisted per-user via the Settings modal
+- **Dark mode + 10 colour themes** — persisted per-user via the Settings page
 
 ## Quick Start
 
@@ -31,7 +33,7 @@ For local development with `uv` or `pip`, see the [Getting Started](docs/getting
 | Layer | Technology |
 |---|---|
 | Backend | Python 3.12, FastAPI, Uvicorn |
-| Frontend | Vanilla JS, Chart.js 4.4 (vendored) |
+| Frontend | React 19, TypeScript, Vite, Recharts |
 | Database | SQLite (single file, integer-cents storage) |
 | Auth | PBKDF2-SHA256 passwords, 30-day HttpOnly session cookies |
 | CI | GitHub Actions — ruff, pytest, pip-audit, lockfile drift check |

@@ -30,7 +30,9 @@ Financial accounts. Each row belongs to exactly one user.
 | `id` | INTEGER PK | Auto-increment |
 | `user_id` | INTEGER FK → `users.id` | Nullable to support schema migration |
 | `name` | TEXT | Display name, e.g. "Barclays Current" |
-| `type` | TEXT | Constrained to `'current'`, `'savings'`, or `'loan'` |
+| `type` | TEXT | Constrained to `'current'`, `'savings'`, `'loan'`, `'credit'`, or `'invest'` |
+| `subtype` | TEXT | Sub-classification within a type (e.g. `'isa'`, `'stocks'`); defaults to `'general'` |
+| `currency` | TEXT | ISO-4217 currency code; defaults to `'GBP'` |
 | `interest_rate` | REAL | Annual rate as a percentage (e.g. `4.5` for 4.5% AER on savings, or APR on loans) |
 | `color` | TEXT | Hex colour used in chart lines and card borders |
 | `created_at` | TEXT | UTC ISO-8601 |
@@ -61,6 +63,48 @@ Recurring cash-flow items used by the Budget Planner — one row per item, attac
 | `frequency` | TEXT | One of `'weekly'`, `'monthly'`, `'quarterly'`, `'annually'`. Normalised to a monthly equivalent via `FREQ_TO_MONTHLY` (in `constants.py`) before any projection is calculated. |
 | `created_at` | TEXT | UTC ISO-8601 |
 
+## `exchange_rates`
+
+Manual FX rates per user. One row per currency pair. Rates express "1 unit of `currency` = `rate` units of the user's base currency". The base currency itself is never stored here — the rate against the base is always implicitly 1.
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | INTEGER FK → `users.id` | Composite primary key with `currency`. Cascade-deletes when user is removed. |
+| `currency` | TEXT | ISO-4217 currency code |
+| `rate` | REAL | Conversion rate relative to the user's base currency |
+| `updated_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
+## `transactions`
+
+Financial transaction records. Each row represents a single transaction on one account. Creating or deleting a transaction automatically writes a new `balance_history` entry to keep the account balance in sync.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
+| `account_id` | INTEGER FK → `accounts.id` | Cascade-deletes when account is removed |
+| `amount_cents` | INTEGER | Signed amount in cents (positive = credit / income, negative = debit / expense) |
+| `occurred_at` | TEXT | UTC ISO-8601; defaults to insert time |
+| `merchant` | TEXT | Merchant or payee name; required, 1–200 characters |
+| `category` | TEXT | Optional category tag (e.g. `'groceries'`); defaults to `''` |
+| `note` | TEXT | Optional free-text note; defaults to `''` |
+| `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
+## `goals`
+
+Named savings goals. Independent of accounts — tracks a target amount and progress toward it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
+| `name` | TEXT | Goal name, 1–120 characters |
+| `target_cents` | INTEGER | Target amount in cents; must be > 0 |
+| `saved_cents` | INTEGER | Amount already saved in cents; defaults to 0 |
+| `monthly_cents` | INTEGER | Monthly contribution in cents used for ETA calculation; defaults to 0 |
+| `color` | TEXT | Hex colour for the goal card; defaults to `#0F766E` |
+| `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
 ## `meta`
 
 Key-value infrastructure table. Currently holds a single row: `schema_version`.
@@ -88,3 +132,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 8. **`budget_items.amount REAL` → `amount_cents INTEGER`** — same approach as (7).
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
+
+**Versioned migrations** (applied by `schema_version` gate after the legacy path):
+
+- **v1 (0.30.0)** — `accounts.type` constraint widened to include `'credit'` and `'invest'` (table rebuild); `transactions` and `goals` tables created.

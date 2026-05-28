@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.1] — 2026-05-28
+
+### Fixed
+
+- **Documentation out of sync with the codebase.** Several docs had not been updated since major features were added in v0.30.0 and the React migration. Specifically:
+  - `docs/api-reference.md` was missing the full Transactions and Goals CRUD sections, the `GET /api/history/networth` endpoint, the expanded `GET /api/summary` response shape (`total_credit`, `total_invest`, `assets`, `debts`, `savings_rate`, `base_currency`, `missing_rates`), and the five named SPA routes. The `DELETE /api/auth/me` cascade list and `GET /api/export` response shape also omitted `transactions` and `goals`.
+  - `docs/database.md` was missing the `exchange_rates`, `transactions`, and `goals` tables; the `accounts` table was missing the `subtype` and `currency` columns and did not list the `credit` and `invest` account types.
+  - `docs/frontend.md` described the old vanilla JS / Chart.js architecture and did not mention React, TypeScript, Vite, TanStack Query, or Recharts.
+  - `README.md` listed "Vanilla JS, Chart.js 4.4" in the stack table and did not mention transaction tracking, savings goals, or `credit`/`invest` account types.
+
+Affected files: `docs/api-reference.md`, `docs/database.md`, `docs/frontend.md`, `README.md`.
+
+---
+
 ## [1.5.0] — 2026-05-27
 
 ### Added
