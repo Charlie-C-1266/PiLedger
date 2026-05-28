@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+---
+
+## [2.0.0] — 2026-05-28
+
 ### Added
 
 - **Mobile UX — Slice 6: Transaction filter & search as a bottom sheet.** On mobile (< 720 px) the Transactions filter bar previously wrapped across 2–3 lines and the category chips overflowed off-screen, pushing the first transaction row below the fold on small phones. The bar now collapses to a single row: the search input (always visible) plus a **Filters** button. The button shows an accent badge counting active non-default filters (account ≠ All, category ≠ All, sort ≠ Newest) and opens a bottom sheet containing the account dropdown, a Newest/Largest sort toggle, and the category chip grid. Edits are held as a draft and committed by an **Apply** button (a **Clear all** link resets them); tapping the backdrop dismisses without applying. The inline "+ Add" button is dropped on mobile since the header already provides one. Desktop layout is unchanged.
