@@ -1,3 +1,26 @@
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  cursor: pointer;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
 /* Bottom-sheet shell reuses the Slice 4 pattern from AddModal.module.css. */
 .backdrop {
   composes: backdrop from "./AddModal.module.css";
@@ -13,25 +36,11 @@
   composes: handle from "./AddModal.module.css";
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
 .title {
   font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: -0.4px;
   color: var(--pl-text);
-}
-
-.clear {
-  border: none;
-  background: none;
-  color: var(--pl-accent);
-  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
-  cursor: pointer;
+  margin-bottom: 20px;
 }
 
 .label {
@@ -43,52 +52,23 @@
   margin-bottom: 10px;
 }
 
-.select {
-  composes: select from "./AddModal.module.css";
-  margin-bottom: 20px;
-}
-
-.sortRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.sortOption {
-  min-height: 44px;
-  padding: 12px;
-  border: 1px solid var(--pl-rule);
-  border-radius: 10px;
-  background: var(--pl-surface-alt);
-  color: var(--pl-text-soft);
-  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: border-color 160ms, color 160ms;
-}
-
-.sortActive {
-  border-color: var(--pl-accent);
-  color: var(--pl-text);
-}
-
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .chip {
   composes: chip from "./AddModal.module.css";
+  min-height: 40px;
 }
 
 .chipActive {
   composes: chipActive from "./AddModal.module.css";
 }
 
-.apply {
+.done {
   display: block;
   width: 100%;
   min-height: 48px;
@@ -103,6 +83,6 @@
   transition: opacity 160ms;
 }
 
-.apply:hover {
+.done:hover {
   opacity: 0.9;
 }

@@ -13,7 +13,8 @@ import Donut from "../components/charts/Donut";
 import HBar from "../components/charts/HBar";
 import StatCard from "../components/StatCard";
 import RangePills from "../components/RangePills";
-import CardStack, { TypeFilterPicker, VariantPicker } from "../components/CardStack";
+import CardStack from "../components/CardStack";
+import StackControls from "../components/StackControls";
 import TxnRow from "../components/TxnRow";
 import styles from "./Overview.module.css";
 
@@ -138,16 +139,13 @@ export default function Overview() {
                   : "Hover the stack to fan/reveal"}
               </div>
             </div>
-            <div className={styles.stackControls}>
-              {accountTypes.length > 1 && (
-                <TypeFilterPicker
-                  options={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
-                  value={accountTypeFilter}
-                  onChange={(v) => setAccountTypeFilter(v as AccountType | "")}
-                />
-              )}
-              <VariantPicker value={stackVariant} onChange={setStackVariant} />
-            </div>
+            <StackControls
+              variant={stackVariant}
+              onVariantChange={setStackVariant}
+              typeOptions={accountTypes.map((t) => ({ key: t, label: ACCOUNT_TYPE_LABELS[t] }))}
+              typeValue={accountTypeFilter}
+              onTypeChange={(v) => setAccountTypeFilter(v as AccountType | "")}
+            />
           </div>
           <CardStack
             accounts={stackAccounts}

@@ -1,16 +1,21 @@
 import { useState } from "react";
-import type { Account } from "../types";
+import type { Account, TxnSort } from "../types";
 import styles from "./FilterSheet.module.css";
 
-type SortKey = "date" | "amount";
+const SORT_OPTIONS: { key: TxnSort; label: string }[] = [
+  { key: "date", label: "Newest" },
+  { key: "date_asc", label: "Oldest" },
+  { key: "amount", label: "Largest" },
+  { key: "amount_asc", label: "Smallest" },
+];
 
 interface Props {
   accounts: Account[];
   categories: string[];
   accountFilter: number | "";
-  sortKey: SortKey;
+  sortKey: TxnSort;
   categoryFilter: string;
-  onApply: (next: { account: number | ""; sort: SortKey; category: string }) => void;
+  onApply: (next: { account: number | ""; sort: TxnSort; category: string }) => void;
   onClose: () => void;
 }
 
@@ -26,7 +31,7 @@ export default function FilterSheet({
   // Draft state: edits stay local until "Apply" so the list doesn't refetch
   // (and the badge doesn't change) mid-edit.
   const [account, setAccount] = useState<number | "">(accountFilter);
-  const [sort, setSort] = useState<SortKey>(sortKey);
+  const [sort, setSort] = useState<TxnSort>(sortKey);
   const [category, setCategory] = useState<string>(categoryFilter);
 
   const dirty =
@@ -71,18 +76,15 @@ export default function FilterSheet({
 
         <label className={styles.label}>Sort by</label>
         <div className={styles.sortRow}>
-          <button
-            className={`${styles.sortOption} ${sort === "date" ? styles.sortActive : ""}`}
-            onClick={() => setSort("date")}
-          >
-            Newest
-          </button>
-          <button
-            className={`${styles.sortOption} ${sort === "amount" ? styles.sortActive : ""}`}
-            onClick={() => setSort("amount")}
-          >
-            Largest
-          </button>
+          {SORT_OPTIONS.map((o) => (
+            <button
+              key={o.key}
+              className={`${styles.sortOption} ${sort === o.key ? styles.sortActive : ""}`}
+              onClick={() => setSort(o.key)}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
 
         {categories.length > 0 && (

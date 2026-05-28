@@ -1175,8 +1175,10 @@ def budget_projection(
 
 
 _TXN_SORT_MAP: dict[str, str] = {
-    "date": "occurred_at DESC, id DESC",
-    "amount": "ABS(amount_cents) DESC, id DESC",
+    "date": "occurred_at DESC, id DESC",  # Newest
+    "date_asc": "occurred_at ASC, id ASC",  # Oldest
+    "amount": "ABS(amount_cents) DESC, id DESC",  # Largest
+    "amount_asc": "ABS(amount_cents) ASC, id ASC",  # Smallest
 }
 
 
