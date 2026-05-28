@@ -7,6 +7,7 @@ import {
 } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
+import { useIsMobile } from "../hooks/useIsMobile";
 import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -18,6 +19,7 @@ interface Props {
 
 export default function AddModal({ accountId, transaction, onClose }: Props) {
   const editing = !!transaction;
+  const mobile = useIsMobile();
   const { data: accounts } = useAccounts();
   const { data: categoriesData } = useCategories();
   const allCategories = [
@@ -73,8 +75,15 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
+      onClick={onClose}
+    >
+      <div
+        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {mobile && <div className={styles.handle} />}
         <h2 className={styles.title}>
           {editing ? "Edit transaction" : "Add transaction"}
         </h2>

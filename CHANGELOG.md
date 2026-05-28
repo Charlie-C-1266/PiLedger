@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.0] — 2026-05-28
+
+### Added
+
+- **Mobile UX — Slice 4: Bottom sheet modal forms.** On mobile (< 720 px), all four modal forms (Add Transaction, Add Account, Add Goal, Update Account) now slide up from the bottom of the screen rather than appearing centred, placing every input within thumb reach. Desktop behaviour is unchanged (centred card, max-width 440 px).
+
+  A new `useIsMobile` hook (mirrors Shell's 720 px breakpoint, updates on resize) detects the layout and switches each modal between the existing centred style and the new bottom sheet. The sheet uses `align-items: flex-end` on the backdrop, rounded top corners (`border-radius: 20px 20px 0 0`), `max-height: 92vh` with vertical scroll, and a `slideUp` CSS animation (`translateY(100%) → translateY(0)`, 300 ms ease-out). A 36 × 4 px drag-handle pill appears at the top of the sheet — the standard iOS/Android affordance signalling the sheet can be dismissed. Bottom padding accounts for the device home indicator via `env(safe-area-inset-bottom, 0px)`. Tapping the backdrop still dismisses (existing behaviour).
+
+Affected files: `src/constants.py` (VERSION → 1.8.0), `frontend/src/hooks/useIsMobile.ts` (new), `frontend/src/components/AddModal.module.css` (new `backdropMobile`, `sheet`, `handle`, `slideUp`), `frontend/src/components/AddModal.tsx`, `frontend/src/components/AddAccountModal.tsx`, `frontend/src/components/AddGoalModal.tsx`, `frontend/src/components/UpdateBalanceModal.tsx`.
+
+---
+
 ## [1.7.0] — 2026-05-28
 
 ### Added

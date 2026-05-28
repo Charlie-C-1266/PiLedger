@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordBalance, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
+import { useIsMobile } from "../hooks/useIsMobile";
 import type { Account } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function UpdateBalanceModal({ account, onClose }: Props) {
+  const mobile = useIsMobile();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
   const [customColor, setCustomColor] = useState("");
@@ -60,8 +62,15 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
   const pending = balanceMutation.isPending || colorMutation.isPending;
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
+      onClick={onClose}
+    >
+      <div
+        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {mobile && <div className={styles.handle} />}
         <h2 className={styles.title}>Update account</h2>
         <p className={styles.subtitle}>
           {account.name}
