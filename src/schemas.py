@@ -360,5 +360,27 @@ class NetWorthPointOut(BaseModel):
     value: float
 
 
+class CategoryIn(_In):
+    name: Annotated[str, Field(min_length=1, max_length=100)]
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Category name must not be blank")
+        return v
+
+
+class CustomCategoryOut(BaseModel):
+    id: int
+    name: str
+
+
+class CategoriesOut(BaseModel):
+    defaults: list[str]
+    custom: list[CustomCategoryOut]
+
+
 # Projection responses include keys like "1yr" / "2yr" / "5yr" that aren't valid
 # Python identifiers; FastAPI handles them fine via a plain dict return type.

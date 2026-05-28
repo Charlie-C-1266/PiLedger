@@ -1,5 +1,7 @@
 import type {
   Account,
+  Categories,
+  CustomCategory,
   Goal,
   NetWorthPoint,
   Prefs,
@@ -133,3 +135,13 @@ export const updateGoal = (id: number, data: Partial<Goal>) =>
 
 export const deleteGoal = (id: number) =>
   del<{ ok: boolean }>(`/api/goals/${id}`);
+
+// Categories
+
+export const getCategories = () => json<Categories>("/api/categories");
+
+export const createCategory = (name: string) =>
+  post<CustomCategory>("/api/categories", { name });
+
+export const deleteCategory = (id: number) =>
+  del<{ ok: boolean }>(`/api/categories/${id}`);

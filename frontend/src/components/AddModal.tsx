@@ -6,19 +6,9 @@ import {
   deleteTransaction,
 } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
+import { useCategories } from "../hooks/useCategories";
 import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
-
-const CATEGORIES = [
-  "Groceries",
-  "Bills",
-  "Transport",
-  "Entertainment",
-  "Dining",
-  "Shopping",
-  "Health",
-  "Other",
-];
 
 interface Props {
   accountId: number | null;
@@ -29,6 +19,11 @@ interface Props {
 export default function AddModal({ accountId, transaction, onClose }: Props) {
   const editing = !!transaction;
   const { data: accounts } = useAccounts();
+  const { data: categoriesData } = useCategories();
+  const allCategories = [
+    ...(categoriesData?.defaults ?? []),
+    ...(categoriesData?.custom.map((c) => c.name) ?? []),
+  ];
   const [selectedAccount, setSelectedAccount] = useState<number | "">(
     transaction?.account_id ?? accountId ?? ""
   );
@@ -116,7 +111,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
         />
 
         <div className={styles.chips}>
-          {CATEGORIES.map((c) => (
+          {allCategories.map((c) => (
             <button
               key={c}
               className={`${styles.chip} ${c === category ? styles.chipActive : ""}`}

@@ -78,3 +78,13 @@ export interface Prefs {
   dark_mode: boolean;
   base_currency: Currency;
 }
+
+export interface CustomCategory {
+  id: number;
+  name: string;
+}
+
+export interface Categories {
+  defaults: string[];
+  custom: CustomCategory[];
+}

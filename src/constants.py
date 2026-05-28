@@ -7,7 +7,7 @@ from typing import Literal
 # Application version. Returned by `GET /healthz` so uptime monitors and
 # operators can confirm what's actually running without `ssh && git log`.
 # Bump in lock-step with the CHANGELOG header on every release.
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 
 # ─── Paths / cookies ──────────────────────────────────────────────────────────
@@ -249,3 +249,33 @@ MAX_MONEY = 1_000_000_000_000.0  # ±1 trillion dollars
 MAX_RATE = 1_000.0  # % per annum
 MAX_DAYS = 36_500  # ~100 years of history
 MAX_MONTHS = 1_200  # 100 years of projection
+
+# ─── Transaction categories ───────────────────────────────────────────────────
+
+# Built-in categories shown to every user. Custom categories are stored in
+# user_categories and merged with these at the API layer.
+DEFAULT_CATEGORIES: list[str] = [
+    # Income
+    "Salary",
+    "Freelance",
+    "Interest Earned",
+    "Benefits",
+    # Spending
+    "Groceries",
+    "Bills",
+    "Dining",
+    "Transport",
+    "Shopping",
+    "Entertainment",
+    "Health",
+    "Travel",
+    "Clothing",
+    "Subscriptions",
+    "Pets",
+    "Gifts",
+    "Education",
+    "Other",
+]
+
+# Maximum number of custom categories a single user may create.
+MAX_CUSTOM_CATEGORIES = 50

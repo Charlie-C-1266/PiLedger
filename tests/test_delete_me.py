@@ -73,6 +73,7 @@ def _seed(client):
         },
     )
     client.post("/api/goals", json={"name": "Rainy day", "target": 1000.0})
+    client.post("/api/categories", json={"name": "Hobbies"})
     return acct
 
 
