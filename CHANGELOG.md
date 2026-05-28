@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.0] — 2026-05-28
+
+### Added
+
+- **Mobile UX — Slices 1–3: iOS input zoom fix, touch target hardening, and safe area insets.** Three independently-scoped improvements that together resolve the most disruptive mobile issues on iOS and Android.
+
+  **Slice 1 — iOS Input Zoom & Autocomplete Fix:** iOS Safari auto-zooms the viewport when a focused `<input>` has `font-size < 16px`. All form inputs were styled at 13 px. A `@media (max-width: 719px)` rule in `index.css` now sets `font-size: 1rem` on all `input`, `select`, and `textarea` elements, preventing the zoom entirely. `autoComplete` attributes added throughout: `current-password` / `new-password` on password fields in Settings, `off` on free-text fields (merchant name, account name, goal name, category name, hex colour input) to suppress unwanted suggestions. The login page already had correct `autocomplete` attributes; `login.css` gains the same `1rem` mobile font-size override.
+
+  **Slice 2 — Touch Target Hardening:** Mobile header buttons (add, theme toggle) enlarged from 38 × 38 px to 44 × 44 px, meeting WCAG 2.5.5 and Apple/Google HIG minimums. TabStrip tabs now have `min-height: 56px` (standard bottom-navigation height). A global `touch-action: manipulation` rule on `button`, `a`, `[role="button"]`, `input`, `select`, and `textarea` eliminates the 300 ms double-tap-to-zoom delay on older Android browsers without interfering with scroll or swipe gestures.
+
+  **Slice 3 — Safe Area Insets (iPhone Notch & Home Bar):** `viewport-fit=cover` added to the viewport meta in both `frontend/index.html` and `src/static/login.html`. The mobile header gains `padding-top: env(safe-area-inset-top, 0px)` to clear the Face ID notch. The TabStrip container gains `padding-bottom: env(safe-area-inset-bottom, 0px)` and the mobile main content gains `calc(60px + env(safe-area-inset-bottom, 0px))` bottom padding so content is never clipped by the home indicator.
+
+Affected files: `src/constants.py` (VERSION → 1.7.0), `frontend/index.html`, `src/static/login.html`, `frontend/src/index.css`, `src/static/login.css`, `frontend/src/components/AddModal.tsx`, `frontend/src/components/AddAccountModal.tsx`, `frontend/src/components/AddGoalModal.tsx`, `frontend/src/screens/Settings.tsx`, `frontend/src/components/Header.module.css`, `frontend/src/components/TabStrip.module.css`, `frontend/src/components/Shell.module.css`.
+
+---
+
 ## [1.6.0] — 2026-05-28
 
 ### Added

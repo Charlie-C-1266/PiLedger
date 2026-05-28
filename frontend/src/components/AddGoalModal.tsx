@@ -46,6 +46,7 @@ export default function AddGoalModal({ onClose }: Props) {
           placeholder="Goal name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          autoComplete="off"
           autoFocus
         />
 
