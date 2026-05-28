@@ -4,9 +4,11 @@ import { useAccounts } from "../hooks/useAccounts";
 import { useTransactions } from "../hooks/useTransactions";
 import { fmt } from "../lib/currency";
 import { useSummary } from "../hooks/useSummary";
-import { SearchIcon } from "../components/icons";
+import { SearchIcon, FilterIcon } from "../components/icons";
 import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
+import FilterSheet from "../components/FilterSheet";
+import { useIsMobile } from "../hooks/useIsMobile";
 import type { Transaction } from "../types";
 import styles from "./Transactions.module.css";
 
@@ -18,11 +20,13 @@ export default function Transactions() {
   const { data: summary } = useSummary();
   const currency = summary?.base_currency ?? "GBP";
 
+  const mobile = useIsMobile();
   const [search, setSearch] = useState("");
   const [accountFilter, setAccountFilter] = useState<number | "">("");
   const [sortKey, setSortKey] = useState<SortKey>("date");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [showModal, setShowModal] = useState(false);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
 
   const { data: transactions } = useTransactions({
@@ -59,6 +63,13 @@ export default function Transactions() {
   const net = inflow - outflow;
 
   const defaultAccountId = accounts?.[0]?.id ?? null;
+
+  // Count of active non-default filters, shown as a badge on the mobile
+  // filter button (account ≠ All, category ≠ All, sort ≠ Newest).
+  const activeFilterCount =
+    (accountFilter !== "" ? 1 : 0) +
+    (categoryFilter !== "" ? 1 : 0) +
+    (sortKey !== "date" ? 1 : 0);
 
   return (
     <div className={styles.page}>
@@ -108,39 +119,56 @@ export default function Transactions() {
               </button>
             )}
           </div>
-          <select
-            className={styles.accountSelect}
-            value={accountFilter}
-            onChange={(e) =>
-              setAccountFilter(e.target.value ? Number(e.target.value) : "")
-            }
-          >
-            <option value="">All accounts</option>
-            {(accounts ?? []).map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-          <button
-            className={styles.sortBtn}
-            onClick={() =>
-              setSortKey((k) => (k === "date" ? "amount" : "date"))
-            }
-          >
-            Sort: {sortKey === "date" ? "Newest" : "Largest"}
-          </button>
-          <div className={styles.spacer} />
-          <button
-            className={styles.addBtn}
-            onClick={() => setShowModal(true)}
-          >
-            + Add
-          </button>
+
+          {mobile ? (
+            <button
+              className={styles.filterBtn}
+              onClick={() => setShowFilterSheet(true)}
+              aria-label="Filters"
+            >
+              <FilterIcon width={15} height={15} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className={styles.filterBadge}>{activeFilterCount}</span>
+              )}
+            </button>
+          ) : (
+            <>
+              <select
+                className={styles.accountSelect}
+                value={accountFilter}
+                onChange={(e) =>
+                  setAccountFilter(e.target.value ? Number(e.target.value) : "")
+                }
+              >
+                <option value="">All accounts</option>
+                {(accounts ?? []).map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className={styles.sortBtn}
+                onClick={() =>
+                  setSortKey((k) => (k === "date" ? "amount" : "date"))
+                }
+              >
+                Sort: {sortKey === "date" ? "Newest" : "Largest"}
+              </button>
+              <div className={styles.spacer} />
+              <button
+                className={styles.addBtn}
+                onClick={() => setShowModal(true)}
+              >
+                + Add
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Category chips */}
-        {categories.length > 0 && (
+        {/* Category chips — desktop only; mobile uses the filter sheet */}
+        {!mobile && categories.length > 0 && (
           <div className={styles.chipBar} role="radiogroup" aria-label="Filter by category">
             <button
               className={`${styles.chip} ${!categoryFilter ? styles.chipActive : ""}`}
@@ -184,6 +212,22 @@ export default function Transactions() {
           )}
         </div>
       </div>
+
+      {mobile && showFilterSheet && (
+        <FilterSheet
+          accounts={accounts ?? []}
+          categories={categories}
+          accountFilter={accountFilter}
+          sortKey={sortKey}
+          categoryFilter={categoryFilter}
+          onApply={({ account, sort, category }) => {
+            setAccountFilter(account);
+            setSortKey(sort);
+            setCategoryFilter(category);
+          }}
+          onClose={() => setShowFilterSheet(false)}
+        />
+      )}
 
       {showModal && (
         <AddModal

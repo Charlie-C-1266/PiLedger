@@ -35,3 +35,7 @@ export function MoonIcon(props: React.SVGProps<SVGSVGElement>) {
 export function SearchIcon(props: React.SVGProps<SVGSVGElement>) {
   return <svg {...s} {...props}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>;
 }
+
+export function FilterIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg {...s} {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>;
+}

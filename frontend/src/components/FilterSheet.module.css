@@ -1,0 +1,108 @@
+/* Bottom-sheet shell reuses the Slice 4 pattern from AddModal.module.css. */
+.backdrop {
+  composes: backdrop from "./AddModal.module.css";
+  composes: backdropMobile from "./AddModal.module.css";
+}
+
+.sheet {
+  composes: modal from "./AddModal.module.css";
+  composes: sheet from "./AddModal.module.css";
+}
+
+.handle {
+  composes: handle from "./AddModal.module.css";
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.title {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.clear {
+  border: none;
+  background: none;
+  color: var(--pl-accent);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+}
+
+.label {
+  display: block;
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+  margin-bottom: 10px;
+}
+
+.select {
+  composes: select from "./AddModal.module.css";
+  margin-bottom: 20px;
+}
+
+.sortRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.sortOption {
+  flex: 1;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 160ms, color 160ms;
+}
+
+.sortActive {
+  border-color: var(--pl-accent);
+  color: var(--pl-text);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.chip {
+  composes: chip from "./AddModal.module.css";
+}
+
+.chipActive {
+  composes: chipActive from "./AddModal.module.css";
+}
+
+.apply {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: opacity 160ms;
+}
+
+.apply:hover {
+  opacity: 0.9;
+}
