@@ -21,6 +21,12 @@ Affected files: `frontend/src/components/FilterSheet.tsx` (new), `frontend/src/c
 
 Affected files: `frontend/src/components/TxnRow.tsx`, `frontend/src/components/TxnRow.module.css`.
 
+- **Mobile UX — Slice 8: PWA manifest & app icon.** "No PWA manifest" was a pre-v1.0 gap versus competitors (Ghostfolio, Actual); PiLedger could not be installed to a phone's home screen. Added a web app manifest (`display: standalone`, name/short-name, `theme_color`/`background_color`, `scope`/`start_url` of `/`) and three icons — `icon-192`, `icon-512`, and a `maskable` 512 with a 10 % safe zone — rendered from the existing brand mark (the accent rounded-square with the white chart line). `index.html` gains the `<link rel="manifest">`, `apple-touch-icon`, a PNG favicon, `theme-color`, and the `apple-mobile-web-app-*` meta tags so an installed iOS/Android instance gets a proper icon, standalone window, splash, and themed app-switcher entry. Combined with Slice 3's `viewport-fit=cover`, the installed experience is now polished.
+
+  Serving: `manifest.json` and `icons/` live in `frontend/public/` (copied into the Vite `dist/` build output) and are exposed at the root paths the manifest references via two **public** (no-auth) FastAPI routes — `GET /manifest.json` and `GET /icons/{name}` (icon names whitelisted to prevent path traversal). Both 404 until the frontend is built, mirroring how the SPA index is served.
+
+Affected files: `frontend/index.html`, `frontend/public/manifest.json` (new), `frontend/public/icons/icon-192.png` + `icon-512.png` + `icon-512-maskable.png` (new), `src/app.py` (public `/manifest.json` + `/icons/{name}` routes).
+
 ---
 
 ## [1.9.0] — 2026-05-28
