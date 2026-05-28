@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased]
+
+_No unreleased changes yet. New work is recorded here; `VERSION` is bumped and tagged only when a release is cut (see CLAUDE.md → Releases)._
+
+---
+
 ## [1.9.0] — 2026-05-28
 
 ### Added
