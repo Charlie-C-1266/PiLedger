@@ -67,6 +67,7 @@ export default function AddAccountModal({ onClose }: Props) {
           placeholder="Account name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+          autoComplete="off"
           autoFocus
         />
 
@@ -125,6 +126,7 @@ export default function AddAccountModal({ onClose }: Props) {
             onChange={(e) => handleCustomColorChange(e.target.value)}
             maxLength={7}
             spellCheck={false}
+            autoComplete="off"
           />
         </div>
 

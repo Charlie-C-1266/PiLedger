@@ -165,6 +165,7 @@ export default function Settings() {
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
               maxLength={100}
+              autoComplete="off"
             />
             <button
               className={styles.primaryBtn}
@@ -192,6 +193,7 @@ export default function Settings() {
             placeholder="Current password"
             value={currentPw}
             onChange={(e) => setCurrentPw(e.target.value)}
+            autoComplete="current-password"
           />
           <input
             className={styles.input}
@@ -199,6 +201,7 @@ export default function Settings() {
             placeholder="New password (min. 8 characters)"
             value={newPw}
             onChange={(e) => setNewPw(e.target.value)}
+            autoComplete="new-password"
           />
           {pwMsg && (
             <div className={pwMsg.ok ? styles.successMsg : styles.errorMsg}>
@@ -256,6 +259,7 @@ export default function Settings() {
                 placeholder="Confirm your password"
                 value={deletePw}
                 onChange={(e) => setDeletePw(e.target.value)}
+                autoComplete="current-password"
               />
               {deleteMsg && <div className={styles.errorMsg}>{deleteMsg}</div>}
               <div className={styles.deleteActions}>

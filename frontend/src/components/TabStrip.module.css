@@ -4,6 +4,7 @@
   background: var(--pl-surface);
   border-radius: 12px;
   padding: 4px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   box-shadow: var(--pl-shadow);
   margin-bottom: 16px;
 }
@@ -15,6 +16,7 @@
   align-items: center;
   gap: 2px;
   padding: 10px 8px;
+  min-height: 56px;
   border-radius: 8px;
   text-decoration: none;
   color: var(--pl-text-mute);

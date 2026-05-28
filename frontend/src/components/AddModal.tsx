@@ -99,6 +99,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
           placeholder="Tesco, Spotify…"
           value={merchant}
           onChange={(e) => setMerchant(e.target.value)}
+          autoComplete="off"
           autoFocus
         />
 
