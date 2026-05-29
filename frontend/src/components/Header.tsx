@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTheme } from "../theme/useTheme";
-import { SunIcon, MoonIcon, PlusIcon, SearchIcon } from "./icons";
+import { SunIcon, MoonIcon, PlusIcon, SearchIcon, LogoMark } from "./icons";
 import AddMenu from "./AddMenu";
 import type { AddTarget } from "./AddMenu";
 import styles from "./Header.module.css";
@@ -24,7 +24,9 @@ export default function Header({ mobile, onAdd, username }: Props) {
     return (
       <header className={styles.headerMobile}>
         <span className={styles.mobileBrand}>
-          <span className={styles.logo}>P</span>
+          <span className={styles.logo}>
+            <LogoMark />
+          </span>
         </span>
         <div className={styles.actions}>
           <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">

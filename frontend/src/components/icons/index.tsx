@@ -1,5 +1,13 @@
 const s = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.4, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
+// The brand mark — the white upward chart line from the app icon / favicon.
+// Sits inside the accent rounded square provided by the `.logo` box, so it
+// inherits white via `currentColor`. Bolder stroke than the UI icons to match
+// the icon-192 artwork.
+export function LogoMark(props: React.SVGProps<SVGSVGElement>) {
+  return <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="5 13 9 9 13 14 19 6" /></svg>;
+}
+
 export function GridIcon(props: React.SVGProps<SVGSVGElement>) {
   return <svg {...s} {...props}><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>;
 }
