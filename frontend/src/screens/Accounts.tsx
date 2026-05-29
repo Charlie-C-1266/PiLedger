@@ -6,6 +6,7 @@ import { fmt } from "../lib/currency";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
+import PressableTile from "../components/PressableTile";
 import UpdateBalanceModal from "../components/UpdateBalanceModal";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType } from "../types";
@@ -78,9 +79,9 @@ export default function Accounts() {
           </div>
           <div className={styles.accountGrid}>
             {(accounts ?? []).map((a) => (
-              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+              <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
                 <AccountTile account={a} style={{ width: "100%", height: 150 }} />
-              </div>
+              </PressableTile>
             ))}
           </div>
         </div>
@@ -97,9 +98,9 @@ export default function Accounts() {
           </div>
           <div className={styles.accountGrid}>
             {positive.map((a) => (
-              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+              <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
                 <AccountTile account={a} style={{ width: "100%", height: 150 }} />
-              </div>
+              </PressableTile>
             ))}
           </div>
         </div>
@@ -116,9 +117,9 @@ export default function Accounts() {
           </div>
           <div className={styles.accountGrid}>
             {negative.map((a) => (
-              <div key={a.id} onClick={() => setEditAccount(a)} style={{ cursor: "pointer" }}>
+              <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
                 <AccountTile account={a} style={{ width: "100%", height: 150 }} />
-              </div>
+              </PressableTile>
             ))}
           </div>
         </div>

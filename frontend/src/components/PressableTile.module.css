@@ -1,0 +1,16 @@
+.tile {
+  cursor: pointer;
+  border-radius: 14px;
+  transition: transform 120ms;
+  /* A long-press shouldn't trigger text selection or the iOS callout, and a
+     tap shouldn't trigger double-tap-to-zoom on the tile. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+
+/* Touch long-press feedback: shows ~150ms in, before the editor opens. */
+.pressing {
+  transform: scale(0.985);
+}
