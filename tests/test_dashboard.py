@@ -364,6 +364,26 @@ def test_networth_liabilities_subtracted(alice):
     assert points[-1]["value"] == 3800.0
 
 
+def test_networth_negative_debt_balance_matches_summary(alice):
+    # A debt recorded as a negative balance (e.g. -2000 = owe 2000) must be
+    # subtracted from net worth, exactly as /api/summary treats it. Previously
+    # the chart did `nw -= converted`, so a negative balance flipped sign and
+    # was added, pushing the chart above the headline net-worth value.
+    c = alice.post("/api/accounts", json={"name": "Current", "type": "current"}).json()[
+        "id"
+    ]
+    loan = alice.post("/api/accounts", json={"name": "Loan", "type": "loan"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{c}/balance", json={"balance": 5000.0})
+    alice.post(f"/api/accounts/{loan}/balance", json={"balance": -2000.0})
+
+    points = alice.get("/api/history/networth?range=30D").json()
+    summary = alice.get("/api/summary").json()
+    assert points[-1]["value"] == 3000.0
+    assert points[-1]["value"] == summary["total"]
+
+
 def test_networth_invalid_range_rejected(alice):
     r = alice.get("/api/history/networth?range=2W")
     assert r.status_code == 400

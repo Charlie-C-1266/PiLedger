@@ -938,7 +938,12 @@ def networth_history(
             cur = acc["currency"] or "GBP"
             converted = _convert_to_base(amt, cur, base, rates)
             if acc["type"] in ("loan", "credit"):
-                nw -= converted
+                # Mirror /api/summary: a debt is a positive magnitude subtracted
+                # from net worth, whether its balance was recorded as a positive
+                # number (e.g. 2000 owed) or a negative one (-2000). Without abs()
+                # a negative-recorded debt flips sign and is *added*, making the
+                # chart diverge above the headline net-worth figure.
+                nw -= abs(converted)
             else:
                 nw += converted
         points.append(NetWorthPointOut(date=d, value=round(nw, 2)))
