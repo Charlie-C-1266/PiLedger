@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-05-29
+
 ### Changed
 
 - **More breathing room below the Add transaction / Add goal modal titles.** The first field sat directly under the heading, which read as cramped. A small gap (16 px) is now added when a field follows the title directly; modals that have a subtitle (Transfer, Update account) are unaffected. Affected files: `frontend/src/components/AddModal.module.css`.
