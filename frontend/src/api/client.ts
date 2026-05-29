@@ -139,6 +139,7 @@ export const createGoal = (data: {
   saved?: number;
   monthly?: number;
   color?: string;
+  account_id?: number | null;
 }) => post<Goal>("/api/goals", data);
 
 export const updateGoal = (id: number, data: Partial<Goal>) =>

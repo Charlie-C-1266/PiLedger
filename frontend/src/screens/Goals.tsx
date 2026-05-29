@@ -18,7 +18,15 @@ function etaLabel(target: number, saved: number, monthly: number): string {
   return `Finished in ${months} month${months !== 1 ? "s" : ""}`;
 }
 
-function GoalCard({ goal, currency }: { goal: Goal; currency: string }) {
+function GoalCard({
+  goal,
+  currency,
+  onEdit,
+}: {
+  goal: Goal;
+  currency: string;
+  onEdit: (g: Goal) => void;
+}) {
   const { mode } = useTheme();
   const [monthly, setMonthly] = useState(goal.monthly);
   const queryClient = useQueryClient();
@@ -53,12 +61,20 @@ function GoalCard({ goal, currency }: { goal: Goal; currency: string }) {
           <div className={styles.eta}>
             {etaLabel(goal.target, goal.saved, monthly)}
           </div>
+          {goal.account_name && (
+            <span className={styles.track}>Tracking {goal.account_name}</span>
+          )}
         </div>
-        <div
-          className={styles.badge}
-          style={{ background: badgeBg, color: goal.color }}
-        >
-          {pct.toFixed(0)}%
+        <div className={styles.headerRight}>
+          <div
+            className={styles.badge}
+            style={{ background: badgeBg, color: goal.color }}
+          >
+            {pct.toFixed(0)}%
+          </div>
+          <button className={styles.editBtn} onClick={() => onEdit(goal)}>
+            Edit
+          </button>
         </div>
       </div>
 
@@ -102,6 +118,7 @@ export default function Goals() {
   const { data: summary } = useSummary();
   const currency = summary?.base_currency ?? "GBP";
   const [showModal, setShowModal] = useState(false);
+  const [editGoal, setEditGoal] = useState<Goal | null>(null);
 
   return (
     <div className={styles.page}>
@@ -113,7 +130,7 @@ export default function Goals() {
       </div>
       <div className={styles.grid}>
         {(goals ?? []).map((g) => (
-          <GoalCard key={g.id} goal={g} currency={currency} />
+          <GoalCard key={g.id} goal={g} currency={currency} onEdit={setEditGoal} />
         ))}
         {goals?.length === 0 && (
           <div className={styles.empty}>
@@ -122,6 +139,9 @@ export default function Goals() {
         )}
       </div>
       {showModal && <AddGoalModal onClose={() => setShowModal(false)} />}
+      {editGoal && (
+        <AddGoalModal goal={editGoal} onClose={() => setEditGoal(null)} />
+      )}
     </div>
   );
 }

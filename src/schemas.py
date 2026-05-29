@@ -226,6 +226,9 @@ class GoalIn(_In):
     saved: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
     monthly: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#0F766E"
+    # Optional account to track: a linked goal's progress mirrors the account's
+    # current balance instead of the manual `saved` value.
+    account_id: Optional[int] = Field(default=None, ge=1)
 
 
 class GoalPatch(_In):
@@ -240,6 +243,10 @@ class GoalPatch(_In):
         default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
     )
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
+    # Set to an account id to link/track, or null to unlink. Uses exclude_unset
+    # on update so an explicit null is honoured (unlink) while an absent field
+    # is left unchanged.
+    account_id: Optional[int] = Field(default=None, ge=1)
 
 
 class PrefsPatch(_In):
@@ -382,6 +389,8 @@ class GoalOut(BaseModel):
     saved: float
     monthly: float
     color: str
+    account_id: Optional[int] = None
+    account_name: Optional[str] = None
     created_at: str
 
 

@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Goals can be edited, deleted, and linked to an account for automatic tracking.** Goals previously could only be created and have their monthly contribution nudged via a slider — there was no way to rename one, change its target/colour, delete it, or tie it to real money. Each goal card now has an **Edit** button opening a modal to change the name, target, monthly contribution, colour, and (new) a **linked account**, plus a **Delete** action. When a goal is linked to an account (e.g. an emergency fund → a savings account), its progress **auto-tracks that account's current balance** live — the manual "already saved" field is hidden for linked goals; unlinked goals keep a manually-entered amount as before. Deleting a linked account unlinks its goals (via `ON DELETE SET NULL`) rather than deleting them. Backend: nullable `goals.account_id` (schema v5 migration, idempotent on fresh/stamped/legacy DBs); `GoalOut` gains `account_id`/`account_name` and a linked goal's `saved` is derived from the account's latest balance; create/update validate account ownership and `PUT` switched to `exclude_unset` so an explicit `account_id: null` unlinks. Affected files: `src/db.py` (migration + column), `src/schemas.py` (`GoalIn`/`GoalPatch`/`GoalOut`), `src/app.py` (goal endpoints + derived `saved`), `tests/test_goals.py`, `docs/api-reference.md`, and frontend `AddGoalModal.tsx` (edit/delete/account picker), `screens/Goals.tsx` + `.module.css`, `api/client.ts`, `types.ts`.
+
 ## [2.1.0] — 2026-05-29
 
 ### Changed

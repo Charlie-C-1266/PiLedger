@@ -95,16 +95,18 @@ Transaction response shape (a `transfer_id` string is present on the two legs of
 
 ## Goals
 
-Savings goals with target amounts, current progress, and optional monthly contribution tracking. Goals are independent of accounts — they track a named target and how much has been saved toward it.
+Savings goals with target amounts, current progress, and optional monthly contribution tracking. A goal may optionally be **linked to an account** (`account_id`): a linked goal's `saved` value is reported live as that account's current balance (e.g. an emergency fund tracking a savings account), rather than a manually-entered figure.
 
 | Method | Path | Body / Params | Response |
 |---|---|---|---|
 | `GET` | `/api/goals` | — | Array of goal objects ordered by creation date |
-| `POST` | `/api/goals` | `{name, target, saved?, monthly?, color?}` | Created goal object (HTTP 201). `target` must be > 0. `saved` and `monthly` default to 0. `color` defaults to `#0F766E`. |
-| `PUT` | `/api/goals/{id}` | `{name?, target?, saved?, monthly?, color?}` | Updated goal object. All fields are optional (partial update). |
+| `POST` | `/api/goals` | `{name, target, saved?, monthly?, color?, account_id?}` | Created goal object (HTTP 201). `target` must be > 0. `saved` and `monthly` default to 0. `color` defaults to `#0F766E`. `account_id`, if given, must be one of the user's accounts (`404` otherwise) and makes `saved` track that account's balance. |
+| `PUT` | `/api/goals/{id}` | `{name?, target?, saved?, monthly?, color?, account_id?}` | Updated goal object. All fields optional (partial update); only fields present are written. Send `account_id: null` to unlink, or an account id to link (`404` if not the user's). |
 | `DELETE` | `/api/goals/{id}` | — | `{ok}` |
 
-Goal response shape:
+Deleting an account a goal is linked to unlinks the goal (its `account_id` is set to null) rather than deleting the goal.
+
+Goal response shape (`account_id`/`account_name` are null for an unlinked goal):
 
 ```json
 {
@@ -115,6 +117,8 @@ Goal response shape:
   "saved": 1250.00,
   "monthly": 200.00,
   "color": "#0F766E",
+  "account_id": 3,
+  "account_name": "Savings",
   "created_at": "2026-05-01T10:00:00"
 }
 ```
