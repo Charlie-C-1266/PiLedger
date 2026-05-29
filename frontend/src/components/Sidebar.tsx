@@ -1,5 +1,5 @@
 import NavItem from "./NavItem";
-import { GridIcon, WalletIcon, ListIcon, FlagIcon, SettingsIcon } from "./icons";
+import { GridIcon, WalletIcon, ListIcon, FlagIcon, SettingsIcon, LogoMark } from "./icons";
 import styles from "./Sidebar.module.css";
 
 interface Props {
@@ -11,7 +11,9 @@ export default function Sidebar({ compact, username }: Props) {
   return (
     <aside className={`${styles.sidebar} ${compact ? styles.compact : ""}`}>
       <div className={styles.brand}>
-        <span className={styles.logo}>P</span>
+        <span className={styles.logo}>
+          <LogoMark />
+        </span>
         {!compact && <span className={styles.wordmark}>PiLedger</span>}
       </div>
       <nav className={styles.nav}>

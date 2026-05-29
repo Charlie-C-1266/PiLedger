@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **In-app logo now matches the app/tab icon.** The top-left brand badge (in the desktop sidebar and the mobile header) showed a placeholder letter "P" on the accent square, while the browser-tab favicon and installed-app icon use the white upward chart-line mark. The badge now renders that same chart-line mark, so the in-app logo and the tab/home-screen icon are consistent. Implemented as a new `LogoMark` SVG (a bolder-stroke version of the `icon-192` artwork) dropped into the existing accent `.logo` box, inheriting white via `currentColor`. Affected files: `frontend/src/components/icons/index.tsx` (new `LogoMark`), `frontend/src/components/Sidebar.tsx`, `frontend/src/components/Header.tsx`.
+
 ### Fixed
 
 - **Net-worth chart hover stopped updating the value, and never showed the date.** Hovering the Overview net-worth chart no longer refreshed the hero figure to the value under the cursor. Root cause: the chart was upgraded to recharts v3, where the chart-level mouse-move state reports `activeTooltipIndex` as a **string** (`TooltipIndex = string | null`) rather than a number; `LineChart`'s `onMouseMove`/`onTouchMove` still guarded with `typeof … === "number"`, so the guard never matched and `onHover` never fired — leaving the hero pinned to the current total. The index is now coerced and bounds-checked, restoring the live value on hover (and touch-drag). In the same pass the chart's tooltip — previously rendered as `() => null` — now shows a small pill with the **date** and value at the hovered point, so the point in time is visible on the graph. Affected files: `frontend/src/components/charts/LineChart.tsx`.
