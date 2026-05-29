@@ -24,6 +24,14 @@
   color: var(--pl-text);
 }
 
+/* When a field follows the title directly (the Add transaction / Add goal
+   modals, which have no subtitle), add a little breathing room so the first
+   field doesn't crowd the heading. Modals with a subtitle are unaffected. */
+.title + .select,
+.title + .input {
+  margin-top: 16px;
+}
+
 .subtitle {
   font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-soft);

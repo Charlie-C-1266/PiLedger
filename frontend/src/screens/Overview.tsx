@@ -16,6 +16,8 @@ import RangePills from "../components/RangePills";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import TxnRow from "../components/TxnRow";
+import AddModal from "../components/AddModal";
+import AddGoalModal from "../components/AddGoalModal";
 import styles from "./Overview.module.css";
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -40,6 +42,8 @@ export default function Overview() {
   const [stackVariant, setStackVariant] = useState<StackVariant>("fan");
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
   const [donutHover, setDonutHover] = useState<number | null>(null);
+  const [showTxnModal, setShowTxnModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   const currency = summary?.base_currency ?? "GBP";
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
@@ -158,7 +162,9 @@ export default function Overview() {
         <div className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Recent activity</div>
-            <button className={styles.addPill}>+ Add transaction</button>
+            <button className={styles.addPill} onClick={() => setShowTxnModal(true)}>
+              + Add transaction
+            </button>
           </div>
           <div className={styles.txnList}>
             {(transactions ?? []).map((txn) => {
@@ -242,7 +248,12 @@ export default function Overview() {
 
         {/* 6. Goals progress */}
         <div className={styles.card}>
-          <div className={styles.sectionTitle}>Goals progress</div>
+          <div className={styles.sectionHeader}>
+            <div className={styles.sectionTitle}>Goals progress</div>
+            <button className={styles.addPill} onClick={() => setShowGoalModal(true)}>
+              + Add goal
+            </button>
+          </div>
           <div className={styles.goalsList}>
             {(goals ?? []).map((g) => {
               const pct = g.target > 0 ? (g.saved / g.target) * 100 : 0;
@@ -277,6 +288,14 @@ export default function Overview() {
           </div>
         </div>
       </div>
+
+      {showTxnModal && (
+        <AddModal
+          accountId={accounts?.[0]?.id ?? null}
+          onClose={() => setShowTxnModal(false)}
+        />
+      )}
+      {showGoalModal && <AddGoalModal onClose={() => setShowGoalModal(false)} />}
     </div>
   );
 }
