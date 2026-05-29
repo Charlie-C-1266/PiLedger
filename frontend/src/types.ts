@@ -48,6 +48,8 @@ export interface Goal {
   saved: number;
   monthly: number;
   color: string;
+  account_id?: number | null;
+  account_name?: string | null;
   created_at: string;
 }
 

@@ -181,3 +181,74 @@ def test_create_rejects_extra_field(alice):
         json={"name": "X", "target": 1000.0, "unknown_field": True},
     )
     assert r.status_code == 400
+
+
+# ── Account linking (auto-tracked progress) ──────────────────────────────────
+
+
+def _account(client, name="Savings", type_="savings", balance=None):
+    aid = client.post("/api/accounts", json={"name": name, "type": type_}).json()["id"]
+    if balance is not None:
+        client.post(f"/api/accounts/{aid}/balance", json={"balance": balance})
+    return aid
+
+
+def test_linked_goal_saved_tracks_account_balance(alice):
+    aid = _account(alice, balance=3000.0)
+    g = _goal(alice, name="Emergency Fund", target=10000.0, account_id=aid)
+    assert g["account_id"] == aid
+    assert g["account_name"] == "Savings"
+    assert g["saved"] == 3000.0
+
+
+def test_linked_goal_saved_follows_balance_changes(alice):
+    aid = _account(alice, balance=3000.0)
+    g = _goal(alice, target=10000.0, account_id=aid)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 4200.0})
+    refreshed = next(x for x in alice.get("/api/goals").json() if x["id"] == g["id"])
+    assert refreshed["saved"] == 4200.0
+
+
+def test_create_goal_with_others_account_rejected(alice, bob):
+    bob_aid = _account(bob, name="Bob Savings", balance=500.0)
+    r = alice.post(
+        "/api/goals",
+        json={"name": "X", "target": 1000.0, "account_id": bob_aid},
+    )
+    assert r.status_code == 404
+
+
+def test_update_goal_link_then_unlink(alice):
+    aid = _account(alice, balance=3000.0)
+    g = _goal(alice, target=10000.0, saved=150.0)  # unlinked, manual saved
+    assert g["saved"] == 150.0 and g["account_id"] is None
+
+    linked = alice.put(f"/api/goals/{g['id']}", json={"account_id": aid}).json()
+    assert linked["account_id"] == aid
+    assert linked["saved"] == 3000.0  # now tracks the account
+
+    unlinked = alice.put(f"/api/goals/{g['id']}", json={"account_id": None}).json()
+    assert unlinked["account_id"] is None
+    assert unlinked["saved"] == 150.0  # reverts to stored manual value
+
+
+def test_update_goal_to_others_account_rejected(alice, bob):
+    bob_aid = _account(bob, name="Bob Savings", balance=500.0)
+    g = _goal(alice, target=1000.0)
+    r = alice.put(f"/api/goals/{g['id']}", json={"account_id": bob_aid})
+    assert r.status_code == 404
+
+
+def test_deleting_linked_account_unlinks_goal(alice):
+    aid = _account(alice, balance=3000.0)
+    g = _goal(alice, target=10000.0, saved=0.0, account_id=aid)
+    assert g["saved"] == 3000.0
+
+    assert alice.delete(f"/api/accounts/{aid}").status_code == 200
+
+    # Goal survives, now unlinked, reporting its stored saved value.
+    remaining = alice.get("/api/goals").json()
+    assert len(remaining) == 1
+    assert remaining[0]["id"] == g["id"]
+    assert remaining[0]["account_id"] is None
+    assert remaining[0]["saved"] == 0.0
