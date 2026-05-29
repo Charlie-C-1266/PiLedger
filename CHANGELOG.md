@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- **More breathing room below the Add transaction / Add goal modal titles.** The first field sat directly under the heading, which read as cramped. A small gap (16 px) is now added when a field follows the title directly; modals that have a subtitle (Transfer, Update account) are unaffected. Affected files: `frontend/src/components/AddModal.module.css`.
+
 - **In-app logo now matches the app/tab icon.** The top-left brand badge (in the desktop sidebar and the mobile header) showed a placeholder letter "P" on the accent square, while the browser-tab favicon and installed-app icon use the white upward chart-line mark. The badge now renders that same chart-line mark, so the in-app logo and the tab/home-screen icon are consistent. Implemented as a new `LogoMark` SVG (a bolder-stroke version of the `icon-192` artwork) dropped into the existing accent `.logo` box, inheriting white via `currentColor`. Affected files: `frontend/src/components/icons/index.tsx` (new `LogoMark`), `frontend/src/components/Sidebar.tsx`, `frontend/src/components/Header.tsx`.
 
 ### Fixed
