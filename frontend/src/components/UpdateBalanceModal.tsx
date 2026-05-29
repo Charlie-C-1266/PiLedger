@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { recordBalance, updateAccount } from "../api/client";
+import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import { useIsMobile } from "../hooks/useIsMobile";
@@ -19,6 +19,7 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
   const [customColor, setCustomColor] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
   const sw = colorToGradient(color);
@@ -36,6 +37,17 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
     queryClient.invalidateQueries({ queryKey: ["summary"] });
     queryClient.invalidateQueries({ queryKey: ["networth"] });
   };
+
+  const deleteMutation = useMutation({
+    mutationFn: () => removeAccount(account.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["summary"] });
+      queryClient.invalidateQueries({ queryKey: ["networth"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      onClose();
+    },
+  });
 
   const balanceMutation = useMutation({
     mutationFn: (val: number) => recordBalance(account.id, val),
@@ -59,7 +71,7 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
     onClose();
   };
 
-  const pending = balanceMutation.isPending || colorMutation.isPending;
+  const pending = balanceMutation.isPending || colorMutation.isPending || deleteMutation.isPending;
 
   return (
     <div
@@ -122,18 +134,48 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
           />
         </div>
 
-        <div className={styles.footer}>
-          <button className={styles.cancel} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className={styles.save}
-            onClick={handleSave}
-            disabled={pending}
-          >
-            {pending ? "Saving…" : "Update account"}
-          </button>
-        </div>
+        {confirmingDelete ? (
+          <div className={styles.footer}>
+            <span style={{ fontSize: 13, color: "var(--pl-text-soft)", flex: 1 }}>
+              Delete "{account.name}" and all its transactions?
+            </span>
+            <button
+              className={styles.cancel}
+              onClick={() => setConfirmingDelete(false)}
+              disabled={pending}
+            >
+              Cancel
+            </button>
+            <button
+              className={styles.deleteBtn}
+              onClick={() => deleteMutation.mutate()}
+              disabled={pending}
+            >
+              {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        ) : (
+          <div className={styles.footer}>
+            <button
+              className={styles.deleteBtn}
+              onClick={() => setConfirmingDelete(true)}
+              disabled={pending}
+            >
+              Delete account
+            </button>
+            <div className={styles.spacer} />
+            <button className={styles.cancel} onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className={styles.save}
+              onClick={handleSave}
+              disabled={pending}
+            >
+              {pending ? "Saving…" : "Update account"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

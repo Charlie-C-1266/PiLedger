@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Delete account from the Update Account modal.** There was no way to remove an account after creation, even though the backend `DELETE /api/accounts/{id}` endpoint already existed and correctly cascades deletions to linked transactions and balance history. A "Delete account" button now appears in the footer of the Update Account modal (opened by tapping any account tile). Clicking it transitions to an inline confirmation prompt — showing the account name and a warning that all transactions will be removed — before the deletion is sent. After a successful delete, the accounts, transactions, summary, and net-worth queries are all invalidated so the UI updates immediately. Affected files: `frontend/src/components/UpdateBalanceModal.tsx`, `frontend/src/api/client.ts` (new `removeAccount` export).
+
 ---
 
 ## [2.0.0] — 2026-05-28

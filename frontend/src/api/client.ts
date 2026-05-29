@@ -77,6 +77,9 @@ export const createAccount = (data: {
 export const updateAccount = (id: number, data: Partial<Account>) =>
   put<Account>(`/api/accounts/${id}`, data);
 
+export const removeAccount = (id: number) =>
+  del<{ ok: boolean }>(`/api/accounts/${id}`);
+
 export const recordBalance = (accountId: number, balance: number) =>
   post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, { balance });
 
