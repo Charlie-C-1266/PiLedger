@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { WalletIcon, ListIcon, FlagIcon } from "./icons";
+import { WalletIcon, ListIcon, FlagIcon, TransferIcon } from "./icons";
 import styles from "./AddMenu.module.css";
 
-export type AddTarget = "account" | "transaction" | "goal";
+export type AddTarget = "account" | "transaction" | "transfer" | "goal";
 
 interface Props {
   onSelect: (target: AddTarget) => void;
@@ -12,6 +12,7 @@ interface Props {
 const items: { target: AddTarget; icon: React.ReactNode; label: string }[] = [
   { target: "account", icon: <WalletIcon />, label: "Account" },
   { target: "transaction", icon: <ListIcon />, label: "Transaction" },
+  { target: "transfer", icon: <TransferIcon />, label: "Transfer" },
   { target: "goal", icon: <FlagIcon />, label: "Goal" },
 ];
 

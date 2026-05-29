@@ -99,6 +99,12 @@
   color: #fff;
 }
 
+.errorMsg {
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-down);
+  margin-bottom: 12px;
+}
+
 .footer {
   display: flex;
   align-items: center;

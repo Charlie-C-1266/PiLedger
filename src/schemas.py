@@ -191,6 +191,35 @@ class TransactionPatch(_In):
         return dt.astimezone(timezone.utc).strftime(ISO_FMT)
 
 
+class TransferIn(_In):
+    """Move `amount` (a positive value) from one account to another. Becomes
+    two linked transactions: -amount on the source, +amount on the destination."""
+
+    from_account_id: Annotated[int, Field(ge=1)]
+    to_account_id: Annotated[int, Field(ge=1)]
+    amount: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
+    occurred_at: Optional[str] = None
+    note: Annotated[str, Field(max_length=500)] = ""
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        try:
+            datetime.strptime(v, ISO_FMT)
+            return v
+        except ValueError:
+            pass
+        try:
+            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
+
+
 class GoalIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     target: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
@@ -341,6 +370,7 @@ class TransactionOut(BaseModel):
     merchant: str
     category: str
     note: str
+    transfer_id: Optional[str] = None
     created_at: str
 
 

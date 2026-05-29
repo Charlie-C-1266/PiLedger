@@ -7,6 +7,7 @@ import Header from "./Header";
 import TabStrip from "./TabStrip";
 import AddAccountModal from "./AddAccountModal";
 import AddModal from "./AddModal";
+import TransferModal from "./TransferModal";
 import AddGoalModal from "./AddGoalModal";
 import type { AddTarget } from "./AddMenu";
 import styles from "./Shell.module.css";
@@ -49,6 +50,7 @@ export default function Shell() {
       {modal === "transaction" && (
         <AddModal accountId={defaultAccountId} onClose={() => setModal(null)} />
       )}
+      {modal === "transfer" && <TransferModal onClose={() => setModal(null)} />}
       {modal === "goal" && (
         <AddGoalModal onClose={() => setModal(null)} />
       )}

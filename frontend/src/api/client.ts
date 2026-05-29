@@ -121,6 +121,14 @@ export const updateTransaction = (id: number, data: Partial<Transaction>) =>
 export const deleteTransaction = (id: number) =>
   del<{ ok: boolean }>(`/api/transactions/${id}`);
 
+export const createTransfer = (data: {
+  from_account_id: number;
+  to_account_id: number;
+  amount: number;
+  occurred_at?: string;
+  note?: string;
+}) => post<Transaction[]>("/api/transfers", data);
+
 // Goals
 
 export const getGoals = () => json<Goal[]>("/api/goals");

@@ -16,6 +16,7 @@ import math
 import os
 import sqlite3
 import time
+import uuid
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -98,6 +99,7 @@ from schemas import (
     TransactionIn,
     TransactionOut,
     TransactionPatch,
+    TransferIn,
     UserOut,
 )
 
@@ -1197,6 +1199,7 @@ def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
         merchant=row["merchant"],
         category=row["category"],
         note=row["note"] or "",
+        transfer_id=row["transfer_id"] if "transfer_id" in row.keys() else None,
         created_at=row["created_at"],
     )
 
@@ -1284,6 +1287,67 @@ def create_transaction(
     return _txn_row_to_out(row)
 
 
+@app.post("/api/transfers", status_code=201, response_model=list[TransactionOut])
+def create_transfer(
+    data: TransferIn,
+    uid: int = Depends(require_auth),
+) -> list[TransactionOut]:
+    """Move money between two of the user's accounts. Recorded as two linked
+    transactions — `-amount` on the source and `+amount` on the destination —
+    sharing a transfer_id, so net worth is unchanged and both legs delete
+    together. Restricted to accounts sharing a currency."""
+    if data.from_account_id == data.to_account_id:
+        raise HTTPException(400, "Cannot transfer to the same account")
+    with db() as conn:
+        src = conn.execute(
+            "SELECT id, name, currency FROM accounts WHERE id=? AND user_id=?",
+            (data.from_account_id, uid),
+        ).fetchone()
+        dst = conn.execute(
+            "SELECT id, name, currency FROM accounts WHERE id=? AND user_id=?",
+            (data.to_account_id, uid),
+        ).fetchone()
+        if not src or not dst:
+            raise HTTPException(404, "Account not found")
+        if (src["currency"] or "GBP") != (dst["currency"] or "GBP"):
+            raise HTTPException(
+                400,
+                "Transfers between accounts of different currencies are not supported",
+            )
+        ts = data.occurred_at or utcnow_iso()
+        amount_cents = to_cents(data.amount)
+        transfer_id = uuid.uuid4().hex
+        ids: list[int] = []
+        for account_id, signed, merchant in (
+            (src["id"], -amount_cents, f"Transfer to {dst['name']}"),
+            (dst["id"], amount_cents, f"Transfer from {src['name']}"),
+        ):
+            cur = conn.execute(
+                "INSERT INTO transactions(user_id, account_id, amount_cents,"
+                " occurred_at, merchant, category, note, transfer_id)"
+                " VALUES(?,?,?,?,?,?,?,?)",
+                (
+                    uid,
+                    account_id,
+                    signed,
+                    ts,
+                    merchant,
+                    "Transfer",
+                    data.note,
+                    transfer_id,
+                ),
+            )
+            ids.append(cur.lastrowid)
+            _adjust_account_balance(conn, account_id, signed)
+        conn.commit()
+        placeholders = ",".join("?" * len(ids))
+        rows = conn.execute(
+            f"SELECT * FROM transactions WHERE id IN ({placeholders}) ORDER BY id",
+            ids,
+        ).fetchall()
+    return [_txn_row_to_out(r) for r in rows]
+
+
 @app.put("/api/transactions/{tid}", response_model=TransactionOut)
 def update_transaction(
     tid: int,
@@ -1296,6 +1360,11 @@ def update_transaction(
         ).fetchone()
         if not old:
             raise HTTPException(404, "Not found")
+        if old["transfer_id"]:
+            raise HTTPException(
+                400,
+                "A transfer can't be edited — delete it and create a new one",
+            )
         patch = data.model_dump(exclude_none=True)
         if "account_id" in patch:
             if not conn.execute(
@@ -1326,13 +1395,25 @@ def update_transaction(
 def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
     with db() as conn:
         txn = conn.execute(
-            "SELECT account_id, amount_cents FROM transactions WHERE id=? AND user_id=?",
+            "SELECT id, account_id, amount_cents, transfer_id"
+            " FROM transactions WHERE id=? AND user_id=?",
             (tid, uid),
         ).fetchone()
         if not txn:
             raise HTTPException(404, "Not found")
-        _adjust_account_balance(conn, txn["account_id"], -txn["amount_cents"])
-        conn.execute("DELETE FROM transactions WHERE id=?", (tid,))
+        # A transfer is two linked legs; deleting either removes both and
+        # reverses both balance adjustments, so the accounts can't drift.
+        if txn["transfer_id"]:
+            legs = conn.execute(
+                "SELECT id, account_id, amount_cents FROM transactions"
+                " WHERE transfer_id=? AND user_id=?",
+                (txn["transfer_id"], uid),
+            ).fetchall()
+        else:
+            legs = [txn]
+        for leg in legs:
+            _adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
+            conn.execute("DELETE FROM transactions WHERE id=?", (leg["id"],))
         conn.commit()
     return OkOut(ok=True)
 

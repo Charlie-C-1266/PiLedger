@@ -72,10 +72,11 @@ Transaction records linked to an account. Creating or deleting a transaction aut
 |---|---|---|---|
 | `GET` | `/api/transactions` | `?search=`, `?account=`, `?category=`, `?sort=date\|amount`, `?page=1`, `?per_page=50` | Array of transaction objects, newest first by default. `search` matches against `merchant` and `category` (case-insensitive). `per_page` max is 200. |
 | `POST` | `/api/transactions` | `{account_id, amount, merchant, category?, note?, occurred_at?}` | Created transaction object (HTTP 201). `amount` is signed (positive = income, negative = expense). `occurred_at` accepts any ISO-8601 datetime; defaults to current UTC time. `404` if `account_id` doesn't belong to the user. |
-| `PUT` | `/api/transactions/{id}` | `{account_id?, amount?, merchant?, category?, note?, occurred_at?}` | Updated transaction object. All fields are optional (partial update). If `amount` or `account_id` changes, the old account's balance is reversed and the new account's balance is adjusted. |
-| `DELETE` | `/api/transactions/{id}` | — | `{ok}`. Reverses the transaction's balance contribution from the account. |
+| `PUT` | `/api/transactions/{id}` | `{account_id?, amount?, merchant?, category?, note?, occurred_at?}` | Updated transaction object. All fields are optional (partial update). If `amount` or `account_id` changes, the old account's balance is reversed and the new account's balance is adjusted. `400` if the transaction is a transfer leg (transfers can't be edited). |
+| `DELETE` | `/api/transactions/{id}` | — | `{ok}`. Reverses the transaction's balance contribution from the account. If the transaction is part of a transfer, **both** legs are deleted and both balances reversed. |
+| `POST` | `/api/transfers` | `{from_account_id, to_account_id, amount, occurred_at?, note?}` | Array of the two created transaction objects (HTTP 201). Moves `amount` (positive) from source to destination as two linked transactions sharing a `transfer_id` — `-amount` on the source, `+amount` on the destination — so net worth is unchanged. `400` if the accounts are the same or differ in currency; `404` if either account isn't the user's. |
 
-Transaction response shape:
+Transaction response shape (a `transfer_id` string is present on the two legs of a transfer, otherwise `null`):
 
 ```json
 {
@@ -87,6 +88,7 @@ Transaction response shape:
   "merchant": "Tesco",
   "category": "groceries",
   "note": "",
+  "transfer_id": null,
   "created_at": "2026-05-27T14:01:00"
 }
 ```

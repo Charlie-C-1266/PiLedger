@@ -99,7 +99,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 3
+SCHEMA_VERSION: int = 4
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -233,6 +233,19 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.commit()
 
+    # 9. Add transactions.transfer_id (links the two legs of a transfer).
+    _ensure_transfer_id_column(conn)
+
+
+def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add transactions.transfer_id. The two transactions making
+    up an account-to-account transfer share a transfer_id so they can be
+    deleted together; a plain transaction leaves it NULL."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+    if "transfer_id" not in cols:
+        conn.execute("ALTER TABLE transactions ADD COLUMN transfer_id TEXT")
+        conn.commit()
+
 
 def _migrate_to_2(conn: sqlite3.Connection) -> None:
     """Add credit/invest account types, transactions table, goals table."""
@@ -301,6 +314,13 @@ def _migrate_to_3(conn: sqlite3.Connection) -> None:
         );
     """)
     _set_schema_version(conn, 3)
+    conn.commit()
+
+
+def _migrate_to_4(conn: sqlite3.Connection) -> None:
+    """Add transactions.transfer_id for linked account-to-account transfers."""
+    _ensure_transfer_id_column(conn)
+    _set_schema_version(conn, 4)
     conn.commit()
 
 
@@ -373,6 +393,7 @@ def init() -> None:
                 merchant     TEXT    NOT NULL,
                 category     TEXT    NOT NULL DEFAULT '',
                 note         TEXT    DEFAULT '',
+                transfer_id  TEXT,
                 created_at   TEXT    DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS goals (
@@ -414,6 +435,10 @@ def init() -> None:
         if version < 3:
             _migrate_to_3(conn)
             version = 3
+
+        if version < 4:
+            _migrate_to_4(conn)
+            version = 4
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
