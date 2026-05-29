@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Net-worth chart hover stopped updating the value, and never showed the date.** Hovering the Overview net-worth chart no longer refreshed the hero figure to the value under the cursor. Root cause: the chart was upgraded to recharts v3, where the chart-level mouse-move state reports `activeTooltipIndex` as a **string** (`TooltipIndex = string | null`) rather than a number; `LineChart`'s `onMouseMove`/`onTouchMove` still guarded with `typeof … === "number"`, so the guard never matched and `onHover` never fired — leaving the hero pinned to the current total. The index is now coerced and bounds-checked, restoring the live value on hover (and touch-drag). In the same pass the chart's tooltip — previously rendered as `() => null` — now shows a small pill with the **date** and value at the hovered point, so the point in time is visible on the graph. Affected files: `frontend/src/components/charts/LineChart.tsx`.
+
 ### Added
 
 - **Long-press to edit an account on mobile.** Tapping an account tile on the Accounts screen opened the Update Account modal immediately, but on touch devices the large tile invited double-tap-to-zoom and a stray tap could open the editor by accident — inconsistent with the transaction rows, which already require a deliberate long-press (Slice 7). Account tiles now use the **same edit gesture**: an immediate click on desktop (mouse), and a ~500 ms long-press on touch/pen with a `scale(0.985)` press-state ~150 ms in, cancelled by moving more than 10 px (scrolling). `touch-action: manipulation` plus disabled `user-select` / `-webkit-touch-callout` suppress the zoom and the OS text-selection callout. The Update Account modal itself already rendered as a mobile bottom sheet, so no positioning change was needed.
