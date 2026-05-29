@@ -25,6 +25,7 @@ export interface Transaction {
   merchant: string;
   category: string;
   note: string;
+  transfer_id?: string | null;
   created_at: string;
 }
 
