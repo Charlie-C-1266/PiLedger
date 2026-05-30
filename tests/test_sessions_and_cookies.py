@@ -98,9 +98,11 @@ def test_login_cookie_secure_on_when_cookie_secure_enabled(app, monkeypatch):
     """When COOKIE_SECURE=true is set in the environment, the cookie must
     carry the Secure flag — otherwise HTTPS-served deployments would leak
     the token to any accidental HTTP request."""
-    import app as app_module
+    from routers import auth as auth_router
 
-    monkeypatch.setattr(app_module, "COOKIE_SECURE", True)
+    # The login handler reads COOKIE_SECURE from its own module namespace, which
+    # is routers/auth.py since the stage-3 refactor moved auth out of app.py.
+    monkeypatch.setattr(auth_router, "COOKIE_SECURE", True)
     with TestClient(app) as c:
         attrs = _login_and_get_set_cookie(c)
     assert attrs.get("secure") is True
