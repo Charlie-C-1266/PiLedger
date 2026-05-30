@@ -22,6 +22,12 @@ DB: str = os.environ.get(
 DOCS_DIR: str = os.path.normpath(
     os.path.join(os.path.dirname(__file__), os.pardir, "docs")
 )
+# Static assets ship inside the source tree (src/static). Resolved relative to
+# this module rather than the process CWD so the app is invocable from any
+# working directory (start.sh, the Docker entrypoint, IDE runners, and direct
+# `uvicorn --app-dir src` all point at the same files). Shared by the ops,
+# pages and auth routers plus the `/static` mount in app.py.
+STATIC_DIR: str = os.path.join(os.path.dirname(__file__), "static")
 DOC_SLUGS: frozenset[str] = frozenset(
     {
         "getting-started",
