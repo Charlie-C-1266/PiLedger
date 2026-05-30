@@ -10,11 +10,7 @@ This module wires the FastAPI app and HTTP routes. Supporting code lives in:
     schemas.py   — Pydantic request/response models
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
-import sqlite3
-
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -23,41 +19,28 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from constants import (
-    FREQ_TO_MONTHLY,
     STATIC_DIR,
     VERSION,
 )
 from db import (
-    db,
-    from_cents,
     init,
-    to_cents,
-    utcnow_iso,
 )
 from security import SecurityHeadersMiddleware
-from auth import (
-    require_auth,
-)
-from schemas import (
-    BudgetItemIn,
-    BudgetItemOut,
-    BudgetItemPatch,
-    GoalIn,
-    GoalOut,
-    GoalPatch,
-    OkOut,
-    PrefsOut,
-    PrefsPatch,
-    RateOut,
-    RatesOut,
-    RatesPut,
-)
 from limiter import limiter
-from services.accounts import _require_account
-from services.currency import _convert_to_base, _load_rates, _rescale_rates
 
 from routers import auth as auth_router
-from routers import accounts, categories, dashboard, ops, pages, transactions
+from routers import (
+    accounts,
+    budget,
+    categories,
+    dashboard,
+    goals,
+    ops,
+    pages,
+    prefs,
+    rates,
+    transactions,
+)
 
 
 # `docs_url=None` / `redoc_url=None` / `openapi_url=None` disable FastAPI's
@@ -96,440 +79,19 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
     return JSONResponse(status_code=400, content={"detail": safe})
 
 
-# ─── User preferences ─────────────────────────────────────────────────────────
-
-
-def _prefs_out(row: sqlite3.Row) -> PrefsOut:
-    return PrefsOut(
-        theme=row["theme"] or "olive",
-        dark_mode=bool(row["dark_mode"]),
-        base_currency=row["base_currency"] or "GBP",
-    )
-
-
-@app.get("/api/prefs", response_model=PrefsOut)
-def get_prefs(uid: int = Depends(require_auth)) -> PrefsOut:
-    with db() as conn:
-        row = conn.execute(
-            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-    if not row:
-        raise HTTPException(404)
-    return _prefs_out(row)
-
-
-@app.put("/api/prefs", response_model=PrefsOut)
-def update_prefs(
-    data: PrefsPatch,
-    uid: int = Depends(require_auth),
-) -> PrefsOut:
-    patch = data.model_dump(exclude_none=True)
-    if "dark_mode" in patch:
-        # SQLite has no native bool, store as 0/1
-        patch["dark_mode"] = int(patch["dark_mode"])
-    with db() as conn:
-        # Changing the base currency invalidates any prior rates (which were
-        # expressed against the previous base). Re-scale them so each stored
-        # rate continues to mean "1 unit of currency = rate units of base".
-        # Old base gains a row (its rate in the new base) unless it equals new
-        # base; new base itself never has a row (implicit 1.0).
-        if "base_currency" in patch:
-            old = conn.execute(
-                "SELECT base_currency FROM users WHERE id=?", (uid,)
-            ).fetchone()
-            old_base = (old["base_currency"] if old else None) or "GBP"
-            new_base = patch["base_currency"]
-            if new_base != old_base:
-                _rescale_rates(conn, uid, old_base, new_base)
-        if patch:
-            sets = ", ".join(f"{k}=?" for k in patch)
-            conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*patch.values(), uid])
-            conn.commit()
-        row = conn.execute(
-            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-    return _prefs_out(row)
-
-
-# ─── Exchange rates ───────────────────────────────────────────────────────────
-
-
-@app.get("/api/rates", response_model=RatesOut)
-def get_rates(uid: int = Depends(require_auth)) -> RatesOut:
-    with db() as conn:
-        row = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        rows = conn.execute(
-            "SELECT currency, rate, updated_at FROM exchange_rates"
-            " WHERE user_id=? ORDER BY currency",
-            (uid,),
-        ).fetchall()
-    base = (row["base_currency"] if row else None) or "GBP"
-    return RatesOut(
-        base_currency=base,
-        rates=[
-            RateOut(
-                currency=r["currency"],
-                rate=float(r["rate"]),
-                updated_at=r["updated_at"],
-            )
-            for r in rows
-        ],
-    )
-
-
-@app.put("/api/rates", response_model=RatesOut)
-def put_rates(data: RatesPut, uid: int = Depends(require_auth)) -> RatesOut:
-    """Replace the user's full rates table. Rates against the user's own base
-    currency are rejected — base is implicitly 1.0 and storing it would create
-    ambiguity if the base is later changed."""
-    with db() as conn:
-        row = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        base = (row["base_currency"] if row else None) or "GBP"
-        # Validate up-front so a partial write never happens.
-        seen: set[str] = set()
-        for r in data.rates:
-            if r.currency == base:
-                raise HTTPException(
-                    400, "Cannot set a rate against the base currency itself"
-                )
-            if r.currency in seen:
-                raise HTTPException(400, f"Duplicate rate for currency '{r.currency}'")
-            seen.add(r.currency)
-        conn.execute("DELETE FROM exchange_rates WHERE user_id=?", (uid,))
-        now = utcnow_iso()
-        for r in data.rates:
-            conn.execute(
-                "INSERT INTO exchange_rates(user_id, currency, rate, updated_at)"
-                " VALUES(?,?,?,?)",
-                (uid, r.currency, r.rate, now),
-            )
-        conn.commit()
-        rows = conn.execute(
-            "SELECT currency, rate, updated_at FROM exchange_rates"
-            " WHERE user_id=? ORDER BY currency",
-            (uid,),
-        ).fetchall()
-    return RatesOut(
-        base_currency=base,
-        rates=[
-            RateOut(
-                currency=r["currency"],
-                rate=float(r["rate"]),
-                updated_at=r["updated_at"],
-            )
-            for r in rows
-        ],
-    )
-
-
-# ─── Budget items ─────────────────────────────────────────────────────────────
-
-
-def _budget_row_to_out(row: sqlite3.Row) -> BudgetItemOut:
-    return BudgetItemOut(
-        id=row["id"],
-        user_id=row["user_id"],
-        account_id=row["account_id"],
-        name=row["name"],
-        amount=from_cents(row["amount_cents"]) or 0.0,
-        frequency=row["frequency"],
-        created_at=row["created_at"],
-    )
-
-
-@app.get("/api/budget", response_model=list[BudgetItemOut])
-def list_budget_items(uid: int = Depends(require_auth)) -> list[BudgetItemOut]:
-    with db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM budget_items WHERE user_id=? ORDER BY account_id, created_at",
-            (uid,),
-        ).fetchall()
-    return [_budget_row_to_out(r) for r in rows]
-
-
-@app.post("/api/budget", status_code=201, response_model=BudgetItemOut)
-def create_budget_item(
-    data: BudgetItemIn,
-    uid: int = Depends(require_auth),
-) -> BudgetItemOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (data.account_id, uid)
-        ).fetchone():
-            raise HTTPException(404, "Account not found")
-        cur = conn.execute(
-            "INSERT INTO budget_items(user_id, account_id, name, amount_cents, frequency)"
-            " VALUES(?,?,?,?,?)",
-            (uid, data.account_id, data.name, to_cents(data.amount), data.frequency),
-        )
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM budget_items WHERE id=?", (cur.lastrowid,)
-        ).fetchone()
-    return _budget_row_to_out(row)
-
-
-@app.put("/api/budget/{bid}", response_model=BudgetItemOut)
-def update_budget_item(
-    bid: int,
-    data: BudgetItemPatch,
-    uid: int = Depends(require_auth),
-) -> BudgetItemOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM budget_items WHERE id=? AND user_id=?", (bid, uid)
-        ).fetchone():
-            raise HTTPException(404, "Not found")
-        # Translate the user-facing payload (dollars) into the DB columns (cents).
-        patch = data.model_dump(exclude_none=True)
-        if "amount" in patch:
-            patch["amount_cents"] = to_cents(patch.pop("amount"))
-        if patch:
-            sets = ", ".join(f"{k}=?" for k in patch)
-            conn.execute(
-                f"UPDATE budget_items SET {sets} WHERE id=?", [*patch.values(), bid]
-            )
-            conn.commit()
-        row = conn.execute("SELECT * FROM budget_items WHERE id=?", (bid,)).fetchone()
-    return _budget_row_to_out(row)
-
-
-@app.delete("/api/budget/{bid}", response_model=OkOut)
-def delete_budget_item(bid: int, uid: int = Depends(require_auth)) -> OkOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM budget_items WHERE id=? AND user_id=?", (bid, uid)
-        ).fetchone():
-            raise HTTPException(404, "Not found")
-        conn.execute("DELETE FROM budget_items WHERE id=?", (bid,))
-        conn.commit()
-    return OkOut(ok=True)
-
-
-@app.get("/api/budget/projection")
-def budget_projection(
-    months: Annotated[int, Query(ge=1, le=12)] = 6,
-    uid: int = Depends(require_auth),
-) -> dict:
-    if months not in (3, 6, 12):
-        raise HTTPException(400, "months must be 3, 6, or 12")
-    with db() as conn:
-        user = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        accounts = conn.execute(
-            """
-            SELECT a.id, a.name, a.type, a.interest_rate, a.color, a.currency,
-                   b.balance_cents AS current_balance_cents
-            FROM accounts a
-            LEFT JOIN balance_history b ON b.id = (
-                SELECT id FROM balance_history WHERE account_id=a.id
-                ORDER BY recorded_at DESC, id DESC LIMIT 1
-            )
-            WHERE a.user_id = ?
-            ORDER BY a.created_at
-        """,
-            (uid,),
-        ).fetchall()
-
-        items = conn.execute(
-            "SELECT account_id, amount_cents, frequency FROM budget_items WHERE user_id=?",
-            (uid,),
-        ).fetchall()
-        rates = _load_rates(conn, uid)
-    base = (user["base_currency"] if user else None) or "GBP"
-
-    # Sum all budget items into a monthly net flow per account (in dollars).
-    monthly_net: dict[int, float] = {}
-    for item in items:
-        flow = from_cents(item["amount_cents"]) * FREQ_TO_MONTHLY[item["frequency"]]
-        monthly_net[item["account_id"]] = (
-            monthly_net.get(item["account_id"], 0.0) + flow
-        )
-
-    now = datetime.now(timezone.utc)
-    result: list[dict] = []
-    for acc in accounts:
-        bal = from_cents(acc["current_balance_cents"]) or 0.0
-        monthly_rate = (acc["interest_rate"] / 100) / 12
-        net = monthly_net.get(acc["id"], 0.0)
-
-        # Month 0 = today
-        points: list[dict] = [
-            {"month": 0, "balance": round(bal, 2), "date": now.strftime("%Y-%m-%d")}
-        ]
-        for m in range(1, months + 1):
-            # Cash flow at start of period, then interest compounds on the full balance.
-            bal = (bal + net) * (1 + monthly_rate)
-            bal = round(bal, 2)
-            date = (now + timedelta(days=m * 30.44)).strftime("%Y-%m-%d")
-            points.append({"month": m, "balance": bal, "date": date})
-
-        result.append(
-            {
-                "id": acc["id"],
-                "name": acc["name"],
-                "type": acc["type"],
-                "color": acc["color"],
-                "currency": acc["currency"] or "GBP",
-                "current_balance": from_cents(acc["current_balance_cents"]),
-                "monthly_net": round(net, 2),
-                "points": points,
-                "final_balance": points[-1]["balance"],
-            }
-        )
-
-    # Net worth at each month: assets minus liabilities, converted into the
-    # user's base currency so the line is meaningful across mixed-currency
-    # portfolios. Per-account points stay in their native currency above.
-    net_worth: list[dict] = []
-    for m in range(months + 1):
-        nw = 0.0
-        for acc in result:
-            native = acc["points"][m]["balance"]
-            v = _convert_to_base(native, acc["currency"], base, rates)
-            nw += -v if acc["type"] in ("loan", "credit") else v
-        date = result[0]["points"][m]["date"] if result else now.strftime("%Y-%m-%d")
-        net_worth.append({"month": m, "balance": round(nw, 2), "date": date})
-
-    return {
-        "months": months,
-        "accounts": result,
-        "net_worth": net_worth,
-        "base_currency": base,
-    }
-
-
-# ─── Goals ───────────────────────────────────────────────────────────────────
-
-
-def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
-    """Build a GoalOut. For a goal linked to an account, `saved` mirrors that
-    account's latest balance (live tracking) and `account_name` is populated;
-    otherwise `saved` is the goal's own stored value. A link to a since-deleted
-    account is reported as unlinked."""
-    account_id = row["account_id"] if "account_id" in row.keys() else None
-    saved = from_cents(row["saved_cents"]) or 0.0
-    account_name = None
-    if account_id is not None:
-        acc = conn.execute(
-            "SELECT name FROM accounts WHERE id=? AND user_id=?",
-            (account_id, row["user_id"]),
-        ).fetchone()
-        if acc is None:
-            account_id = None
-        else:
-            account_name = acc["name"]
-            bal = conn.execute(
-                "SELECT balance_cents FROM balance_history WHERE account_id=?"
-                " ORDER BY recorded_at DESC, id DESC LIMIT 1",
-                (account_id,),
-            ).fetchone()
-            saved = (from_cents(bal["balance_cents"]) or 0.0) if bal else 0.0
-    return GoalOut(
-        id=row["id"],
-        user_id=row["user_id"],
-        name=row["name"],
-        target=from_cents(row["target_cents"]) or 0.0,
-        saved=saved,
-        monthly=from_cents(row["monthly_cents"]) or 0.0,
-        color=row["color"],
-        account_id=account_id,
-        account_name=account_name,
-        created_at=row["created_at"],
-    )
-
-
-@app.get("/api/goals", response_model=list[GoalOut])
-def list_goals(uid: int = Depends(require_auth)) -> list[GoalOut]:
-    with db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM goals WHERE user_id=? ORDER BY created_at", (uid,)
-        ).fetchall()
-        return [_goal_row_to_out(conn, r) for r in rows]
-
-
-@app.post("/api/goals", status_code=201, response_model=GoalOut)
-def create_goal(data: GoalIn, uid: int = Depends(require_auth)) -> GoalOut:
-    with db() as conn:
-        if data.account_id is not None:
-            _require_account(conn, data.account_id, uid)
-        cur = conn.execute(
-            "INSERT INTO goals(user_id, name, target_cents, saved_cents,"
-            " monthly_cents, color, account_id) VALUES(?,?,?,?,?,?,?)",
-            (
-                uid,
-                data.name,
-                to_cents(data.target),
-                to_cents(data.saved),
-                to_cents(data.monthly),
-                data.color,
-                data.account_id,
-            ),
-        )
-        conn.commit()
-        row = conn.execute(
-            "SELECT * FROM goals WHERE id=?", (cur.lastrowid,)
-        ).fetchone()
-        return _goal_row_to_out(conn, row)
-
-
-@app.put("/api/goals/{gid}", response_model=GoalOut)
-def update_goal(
-    gid: int,
-    data: GoalPatch,
-    uid: int = Depends(require_auth),
-) -> GoalOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)
-        ).fetchone():
-            raise HTTPException(404, "Not found")
-        # exclude_unset (not exclude_none) so an explicit account_id=null
-        # unlinks the goal, while an omitted field is left unchanged.
-        patch = data.model_dump(exclude_unset=True)
-        if patch.get("account_id") is not None:
-            _require_account(conn, patch["account_id"], uid)
-        if "target" in patch:
-            patch["target_cents"] = to_cents(patch.pop("target"))
-        if "saved" in patch:
-            patch["saved_cents"] = to_cents(patch.pop("saved"))
-        if "monthly" in patch:
-            patch["monthly_cents"] = to_cents(patch.pop("monthly"))
-        if patch:
-            sets = ", ".join(f"{k}=?" for k in patch)
-            conn.execute(f"UPDATE goals SET {sets} WHERE id=?", [*patch.values(), gid])
-            conn.commit()
-        row = conn.execute("SELECT * FROM goals WHERE id=?", (gid,)).fetchone()
-        return _goal_row_to_out(conn, row)
-
-
-@app.delete("/api/goals/{gid}", response_model=OkOut)
-def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)
-        ).fetchone():
-            raise HTTPException(404, "Not found")
-        conn.execute("DELETE FROM goals WHERE id=?", (gid,))
-        conn.commit()
-    return OkOut(ok=True)
-
-
 # ─── API routers ──────────────────────────────────────────────────────────────
 #
-# `pages` (the SPA shell + PWA assets) is included last so a page route can
-# never shadow an API path. Each migrated resource moves here one router at a
-# time; see the refactor plan. The remaining inline @app routes above are
-# pending migration.
+# Every route lives in a per-resource router under src/routers/. `pages` (the
+# SPA shell + PWA assets) is included last so a page route can never shadow an
+# API path.
 app.include_router(auth_router.router)
 app.include_router(accounts.router)
 app.include_router(transactions.router)
 app.include_router(dashboard.router)
+app.include_router(budget.router)
+app.include_router(goals.router)
+app.include_router(prefs.router)
+app.include_router(rates.router)
 app.include_router(categories.router)
 app.include_router(ops.router)
 app.include_router(pages.router)
