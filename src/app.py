@@ -15,13 +15,11 @@ from typing import Annotated, Optional
 import math
 import os
 import sqlite3
-import time
 import uuid
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from slowapi import _rate_limit_exceeded_handler
@@ -29,8 +27,6 @@ from slowapi.errors import RateLimitExceeded
 
 from constants import (
     COOKIE_SECURE,
-    DOCS_DIR,
-    DOC_SLUGS,
     FREQ_TO_MONTHLY,
     ISO_FMT,
     LOGIN_RATE_LIMIT,
@@ -40,6 +36,7 @@ from constants import (
     RangeKey,
     SESSION_COOKIE,
     SESSION_DAYS,
+    STATIC_DIR,
     SUBTYPES_BY_TYPE,
     VERSION,
 )
@@ -59,7 +56,6 @@ from auth import (
     hash_password,
     make_session,
     require_auth,
-    session_uid,
     verify_password,
 )
 from schemas import (
@@ -100,7 +96,7 @@ from limiter import limiter
 from services.accounts import _adjust_account_balance, _require_account
 from services.currency import _convert_to_base, _load_rates, _rescale_rates
 
-from routers import categories
+from routers import categories, ops, pages
 
 
 # `docs_url=None` / `redoc_url=None` / `openapi_url=None` disable FastAPI's
@@ -121,16 +117,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
 init()
 
-# Monotonic clock so `/healthz` uptime never goes backwards on a wall-clock
-# adjustment. Captured at import time, which is effectively process start.
-_BOOT_MONOTONIC = time.monotonic()
-
-# Resolve static asset paths relative to this module rather than the process
-# CWD so the app is invocable from any working directory (start.sh, the
-# Docker entrypoint, IDE runners, and direct `uvicorn --app-dir src` all
-# end up pointing at the same files).
-_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-
 
 # Pydantic validation failures default to 422, but the public contract documented
 # in README + CHANGELOG returns 400 for bad input. Translate them so callers see
@@ -149,85 +135,12 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
     return JSONResponse(status_code=400, content={"detail": safe})
 
 
-# ─── Ops endpoints ────────────────────────────────────────────────────────────
-
-
-@app.get("/healthz", include_in_schema=False)
-def healthz() -> dict:
-    """Liveness + version probe for uptime monitors and the Docker healthcheck.
-
-    Deliberately unauthenticated — uptime monitors (Uptime Kuma,
-    Healthchecks.io, kube probes) need to poll without holding a session,
-    and the response carries no sensitive information beyond the version
-    string. Returns `uptime_s` as an int so log scrapers don't have to
-    handle floats."""
-    return {
-        "ok": True,
-        "version": VERSION,
-        "uptime_s": int(time.monotonic() - _BOOT_MONOTONIC),
-    }
-
-
-@app.get("/api/openapi.json", include_in_schema=False)
-def openapi_schema(uid: int = Depends(require_auth)) -> dict:
-    """Auth-gated OpenAPI spec. The default `/openapi.json` is disabled in
-    the FastAPI constructor; this replacement is fed to the gated Swagger /
-    ReDoc UIs below. `app.openapi()` is FastAPI's spec-builder method and
-    works regardless of whether the default route is mounted."""
-    return app.openapi()
-
-
-@app.get("/docs", include_in_schema=False)
-def swagger_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
-    """Swagger UI for logged-in users; redirects to /login for everyone else.
-
-    Mirrors the behaviour of `GET /` rather than 401-ing — a browser user
-    hitting /docs sees a familiar login page, not a JSON error blob."""
-    if not session_uid(session):
-        return RedirectResponse("/login", status_code=302)
-    return get_swagger_ui_html(
-        openapi_url="/api/openapi.json",
-        title="PiLedger API docs",
-    )
-
-
-@app.get("/redoc", include_in_schema=False)
-def redoc_ui(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
-    """ReDoc for logged-in users; redirects to /login for everyone else."""
-    if not session_uid(session):
-        return RedirectResponse("/login", status_code=302)
-    return get_redoc_html(
-        openapi_url="/api/openapi.json",
-        title="PiLedger API docs",
-    )
-
-
 # ─── Auth routes ──────────────────────────────────────────────────────────────
 
 
 @app.get("/login")
 def login_page() -> FileResponse:
-    return FileResponse(os.path.join(_STATIC_DIR, "login.html"))
-
-
-@app.get("/guide", include_in_schema=False)
-def guide_page() -> FileResponse:
-    """Public documentation viewer — accessible without authentication."""
-    return FileResponse(os.path.join(_STATIC_DIR, "guide.html"))
-
-
-@app.get("/api/docs/{slug}", include_in_schema=False)
-def get_doc(slug: str) -> FileResponse:
-    """Serve a raw markdown doc file by slug. Public — no auth required.
-
-    The slug is validated against a fixed allowlist to prevent path traversal.
-    Returns text/markdown so the frontend can parse it client-side."""
-    if slug not in DOC_SLUGS:
-        raise HTTPException(404, "Document not found")
-    path = os.path.join(DOCS_DIR, f"{slug}.md")
-    if not os.path.isfile(path):
-        raise HTTPException(404, "Document not found")
-    return FileResponse(path, media_type="text/markdown")
+    return FileResponse(os.path.join(STATIC_DIR, "login.html"))
 
 
 @app.post("/api/auth/register", status_code=201, response_model=RegisterOut)
@@ -1463,67 +1376,12 @@ def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
 
 # ─── API routers ──────────────────────────────────────────────────────────────
 #
-# Included before the SPA page routes below so an API path is never shadowed by
-# a page route. Each migrated resource moves here one router at a time; see the
-# refactor plan. The remaining inline @app routes above are pending migration.
+# `pages` (the SPA shell + PWA assets) is included last so a page route can
+# never shadow an API path. Each migrated resource moves here one router at a
+# time; see the refactor plan. The remaining inline @app routes above are
+# pending migration.
 app.include_router(categories.router)
+app.include_router(ops.router)
+app.include_router(pages.router)
 
-
-# ─── Serve SPA ────────────────────────────────────────────────────────────────
-
-_DIST_DIR = os.path.join(_STATIC_DIR, "dist")
-_DIST_INDEX = os.path.join(_DIST_DIR, "index.html")
-
-# PWA icons live in the Vite build output (frontend/public/ → dist/). Served at
-# stable root paths the manifest references; a fixed whitelist avoids any path
-# traversal via the {name} segment.
-_PWA_ICONS = frozenset({"icon-192.png", "icon-512.png", "icon-512-maskable.png"})
-
-
-def _serve_spa(session: Optional[str]) -> Response:
-    if not session_uid(session):
-        return RedirectResponse("/login", status_code=302)
-    if not os.path.isfile(_DIST_INDEX):
-        raise HTTPException(
-            503,
-            "Frontend not built. Run: cd frontend && npm ci && npm run build",
-        )
-    return FileResponse(_DIST_INDEX)
-
-
-@app.get("/")
-def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
-    return _serve_spa(session)
-
-
-@app.get("/overview")
-@app.get("/accounts")
-@app.get("/transactions")
-@app.get("/goals")
-@app.get("/settings")
-def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
-    return _serve_spa(session)
-
-
-# PWA manifest + icons are public (no auth): the OS fetches them to install the
-# app, and they're referenced from the login page too. 404 until the frontend
-# is built, mirroring the SPA's missing-dist behaviour.
-@app.get("/manifest.json", include_in_schema=False)
-def manifest() -> FileResponse:
-    path = os.path.join(_DIST_DIR, "manifest.json")
-    if not os.path.isfile(path):
-        raise HTTPException(404)
-    return FileResponse(path, media_type="application/manifest+json")
-
-
-@app.get("/icons/{name}", include_in_schema=False)
-def pwa_icon(name: str) -> FileResponse:
-    if name not in _PWA_ICONS:
-        raise HTTPException(404)
-    path = os.path.join(_DIST_DIR, "icons", name)
-    if not os.path.isfile(path):
-        raise HTTPException(404)
-    return FileResponse(path, media_type="image/png")
-
-
-app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
