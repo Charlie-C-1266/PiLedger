@@ -1,21 +1,22 @@
 # Architecture
 
 ```
-Browser  ──HTTP──►  FastAPI (src/app.py)  ──┬──►  schemas.py  (Pydantic in/out models)
-                         │              ├──►  auth.py     (hashing, sessions)
-                         │              ├──►  db.py       (connection + init/migrations)
-                         │              └──►  constants.py (DB path, cookie flags, bounds)
+Browser  ──HTTP──►  FastAPI (src/app.py — thin wiring)
+                         │
+                         ├──►  routers/*.py  (one APIRouter per resource: HTTP handlers)
+                         │          ├──►  services/*.py  (shared FX + balance helpers)
+                         │          ├──►  schemas.py     (Pydantic in/out models)
+                         │          ├──►  auth.py        (hashing, sessions, require_auth)
+                         │          ├──►  db.py          (connection + init/migrations)
+                         │          ├──►  constants.py   (DB path, cookie flags, bounds)
+                         │          └──►  limiter.py     (shared rate limiter)
                          │                     │
                          │                     └──SQL──►  SQLite (piledger.db)
                          │
-                    static/  (served by StaticFiles mount)
-                    ├── index.html   (dashboard SPA — Overview + Budget views)
-                    ├── login.html   (auth page)
-                    ├── style.css
-                    └── app.js
+                    static/dist/  (React SPA build, served by the pages router + StaticFiles mount)
 ```
 
-**Backend:** Python 3.12, FastAPI, Uvicorn. The application source lives under `src/` and is split across six modules: `app.py` (routes), `schemas.py` (Pydantic request/response models), `auth.py` (password hashing + session lifecycle + `require_auth` dependency), `db.py` (connection context manager, schema init/migrations, money helpers), `constants.py` (DB path, cookie flags, type aliases, API bounds), and `security.py` (the defensive-headers middleware). The database is SQLite, accessed directly via the standard-library `sqlite3` module — no ORM.
+**Backend:** Python 3.12, FastAPI, Uvicorn. The application source lives under `src/`. `app.py` is a thin (~100-line) wiring module: it constructs the FastAPI app, registers the security-headers middleware and the 422→400 validation handler, calls `init()`, and includes every router. The HTTP handlers themselves live in per-resource routers under `routers/` (one `APIRouter` each: `auth`, `accounts`, `transactions`, `dashboard`, `budget`, `goals`, `prefs`, `rates`, `categories`, `ops`, `pages`), and business logic shared by two or more routers lives in `services/` (`currency` FX conversion, `accounts` balance adjustment). The remaining modules are shared infrastructure: `schemas.py` (Pydantic request/response models), `auth.py` (password hashing + session lifecycle + `require_auth` dependency), `db.py` (connection context manager, schema init/migrations, money helpers), `constants.py` (DB path, cookie flags, type aliases, API bounds), `security.py` (the defensive-headers middleware), and `limiter.py` (the shared rate limiter). Routers depend on these but never import `app`, so the dependency graph stays acyclic. The database is SQLite, accessed directly via the standard-library `sqlite3` module — no ORM.
 
 **Frontend:** Vanilla JavaScript (no framework), Chart.js 4.4 vendored from `/static/vendor/`, Inter font self-hosted. The SPA has two views — Overview and Budget Planner — switched via a sticky nav tab inside the header. No build step is required.
 
@@ -44,10 +45,13 @@ Browser  ──HTTP──►  FastAPI (src/app.py)  ──┬──►  schemas.
 ```
 piledger/
 ├── src/                   Application source (Python + frontend)
-│   ├── app.py             Backend — FastAPI routes
+│   ├── app.py             Backend — thin FastAPI wiring: middleware, exception handler, init(), include_router calls
+│   ├── routers/           One APIRouter per resource (auth, accounts, transactions, dashboard, budget, goals, prefs, rates, categories, ops, pages)
+│   ├── services/          Business logic shared across routers (currency FX conversion, account balance adjustment)
+│   ├── limiter.py         Shared slowapi Limiter instance (separate module so routers avoid importing app)
 │   ├── auth.py            Password hashing, session lifecycle, require_auth dependency
 │   ├── db.py              SQLite connection, init() + migrations, cents↔pounds helpers
-│   ├── constants.py       DB path, cookie flags, type aliases, money/rate/days bounds
+│   ├── constants.py       DB path, cookie flags, type aliases, money/rate/days bounds, static dir
 │   ├── schemas.py         Pydantic request/response models (validation lives here)
 │   ├── security.py        SecurityHeadersMiddleware (HSTS, CSP, frame-deny, …)
 │   └── static/

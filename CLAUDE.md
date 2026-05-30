@@ -83,6 +83,7 @@ The default `pytest` invocation runs only the unit/API suite because `pytest.ini
 ## Stack
 
 - **Backend**: Python 3.12, FastAPI, SQLite (`piledger.db`), Uvicorn
+- **Backend layout**: `app.py` is a thin (~100-line) wiring module — it builds the FastAPI app, registers middleware + the 422→400 exception handler, calls `init()`, and mounts every router. Each resource's HTTP handlers live in a per-resource `APIRouter` under `src/routers/` (`auth`, `accounts`, `transactions`, `dashboard`, `budget`, `goals`, `prefs`, `rates`, `categories`, `ops`, `pages`); business logic shared by two or more routers lives in `src/services/` (`currency` FX helpers, `accounts` balance helpers). Routers depend on `db`/`schemas`/`auth`/`constants`/`services`/`limiter` but **never import `app`** (that would cycle); `app.py` imports the routers last and includes them, with `pages` last so a page route can't shadow an API path. The shared `Limiter` lives in `src/limiter.py` so routers can rate-limit without importing `app`. `tests/test_route_table.py` snapshots every `(path, method)` pair as a guard against accidental route changes.
 - **Frontend**: Vanilla JS, Chart.js 4.4 (vendored), Inter font (vendored)
 - **Auth**: PBKDF2-SHA256 passwords, 30-day `HttpOnly` session cookies
 - **Tests**: pytest 9, httpx, `starlette.testclient.TestClient`, Playwright

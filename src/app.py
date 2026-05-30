@@ -3,7 +3,12 @@
 Money is stored as integer cents in SQLite; the JSON API exposes plain
 floating-point dollars to keep the frontend contract unchanged.
 
-This module wires the FastAPI app and HTTP routes. Supporting code lives in:
+This is the thin wiring module: it constructs the FastAPI app, registers the
+middleware and the 422→400 validation handler, runs init(), and includes every
+router. No HTTP handlers live here. Supporting code lives in:
+    routers/     — one APIRouter per resource (the HTTP handlers)
+    services/    — business logic shared across routers (currency, accounts)
+    limiter.py   — the shared rate limiter (kept separate to avoid an app cycle)
     constants.py — bounds, type aliases, cookie + path settings
     db.py        — connection, schema init/migrations, money helpers
     auth.py      — password hashing, sessions, require_auth dependency
