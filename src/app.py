@@ -24,19 +24,16 @@ from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from constants import (
     COOKIE_SECURE,
-    DEFAULT_CATEGORIES,
     DOCS_DIR,
     DOC_SLUGS,
     FREQ_TO_MONTHLY,
     ISO_FMT,
     LOGIN_RATE_LIMIT,
-    MAX_CUSTOM_CATEGORIES,
     MAX_DAYS,
     MAX_MONTHS,
     RANGE_TO_DAYS,
@@ -74,9 +71,6 @@ from schemas import (
     BudgetItemIn,
     BudgetItemOut,
     BudgetItemPatch,
-    CategoriesOut,
-    CategoryIn,
-    CustomCategoryOut,
     DeleteMeIn,
     GoalIn,
     GoalOut,
@@ -102,15 +96,12 @@ from schemas import (
     TransferIn,
     UserOut,
 )
+from limiter import limiter
+from services.accounts import _adjust_account_balance, _require_account
+from services.currency import _convert_to_base, _load_rates, _rescale_rates
 
+from routers import categories
 
-# Login rate limiter. Key function is the socket peer IP (slowapi default),
-# which means behind a reverse proxy every client shares a single bucket —
-# the README directs internet-exposed deployments to add nginx `limit_req`
-# / Caddy `rate_limit` at the proxy layer where real client IPs are visible.
-# This app-layer limit is defence-in-depth for LAN deployments. Configurable
-# via the PILEDGER_LOGIN_RATE_LIMIT env var (see constants.py).
-limiter = Limiter(key_func=get_remote_address)
 
 # `docs_url=None` / `redoc_url=None` / `openapi_url=None` disable FastAPI's
 # default unauthenticated mounts. The replacements below (`/docs`, `/redoc`,
@@ -477,53 +468,6 @@ def update_prefs(
 
 
 # ─── Exchange rates ───────────────────────────────────────────────────────────
-
-
-def _load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
-    """Return {currency: rate_to_base} for a user. The base currency is omitted
-    (it is implicitly 1.0)."""
-    rows = conn.execute(
-        "SELECT currency, rate FROM exchange_rates WHERE user_id=?", (uid,)
-    ).fetchall()
-    return {r["currency"]: float(r["rate"]) for r in rows}
-
-
-def _rescale_rates(
-    conn: sqlite3.Connection, uid: int, old_base: str, new_base: str
-) -> None:
-    """Recompute the rates table so every stored rate is now expressed
-    against ``new_base`` instead of ``old_base``. Rates missing the pivot
-    are dropped — we can't infer them safely."""
-    existing = _load_rates(conn, uid)
-    pivot = existing.get(new_base)  # 1 new_base = pivot old_base
-    conn.execute("DELETE FROM exchange_rates WHERE user_id=?", (uid,))
-    if not pivot:
-        return  # no way to rescale; user will need to re-enter rates
-    now = utcnow_iso()
-    # Old base in the new world: 1 old_base = 1/pivot new_base.
-    conn.execute(
-        "INSERT INTO exchange_rates(user_id, currency, rate, updated_at) VALUES(?,?,?,?)",
-        (uid, old_base, 1.0 / pivot, now),
-    )
-    for cur, rate in existing.items():
-        if cur in (new_base, old_base):
-            continue
-        # 1 cur = rate old_base = rate/pivot new_base.
-        conn.execute(
-            "INSERT INTO exchange_rates(user_id, currency, rate, updated_at) VALUES(?,?,?,?)",
-            (uid, cur, rate / pivot, now),
-        )
-
-
-def _convert_to_base(
-    amount: float, currency: str, base: str, rates: dict[str, float]
-) -> float:
-    """Convert ``amount`` of ``currency`` into ``base`` using the user's rates.
-    Missing rates fall back to 1.0 so the total is never silently dropped; the
-    /api/summary response flags the affected currencies so the UI can warn."""
-    if currency == base:
-        return amount
-    return amount * rates.get(currency, 1.0)
 
 
 @app.get("/api/rates", response_model=RatesOut)
@@ -1237,23 +1181,6 @@ def list_transactions(
     return [_txn_row_to_out(r) for r in rows]
 
 
-def _adjust_account_balance(
-    conn: sqlite3.Connection, account_id: int, delta_cents: int
-) -> None:
-    """Add delta_cents to the account's latest balance and record a new entry."""
-    latest = conn.execute(
-        "SELECT balance_cents FROM balance_history WHERE account_id=?"
-        " ORDER BY recorded_at DESC, id DESC LIMIT 1",
-        (account_id,),
-    ).fetchone()
-    current = latest["balance_cents"] if latest else 0
-    conn.execute(
-        "INSERT INTO balance_history(account_id, balance_cents, recorded_at)"
-        " VALUES(?,?,?)",
-        (account_id, current + delta_cents, utcnow_iso()),
-    )
-
-
 @app.post("/api/transactions", status_code=201, response_model=TransactionOut)
 def create_transaction(
     data: TransactionIn,
@@ -1458,14 +1385,6 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
     )
 
 
-def _require_account(conn: sqlite3.Connection, account_id: int, uid: int) -> None:
-    """Raise 404 unless the account exists and belongs to the user."""
-    if not conn.execute(
-        "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (account_id, uid)
-    ).fetchone():
-        raise HTTPException(404, "Account not found")
-
-
 @app.get("/api/goals", response_model=list[GoalOut])
 def list_goals(uid: int = Depends(require_auth)) -> list[GoalOut]:
     with db() as conn:
@@ -1542,58 +1461,12 @@ def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
     return OkOut(ok=True)
 
 
-# ─── Categories ──────────────────────────────────────────────────────────────
-
-
-@app.get("/api/categories", response_model=CategoriesOut)
-def list_categories(uid: int = Depends(require_auth)) -> CategoriesOut:
-    with db() as conn:
-        rows = conn.execute(
-            "SELECT id, name FROM user_categories WHERE user_id=? ORDER BY created_at",
-            (uid,),
-        ).fetchall()
-    return CategoriesOut(
-        defaults=DEFAULT_CATEGORIES,
-        custom=[CustomCategoryOut(id=r["id"], name=r["name"]) for r in rows],
-    )
-
-
-@app.post("/api/categories", status_code=201, response_model=CustomCategoryOut)
-def create_category(
-    data: CategoryIn, uid: int = Depends(require_auth)
-) -> CustomCategoryOut:
-    with db() as conn:
-        count = conn.execute(
-            "SELECT COUNT(*) FROM user_categories WHERE user_id=?", (uid,)
-        ).fetchone()[0]
-        if count >= MAX_CUSTOM_CATEGORIES:
-            raise HTTPException(
-                422, f"Maximum of {MAX_CUSTOM_CATEGORIES} custom categories reached"
-            )
-        try:
-            cur = conn.execute(
-                "INSERT INTO user_categories(user_id, name) VALUES(?,?)",
-                (uid, data.name),
-            )
-            conn.commit()
-            row = conn.execute(
-                "SELECT id, name FROM user_categories WHERE id=?", (cur.lastrowid,)
-            ).fetchone()
-        except sqlite3.IntegrityError:
-            raise HTTPException(409, "A category with that name already exists")
-    return CustomCategoryOut(id=row["id"], name=row["name"])
-
-
-@app.delete("/api/categories/{cid}", response_model=OkOut)
-def delete_category(cid: int, uid: int = Depends(require_auth)) -> OkOut:
-    with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM user_categories WHERE id=? AND user_id=?", (cid, uid)
-        ).fetchone():
-            raise HTTPException(404, "Not found")
-        conn.execute("DELETE FROM user_categories WHERE id=?", (cid,))
-        conn.commit()
-    return OkOut(ok=True)
+# ─── API routers ──────────────────────────────────────────────────────────────
+#
+# Included before the SPA page routes below so an API path is never shadowed by
+# a page route. Each migrated resource moves here one router at a time; see the
+# refactor plan. The remaining inline @app routes above are pending migration.
+app.include_router(categories.router)
 
 
 # ─── Serve SPA ────────────────────────────────────────────────────────────────
