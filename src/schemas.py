@@ -259,6 +259,23 @@ class BudgetGroupPatch(_In):
     sort_order: Optional[int] = Field(default=None, ge=0)
 
 
+class BudgetEnvelopeIn(_In):
+    group_id: Annotated[int, Field(ge=1)]
+    label: Annotated[str, Field(min_length=1, max_length=120)]
+    category: Annotated[str, Field(min_length=1, max_length=100)]
+    budgeted: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
+
+
+class BudgetEnvelopePatch(_In):
+    group_id: Optional[int] = Field(default=None, ge=1)
+    label: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    category: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    budgeted: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    sort_order: Optional[int] = Field(default=None, ge=0)
+
+
 class PrefsPatch(_In):
     """Partial update — only fields present are written."""
 
@@ -417,8 +434,15 @@ class BudgetEnvelopeOut(BaseModel):
     label: str
     category: str
     budgeted: float
-    spent: float
     sort_order: int
+
+
+class BudgetEnvelopeDetailOut(BudgetEnvelopeOut):
+    """An envelope plus its live, current-month `spent` — used by
+    `GET /api/budget`. The bare `BudgetEnvelopeOut` is what envelope CRUD
+    returns."""
+
+    spent: float
 
 
 class BudgetGroupOut(BaseModel):
@@ -433,7 +457,7 @@ class BudgetGroupDetailOut(BudgetGroupOut):
     """A group plus its envelopes (with live spent) — used by `GET /api/budget`.
     The bare `BudgetGroupOut` is what the group CRUD endpoints return."""
 
-    envelopes: list[BudgetEnvelopeOut]
+    envelopes: list[BudgetEnvelopeDetailOut]
 
 
 class BudgetHistoryPoint(BaseModel):

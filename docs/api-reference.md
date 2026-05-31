@@ -63,6 +63,9 @@ The envelope budget: manual income lines, envelope groups, and the envelopes ins
 | `POST` | `/api/budget/groups` | `{name, color?, flexible?}` | Created group `{id, name, color, flexible, sort_order}` (no nested envelopes). `color` is a `#rrggbb` hex (defaults to `#0F766E`); `flexible` defaults to `false`; groups append to the end. |
 | `PUT` | `/api/budget/groups/{id}` | `{name?, color?, flexible?, sort_order?}` | Updated group. `404` if not owned. |
 | `DELETE` | `/api/budget/groups/{id}` | — | `{ok}` — deleting a group cascades its envelopes. `404` if not owned. |
+| `POST` | `/api/budget/envelopes` | `{group_id, label, category, budgeted?}` | Created envelope `{id, group_id, label, category, budgeted, sort_order}` (no `spent`). `group_id` must be an owned group (`404` otherwise); `category` must be a known category for the user — a default or one of their custom categories (`422` otherwise); the category must not already be enveloped (`409` — `UNIQUE(user_id, category)`). |
+| `PUT` | `/api/budget/envelopes/{id}` | `{group_id?, label?, category?, budgeted?, sort_order?}` | Updated envelope. Same ownership / category-exists / uniqueness checks; `group_id` can move it to another owned group. `404` if not owned. |
+| `DELETE` | `/api/budget/envelopes/{id}` | — | `{ok}`. `404` if not owned. |
 
 Read-only aggregate for the Budget screen:
 
