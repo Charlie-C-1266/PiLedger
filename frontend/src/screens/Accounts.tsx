@@ -20,17 +20,24 @@ const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   invest: "Invest",
 };
 
+type BalanceFilter = "all" | "assets" | "debts";
+
+const BALANCE_FILTER_LABELS: Record<BalanceFilter, string> = {
+  all: "All",
+  assets: "Assets",
+  debts: "Debts",
+};
+
 export default function Accounts() {
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary } = useSummary();
   const [variant, setVariant] = useState<StackVariant>("fan");
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
+  const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
   const [editAccount, setEditAccount] = useState<Account | null>(null);
 
   const currency = summary?.base_currency ?? "GBP";
-  const negative = (accounts ?? []).filter((a) => (a.current_balance ?? 0) < 0);
-  const positive = (accounts ?? []).filter((a) => (a.current_balance ?? 0) > 0);
 
   const stackAccounts = useMemo(() => {
     const all = accounts ?? [];
@@ -42,11 +49,22 @@ export default function Accounts() {
     const set = new Set((accounts ?? []).map((a) => a.type));
     return (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter((t) => set.has(t));
   }, [accounts]);
-  const debtTotal = negative.reduce(
-    (s, a) => s + Math.abs(a.current_balance ?? 0),
-    0
-  );
-  const assetTotal = positive.reduce((s, a) => s + (a.current_balance ?? 0), 0);
+
+  const listedAccounts = useMemo(() => {
+    const all = accounts ?? [];
+    if (balanceFilter === "assets") return all.filter((a) => (a.current_balance ?? 0) >= 0);
+    if (balanceFilter === "debts") return all.filter((a) => (a.current_balance ?? 0) < 0);
+    return all;
+  }, [accounts, balanceFilter]);
+
+  const assetTotal = (accounts ?? [])
+    .filter((a) => (a.current_balance ?? 0) >= 0)
+    .reduce((s, a) => s + (a.current_balance ?? 0), 0);
+  const debtTotal = (accounts ?? [])
+    .filter((a) => (a.current_balance ?? 0) < 0)
+    .reduce((s, a) => s + Math.abs(a.current_balance ?? 0), 0);
+
+  const allAccounts = accounts ?? [];
 
   return (
     <div className={styles.page}>
@@ -55,7 +73,7 @@ export default function Accounts() {
         <div className={styles.heroHeader}>
           <div>
             <div className={styles.microLabel}>
-              {(accounts ?? []).length} LINKED ACCOUNTS
+              {allAccounts.length} LINKED ACCOUNTS
             </div>
             <div className={styles.heroHeading}>Everything you hold</div>
           </div>
@@ -70,62 +88,51 @@ export default function Accounts() {
         <CardStack accounts={stackAccounts} variant={variant} height={340} />
       </div>
 
-      {/* All accounts list — click to update balance */}
-      {(accounts ?? []).length > 0 && (
+      {/* Filterable accounts list */}
+      {allAccounts.length > 0 && (
         <div>
           <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>All accounts</span>
-            <span className={styles.sectionHint}>Click to update balance</span>
+            <div className={styles.picker}>
+              {(Object.keys(BALANCE_FILTER_LABELS) as BalanceFilter[]).map((f) => (
+                <button
+                  key={f}
+                  className={`${styles.pill} ${balanceFilter === f ? styles.pillActive : ""}`}
+                  onClick={() => setBalanceFilter(f)}
+                >
+                  {BALANCE_FILTER_LABELS[f]}
+                </button>
+              ))}
+            </div>
+            {balanceFilter === "all" && (
+              <span className={styles.sectionHint}>Click to update balance</span>
+            )}
+            {balanceFilter === "assets" && (
+              <span className={styles.totalValue} style={{ color: theme.up }}>
+                {fmt(assetTotal, currency)}
+              </span>
+            )}
+            {balanceFilter === "debts" && (
+              <span className={styles.totalValue} style={{ color: theme.down }}>
+                {fmt(debtTotal, currency)}
+              </span>
+            )}
           </div>
           <div className={styles.accountGrid}>
-            {(accounts ?? []).map((a) => (
+            {listedAccounts.map((a) => (
               <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
                 <AccountTile account={a} style={{ width: "100%", height: 150 }} />
               </PressableTile>
             ))}
+            {listedAccounts.length === 0 && (
+              <p className={styles.filterEmpty}>
+                No {BALANCE_FILTER_LABELS[balanceFilter].toLowerCase()} to show.
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Assets section */}
-      {positive.length > 0 && (
-        <div>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>Assets</span>
-            <span className={styles.totalValue} style={{ color: theme.up }}>
-              {fmt(assetTotal, currency)}
-            </span>
-          </div>
-          <div className={styles.accountGrid}>
-            {positive.map((a) => (
-              <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
-                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
-              </PressableTile>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Debts section */}
-      {negative.length > 0 && (
-        <div>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>Debts</span>
-            <span className={styles.totalValue} style={{ color: theme.down }}>
-              {fmt(debtTotal, currency)}
-            </span>
-          </div>
-          <div className={styles.accountGrid}>
-            {negative.map((a) => (
-              <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
-                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
-              </PressableTile>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {(accounts ?? []).length === 0 && (
+      {allAccounts.length === 0 && (
         <div className={styles.empty}>
           No accounts yet. Add one to get started.
         </div>

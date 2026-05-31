@@ -66,6 +66,44 @@
   font-variant-numeric: tabular-nums;
 }
 
+.picker {
+  display: flex;
+  gap: 2px;
+  background: var(--pl-surface-alt);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.pill {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pl-text-mute);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  text-transform: capitalize;
+  transition: background 160ms, color 160ms;
+}
+
+.pill:hover {
+  color: var(--pl-text-soft);
+}
+
+.pillActive,
+.pillActive:hover {
+  background: var(--pl-text);
+  color: var(--pl-surface);
+}
+
+.filterEmpty {
+  grid-column: 1 / -1;
+  padding: 20px;
+  text-align: center;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
 .empty {
   padding: 40px;
   text-align: center;
