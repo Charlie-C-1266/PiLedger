@@ -65,6 +65,25 @@ def _seed(client):
     )
     client.post("/api/goals", json={"name": "Rainy day", "target": 1000.0})
     client.post("/api/categories", json={"name": "Hobbies"})
+    # The envelope-budget tables have no CRUD API yet (Phases 4–5), so seed them
+    # directly — this keeps every USER_SCOPED_TABLE populated so the cascade and
+    # cross-user-isolation assertions actually exercise them.
+    uid = client.get("/api/auth/me").json()["id"]
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO budget_income(user_id, label, amount_cents)"
+            " VALUES(?, 'Salary', 300000)",
+            (uid,),
+        )
+        gid = conn.execute(
+            "INSERT INTO budget_group(user_id, name) VALUES(?, 'Bills')", (uid,)
+        ).lastrowid
+        conn.execute(
+            "INSERT INTO budget_envelope(user_id, group_id, label, category)"
+            " VALUES(?, ?, 'Rent', 'Bills')",
+            (uid, gid),
+        )
+        conn.commit()
     return acct
 
 

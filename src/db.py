@@ -29,6 +29,9 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "transactions",
     "goals",
     "user_categories",
+    "budget_income",
+    "budget_group",
+    "budget_envelope",
 )
 
 
@@ -98,7 +101,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 6
+SCHEMA_VERSION: int = 7
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -336,6 +339,50 @@ def _migrate_to_6(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# Zero-based envelope budget tables. Defined once and shared between init() (fresh
+# installs) and _migrate_to_7 (existing DBs) so the two paths can't drift apart.
+# Money is integer cents; budgeted/income amounts are stored monthly. Each
+# envelope tracks exactly one PiLedger category — UNIQUE(user_id, category) keeps
+# a category from being double-counted across envelopes.
+_BUDGET_TABLES_DDL = """
+    CREATE TABLE IF NOT EXISTS budget_income (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        label        TEXT    NOT NULL,
+        amount_cents INTEGER NOT NULL DEFAULT 0,
+        sort_order   INTEGER NOT NULL DEFAULT 0,
+        created_at   TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS budget_group (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name       TEXT    NOT NULL,
+        color      TEXT    NOT NULL DEFAULT '#0F766E',
+        flexible   INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS budget_envelope (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        group_id       INTEGER NOT NULL REFERENCES budget_group(id) ON DELETE CASCADE,
+        label          TEXT    NOT NULL,
+        category       TEXT    NOT NULL,
+        budgeted_cents INTEGER NOT NULL DEFAULT 0,
+        sort_order     INTEGER NOT NULL DEFAULT 0,
+        created_at     TEXT    DEFAULT (datetime('now')),
+        UNIQUE(user_id, category)
+    );
+"""
+
+
+def _migrate_to_7(conn: sqlite3.Connection) -> None:
+    """Add the zero-based envelope budget tables (income / group / envelope)."""
+    conn.executescript(_BUDGET_TABLES_DDL)
+    _set_schema_version(conn, 7)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -417,6 +464,7 @@ def init() -> None:
                 UNIQUE(user_id, name)
             );
         """)
+        conn.executescript(_BUDGET_TABLES_DDL)
         conn.commit()
 
         version = _get_schema_version(conn)
@@ -450,6 +498,10 @@ def init() -> None:
         if version < 6:
             _migrate_to_6(conn)
             version = 6
+
+        if version < 7:
+            _migrate_to_7(conn)
+            version = 7
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
