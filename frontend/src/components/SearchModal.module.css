@@ -1,0 +1,130 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  z-index: 1000;
+}
+
+.panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--pl-surface);
+  box-shadow: var(--pl-shadow-lg);
+  overflow: hidden;
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--pl-rule);
+  color: var(--pl-text-mute);
+}
+
+.input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--pl-text);
+  font: 500 15px/1.4 "Plus Jakarta Sans", sans-serif;
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--pl-text-mute);
+}
+
+.escHint {
+  border: 1px solid var(--pl-rule);
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-mute);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+}
+
+.results {
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.hint,
+.empty {
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--pl-text-mute);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+}
+
+.groupHeader {
+  padding: 10px 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--pl-text-mute);
+  font: 700 10px/1 "Plus Jakarta Sans", sans-serif;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pl-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultActive {
+  background: var(--pl-surface-alt);
+}
+
+.resultIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-accent);
+}
+
+.resultActive .resultIcon {
+  background: var(--pl-surface);
+}
+
+.resultText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.resultTitle {
+  font: 600 14px/1.3 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resultSub {
+  font: 500 12px/1.3 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}

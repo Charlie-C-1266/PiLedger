@@ -8,10 +8,11 @@ import styles from "./Header.module.css";
 interface Props {
   mobile?: boolean;
   onAdd?: (target: AddTarget) => void;
+  onSearch?: () => void;
   username?: string;
 }
 
-export default function Header({ mobile, onAdd, username }: Props) {
+export default function Header({ mobile, onAdd, onSearch, username }: Props) {
   const { mode, toggleMode } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -29,6 +30,9 @@ export default function Header({ mobile, onAdd, username }: Props) {
           </span>
         </span>
         <div className={styles.actions}>
+          <button className={styles.toggleBtn} onClick={onSearch} aria-label="Search">
+            <SearchIcon />
+          </button>
           <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
             {mode === "light" ? <MoonIcon /> : <SunIcon />}
           </button>
@@ -60,10 +64,10 @@ export default function Header({ mobile, onAdd, username }: Props) {
         <div className={styles.greeting}>Hey there{username ? `, ${username}` : ""} 👋</div>
       </div>
       <div className={styles.actions}>
-        <div className={styles.searchPill}>
+        <button className={styles.searchPill} onClick={onSearch} type="button">
           <SearchIcon />
           <span className={styles.searchPlaceholder}>Search</span>
-        </div>
+        </button>
         <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
           {mode === "light" ? <MoonIcon /> : <SunIcon />}
         </button>

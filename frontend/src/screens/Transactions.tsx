@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useTransactions } from "../hooks/useTransactions";
@@ -26,7 +27,14 @@ export default function Transactions() {
   const currency = summary?.base_currency ?? "GBP";
 
   const mobile = useIsMobile();
-  const [search, setSearch] = useState("");
+  // Seed the search box from a `?q=` deep link (e.g. the global search palette
+  // jumping to a matching transaction), and keep it in sync if the param changes.
+  const [searchParams] = useSearchParams();
+  const qParam = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(qParam);
+  useEffect(() => {
+    setSearch(qParam);
+  }, [qParam]);
   const [accountFilter, setAccountFilter] = useState<number | "">("");
   const [sortKey, setSortKey] = useState<TxnSort>("date");
   const [categoryFilter, setCategoryFilter] = useState<string>("");

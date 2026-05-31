@@ -34,11 +34,18 @@
   gap: 8px;
   width: 200px;
   padding: 10px 14px;
+  border: none;
   border-radius: 999px;
   background: var(--pl-surface-alt);
   color: var(--pl-text-mute);
   font: 500 13px/1 "Plus Jakarta Sans", sans-serif;
+  text-align: left;
   cursor: pointer;
+  transition: background 160ms;
+}
+
+.searchPill:hover {
+  background: var(--pl-rule);
 }
 
 .searchPlaceholder {
