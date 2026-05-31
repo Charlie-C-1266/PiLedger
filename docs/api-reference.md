@@ -50,6 +50,21 @@ Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
 | `GET` | `/api/history/networth` | `?range=7D\|30D\|90D\|1Y` | Array of `{date, value}` net-worth data points over the selected range, converted to the user's base currency. Used by the Overview net-worth chart. |
 | `GET` | `/api/projections` | `?months=24` | Array of projection objects for each savings account; includes pre-computed `1yr`, `2yr`, `5yr` values and a full `points[]` array for charting |
 
+## Budget (zero-based envelopes)
+
+The envelope budget: manual income lines, envelope groups, and the envelopes inside them. Budgeted and income figures are user-entered and stored monthly (in pounds via the API). Each envelope's `spent` is computed live and is never stored. CRUD endpoints for income / groups / envelopes are added in later phases.
+
+| Method | Path | Body / Params | Response |
+|---|---|---|---|
+| `GET` | `/api/budget` | — | `{incomes[], groups[], history[], base_currency, missing_rates}` — see below |
+
+Read-only aggregate for the Budget screen:
+
+- `incomes[]` — `{id, label, amount, sort_order}`; `amount` is the monthly income line in pounds.
+- `groups[]` — `{id, name, color, flexible, sort_order, envelopes[]}`. `flexible` (bool) drives the "safe to spend" calculation. Each envelope is `{id, group_id, label, category, budgeted, spent, sort_order}`: `budgeted` is the monthly allocation in pounds; `spent` is the sum of the **current month's** negative transactions in that envelope's `category`, converted to the user's base currency.
+- `history[]` — last 6 months, oldest first, each `{month, budgeted, spent}` where `month` is `"YYYY-MM"`. `spent` is that month's actual spend across enveloped categories; `budgeted` is the *current* total allocation as a flat reference line (historical plans are not snapshotted). Empty when the user has no envelopes.
+- `base_currency` / `missing_rates` — mirror `/api/summary`: cross-currency spend is converted to the base currency, and any currency lacking a configured rate is listed in `missing_rates` (and falls back to a 1.0 rate rather than being dropped).
+
 ## Transactions
 
 Transaction records linked to an account. Creating or deleting a transaction automatically adjusts the account's latest balance snapshot via a new `balance_history` entry. Updating a transaction's `amount` or `account_id` also triggers a balance correction.

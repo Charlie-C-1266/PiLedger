@@ -29,6 +29,7 @@ EXPECTED_ROUTES = {
     ("/api/auth/me", "GET"),
     ("/api/auth/password", "PUT"),
     ("/api/auth/register", "POST"),
+    ("/api/budget", "GET"),
     ("/api/categories", "GET"),
     ("/api/categories", "POST"),
     ("/api/categories/{cid}", "DELETE"),
