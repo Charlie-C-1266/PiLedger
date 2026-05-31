@@ -1,7 +1,8 @@
-"""Tests for the zero-based envelope budget read API (`GET /api/budget`).
+"""Tests for the zero-based envelope budget API (`/api/budget*`).
 
-The CRUD endpoints land in later phases, so these tests seed the budget tables
-directly via the DB and drive actual `spent` through the real transactions API.
+Covers the `GET /api/budget` read aggregate and the income / group / envelope
+CRUD. `spent` is driven through the real transactions API. A few read-side tests
+predate the CRUD endpoints and still seed the budget tables directly via the DB.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -379,3 +380,167 @@ def test_group_validation_rejects_bad_payloads(alice):
         alice.post("/api/budget/groups", json={"name": "X", "color": "red"}).status_code
         == 400
     )
+
+
+# ── Envelope CRUD ─────────────────────────────────────────────────────────────
+
+
+def _make_group(client, name: str = "Bills", flexible: bool = False) -> int:
+    return client.post(
+        "/api/budget/groups", json={"name": name, "flexible": flexible}
+    ).json()["id"]
+
+
+def test_create_envelope_appears_nested_with_live_spent(alice):
+    acct = _make_account(alice)
+    gid = _make_group(alice, "Everyday", flexible=True)
+    r = alice.post(
+        "/api/budget/envelopes",
+        json={
+            "group_id": gid,
+            "label": "Food",
+            "category": "Groceries",
+            "budgeted": 500.0,
+        },
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["category"] == "Groceries"
+    assert body["budgeted"] == 500.0
+    assert body["sort_order"] == 0
+    assert "spent" not in body  # bare CRUD row carries no computed spend
+    # Spend in that category this month shows up in the GET aggregate.
+    alice.post(
+        "/api/transactions",
+        json={
+            "account_id": acct,
+            "amount": -30.0,
+            "merchant": "Tesco",
+            "category": "Groceries",
+        },
+    )
+    env = alice.get("/api/budget").json()["groups"][0]["envelopes"][0]
+    assert env["spent"] == 30.0
+    assert env["budgeted"] == 500.0
+
+
+def test_create_envelope_accepts_a_custom_category(alice):
+    gid = _make_group(alice)
+    alice.post("/api/categories", json={"name": "Hobbies"})
+    r = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Models", "category": "Hobbies"},
+    )
+    assert r.status_code == 201
+
+
+def test_create_envelope_rejects_unknown_category(alice):
+    gid = _make_group(alice)
+    r = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "X", "category": "Nonsense"},
+    )
+    assert r.status_code == 422
+
+
+def test_create_envelope_rejects_duplicate_category(alice):
+    g1 = _make_group(alice, "Everyday")
+    g2 = _make_group(alice, "Lifestyle")
+    alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": g1, "label": "Food", "category": "Groceries"},
+    )
+    dup = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": g2, "label": "More food", "category": "Groceries"},
+    )
+    assert dup.status_code == 409
+
+
+def test_create_envelope_unknown_group_is_404(alice):
+    r = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": 999, "label": "X", "category": "Groceries"},
+    )
+    assert r.status_code == 404
+
+
+def test_create_envelope_cannot_target_another_users_group(alice, bob):
+    bob_gid = _make_group(bob)
+    r = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": bob_gid, "label": "X", "category": "Groceries"},
+    )
+    assert r.status_code == 404
+
+
+def test_update_envelope_fields(alice):
+    gid = _make_group(alice)
+    eid = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Food", "category": "Groceries"},
+    ).json()["id"]
+    r = alice.put(
+        f"/api/budget/envelopes/{eid}",
+        json={"label": "Food & drink", "budgeted": 250.0, "category": "Dining"},
+    )
+    assert r.status_code == 200
+    assert r.json()["label"] == "Food & drink"
+    assert r.json()["budgeted"] == 250.0
+    assert r.json()["category"] == "Dining"
+
+
+def test_update_envelope_to_taken_category_is_409(alice):
+    gid = _make_group(alice)
+    alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Food", "category": "Groceries"},
+    )
+    eid = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Out", "category": "Dining"},
+    ).json()["id"]
+    r = alice.put(f"/api/budget/envelopes/{eid}", json={"category": "Groceries"})
+    assert r.status_code == 409
+
+
+def test_update_envelope_can_move_to_another_owned_group(alice):
+    g1 = _make_group(alice, "Everyday")
+    g2 = _make_group(alice, "Lifestyle")
+    eid = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": g1, "label": "Food", "category": "Groceries"},
+    ).json()["id"]
+    assert (
+        alice.put(f"/api/budget/envelopes/{eid}", json={"group_id": g2}).json()[
+            "group_id"
+        ]
+        == g2
+    )
+    # Moving into a group owned by someone else is rejected.
+    assert (
+        alice.put(f"/api/budget/envelopes/{eid}", json={"group_id": 999}).status_code
+        == 404
+    )
+
+
+def test_delete_envelope_and_isolation(alice, bob):
+    gid = _make_group(alice)
+    eid = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Food", "category": "Groceries"},
+    ).json()["id"]
+    # Another user can't see or touch it.
+    assert (
+        bob.put(f"/api/budget/envelopes/{eid}", json={"label": "Hax"}).status_code
+        == 404
+    )
+    assert bob.delete(f"/api/budget/envelopes/{eid}").status_code == 404
+    # The owner can delete it; freeing the category for re-use.
+    assert alice.delete(f"/api/budget/envelopes/{eid}").json() == {"ok": True}
+    assert alice.delete(f"/api/budget/envelopes/{eid}").status_code == 404
+    reuse = alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": gid, "label": "Food again", "category": "Groceries"},
+    )
+    assert reuse.status_code == 201

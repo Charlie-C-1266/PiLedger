@@ -16,10 +16,14 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from constants import DEFAULT_CATEGORIES
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
+    BudgetEnvelopeDetailOut,
+    BudgetEnvelopeIn,
     BudgetEnvelopeOut,
+    BudgetEnvelopePatch,
     BudgetGroupDetailOut,
     BudgetGroupIn,
     BudgetGroupOut,
@@ -57,12 +61,44 @@ def _group_to_out(row: sqlite3.Row) -> BudgetGroupOut:
     )
 
 
+def _envelope_to_out(row: sqlite3.Row) -> BudgetEnvelopeOut:
+    return BudgetEnvelopeOut(
+        id=row["id"],
+        group_id=row["group_id"],
+        label=row["label"],
+        category=row["category"],
+        budgeted=from_cents(row["budgeted_cents"]) or 0.0,
+        sort_order=row["sort_order"],
+    )
+
+
 def _next_sort_order(conn: sqlite3.Connection, table: str, uid: int) -> int:
     """Append position: one past the user's current max in `table`."""
     return conn.execute(
         f"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM {table} WHERE user_id=?",
         (uid,),
     ).fetchone()[0]
+
+
+def _require_owned_group(conn: sqlite3.Connection, gid: int, uid: int) -> None:
+    """404 unless the group exists and belongs to the user."""
+    if not conn.execute(
+        "SELECT 1 FROM budget_group WHERE id=? AND user_id=?", (gid, uid)
+    ).fetchone():
+        raise HTTPException(404, "Group not found")
+
+
+def _require_category(conn: sqlite3.Connection, uid: int, category: str) -> None:
+    """422 unless `category` is one the user actually has — a built-in default
+    or one of their custom categories. Keeps envelopes pinned to real spend
+    buckets so `spent` can be computed."""
+    if category in DEFAULT_CATEGORIES:
+        return
+    if conn.execute(
+        "SELECT 1 FROM user_categories WHERE user_id=? AND name=?", (uid, category)
+    ).fetchone():
+        return
+    raise HTTPException(422, "Category does not exist")
 
 
 def _month_keys(now: datetime, count: int) -> list[str]:
@@ -139,10 +175,10 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
         if t["category"] in enveloped:
             spent_by_month[month_key] = spent_by_month.get(month_key, 0.0) + amount
 
-    envelopes_by_group: dict[int, list[BudgetEnvelopeOut]] = {}
+    envelopes_by_group: dict[int, list[BudgetEnvelopeDetailOut]] = {}
     for e in envelope_rows:
         envelopes_by_group.setdefault(e["group_id"], []).append(
-            BudgetEnvelopeOut(
+            BudgetEnvelopeDetailOut(
                 id=e["id"],
                 group_id=e["group_id"],
                 label=e["label"],
@@ -319,5 +355,82 @@ def delete_group(gid: int, uid: int = Depends(require_auth)) -> OkOut:
         ).fetchone():
             raise HTTPException(404, "Not found")
         conn.execute("DELETE FROM budget_group WHERE id=?", (gid,))
+        conn.commit()
+    return OkOut(ok=True)
+
+
+# ── Envelope CRUD ─────────────────────────────────────────────────────────────
+
+
+@router.post("/api/budget/envelopes", status_code=201, response_model=BudgetEnvelopeOut)
+def create_envelope(
+    data: BudgetEnvelopeIn, uid: int = Depends(require_auth)
+) -> BudgetEnvelopeOut:
+    with db() as conn:
+        _require_owned_group(conn, data.group_id, uid)
+        _require_category(conn, uid, data.category)
+        try:
+            cur = conn.execute(
+                "INSERT INTO budget_envelope(user_id, group_id, label, category,"
+                " budgeted_cents, sort_order) VALUES(?, ?, ?, ?, ?, ?)",
+                (
+                    uid,
+                    data.group_id,
+                    data.label,
+                    data.category,
+                    to_cents(data.budgeted),
+                    _next_sort_order(conn, "budget_envelope", uid),
+                ),
+            )
+            conn.commit()
+        except sqlite3.IntegrityError:
+            # UNIQUE(user_id, category): the category is already enveloped.
+            raise HTTPException(409, "Category is already in an envelope")
+        row = conn.execute(
+            "SELECT * FROM budget_envelope WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
+    return _envelope_to_out(row)
+
+
+@router.put("/api/budget/envelopes/{eid}", response_model=BudgetEnvelopeOut)
+def update_envelope(
+    eid: int, data: BudgetEnvelopePatch, uid: int = Depends(require_auth)
+) -> BudgetEnvelopeOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_envelope WHERE id=? AND user_id=?", (eid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        patch = data.model_dump(exclude_none=True)
+        if "group_id" in patch:
+            _require_owned_group(conn, patch["group_id"], uid)
+        if "category" in patch:
+            _require_category(conn, uid, patch["category"])
+        if "budgeted" in patch:
+            patch["budgeted_cents"] = to_cents(patch.pop("budgeted"))
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            try:
+                conn.execute(
+                    f"UPDATE budget_envelope SET {sets} WHERE id=?",
+                    [*patch.values(), eid],
+                )
+                conn.commit()
+            except sqlite3.IntegrityError:
+                raise HTTPException(409, "Category is already in an envelope")
+        row = conn.execute(
+            "SELECT * FROM budget_envelope WHERE id=?", (eid,)
+        ).fetchone()
+    return _envelope_to_out(row)
+
+
+@router.delete("/api/budget/envelopes/{eid}", response_model=OkOut)
+def delete_envelope(eid: int, uid: int = Depends(require_auth)) -> OkOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_envelope WHERE id=? AND user_id=?", (eid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        conn.execute("DELETE FROM budget_envelope WHERE id=?", (eid,))
         conn.commit()
     return OkOut(ok=True)
