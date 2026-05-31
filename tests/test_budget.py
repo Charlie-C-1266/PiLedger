@@ -255,3 +255,127 @@ def test_history_empty_when_no_envelopes(alice):
         conn.commit()
     # Income but no envelopes → nothing to trend.
     assert alice.get("/api/budget").json()["history"] == []
+
+
+# ── Income CRUD ───────────────────────────────────────────────────────────────
+
+
+def test_create_income_appends_and_appears_in_budget(alice):
+    a = alice.post("/api/budget/income", json={"label": "Salary", "amount": 3000.0})
+    assert a.status_code == 201
+    assert a.json()["amount"] == 3000.0
+    assert a.json()["sort_order"] == 0
+    # A second line appends after the first.
+    b = alice.post("/api/budget/income", json={"label": "Side gig"})
+    assert b.json()["amount"] == 0.0  # defaults to 0
+    assert b.json()["sort_order"] == 1
+    incomes = alice.get("/api/budget").json()["incomes"]
+    assert [i["label"] for i in incomes] == ["Salary", "Side gig"]
+
+
+def test_update_income(alice):
+    iid = alice.post("/api/budget/income", json={"label": "Salary"}).json()["id"]
+    r = alice.put(
+        f"/api/budget/income/{iid}", json={"label": "Wages", "amount": 2500.0}
+    )
+    assert r.status_code == 200
+    assert r.json()["label"] == "Wages"
+    assert r.json()["amount"] == 2500.0
+
+
+def test_delete_income(alice):
+    iid = alice.post("/api/budget/income", json={"label": "Salary"}).json()["id"]
+    assert alice.delete(f"/api/budget/income/{iid}").json() == {"ok": True}
+    assert alice.get("/api/budget").json()["incomes"] == []
+    assert alice.delete(f"/api/budget/income/{iid}").status_code == 404
+
+
+def test_income_update_unknown_is_404(alice):
+    assert alice.put("/api/budget/income/999", json={"label": "X"}).status_code == 404
+
+
+def test_income_isolated_between_users(alice, bob):
+    iid = alice.post("/api/budget/income", json={"label": "Salary"}).json()["id"]
+    assert (
+        bob.put(f"/api/budget/income/{iid}", json={"label": "Hax"}).status_code == 404
+    )
+    assert bob.delete(f"/api/budget/income/{iid}").status_code == 404
+    # Alice's row is untouched.
+    assert alice.get("/api/budget").json()["incomes"][0]["label"] == "Salary"
+
+
+def test_income_validation_rejects_bad_payloads(alice):
+    assert alice.post("/api/budget/income", json={"label": ""}).status_code == 400
+    assert (
+        alice.post("/api/budget/income", json={"label": "X", "amount": -5}).status_code
+        == 400
+    )
+
+
+# ── Group CRUD ────────────────────────────────────────────────────────────────
+
+
+def test_create_group_appends_and_appears_in_budget(alice):
+    r = alice.post(
+        "/api/budget/groups",
+        json={"name": "Bills", "color": "#2A6FDB", "flexible": True},
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["flexible"] is True
+    assert body["color"] == "#2A6FDB"
+    assert body["sort_order"] == 0
+    assert "envelopes" not in body  # bare group row, no nested envelopes
+    groups = alice.get("/api/budget").json()["groups"]
+    assert len(groups) == 1
+    assert groups[0]["envelopes"] == []  # the aggregate still nests (empty here)
+
+
+def test_group_defaults_to_fixed(alice):
+    body = alice.post("/api/budget/groups", json={"name": "Bills"}).json()
+    assert body["flexible"] is False
+
+
+def test_update_group(alice):
+    gid = alice.post("/api/budget/groups", json={"name": "Bills"}).json()["id"]
+    r = alice.put(
+        f"/api/budget/groups/{gid}",
+        json={"name": "Bills & Housing", "flexible": True, "color": "#1F8A5B"},
+    )
+    assert r.status_code == 200
+    assert r.json()["name"] == "Bills & Housing"
+    assert r.json()["flexible"] is True
+    assert r.json()["color"] == "#1F8A5B"
+
+
+def test_delete_group_cascades_its_envelopes(alice):
+    uid = _uid(alice)
+    gid = alice.post("/api/budget/groups", json={"name": "Bills"}).json()["id"]
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO budget_envelope(user_id, group_id, label, category,"
+            " budgeted_cents, sort_order) VALUES(?, ?, 'Rent', 'Bills', 80000, 0)",
+            (uid, gid),
+        )
+        conn.commit()
+    assert alice.delete(f"/api/budget/groups/{gid}").json() == {"ok": True}
+    with db() as conn:
+        remaining = conn.execute(
+            "SELECT COUNT(*) FROM budget_envelope WHERE user_id=?", (uid,)
+        ).fetchone()[0]
+    assert remaining == 0  # envelope cascaded with its group
+
+
+def test_group_404s_and_isolation(alice, bob):
+    gid = alice.post("/api/budget/groups", json={"name": "Bills"}).json()["id"]
+    assert alice.put("/api/budget/groups/999", json={"name": "X"}).status_code == 404
+    assert bob.put(f"/api/budget/groups/{gid}", json={"name": "Hax"}).status_code == 404
+    assert bob.delete(f"/api/budget/groups/{gid}").status_code == 404
+
+
+def test_group_validation_rejects_bad_payloads(alice):
+    assert alice.post("/api/budget/groups", json={"name": ""}).status_code == 400
+    assert (
+        alice.post("/api/budget/groups", json={"name": "X", "color": "red"}).status_code
+        == 400
+    )

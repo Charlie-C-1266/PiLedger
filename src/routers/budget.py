@@ -12,23 +12,57 @@ historical plans, so the budgeted line is a flat present-day reference.
 """
 
 from datetime import datetime, timezone
+import sqlite3
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from db import db, from_cents
+from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
     BudgetEnvelopeOut,
+    BudgetGroupDetailOut,
+    BudgetGroupIn,
     BudgetGroupOut,
+    BudgetGroupPatch,
     BudgetHistoryPoint,
+    BudgetIncomeIn,
     BudgetIncomeOut,
+    BudgetIncomePatch,
     BudgetOut,
+    OkOut,
 )
 from services.currency import _convert_to_base, _load_rates
 
 router = APIRouter(tags=["budget"])
 
 _HISTORY_MONTHS = 6
+
+
+def _income_to_out(row: sqlite3.Row) -> BudgetIncomeOut:
+    return BudgetIncomeOut(
+        id=row["id"],
+        label=row["label"],
+        amount=from_cents(row["amount_cents"]) or 0.0,
+        sort_order=row["sort_order"],
+    )
+
+
+def _group_to_out(row: sqlite3.Row) -> BudgetGroupOut:
+    return BudgetGroupOut(
+        id=row["id"],
+        name=row["name"],
+        color=row["color"],
+        flexible=bool(row["flexible"]),
+        sort_order=row["sort_order"],
+    )
+
+
+def _next_sort_order(conn: sqlite3.Connection, table: str, uid: int) -> int:
+    """Append position: one past the user's current max in `table`."""
+    return conn.execute(
+        f"SELECT COALESCE(MAX(sort_order), -1) + 1 FROM {table} WHERE user_id=?",
+        (uid,),
+    ).fetchone()[0]
 
 
 def _month_keys(now: datetime, count: int) -> list[str]:
@@ -120,7 +154,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
         )
 
     groups = [
-        BudgetGroupOut(
+        BudgetGroupDetailOut(
             id=g["id"],
             name=g["name"],
             color=g["color"],
@@ -164,3 +198,126 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
         base_currency=base,
         missing_rates=sorted(missing),
     )
+
+
+# ── Income CRUD ───────────────────────────────────────────────────────────────
+
+
+@router.post("/api/budget/income", status_code=201, response_model=BudgetIncomeOut)
+def create_income(
+    data: BudgetIncomeIn, uid: int = Depends(require_auth)
+) -> BudgetIncomeOut:
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO budget_income(user_id, label, amount_cents, sort_order)"
+            " VALUES(?, ?, ?, ?)",
+            (
+                uid,
+                data.label,
+                to_cents(data.amount),
+                _next_sort_order(conn, "budget_income", uid),
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM budget_income WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
+    return _income_to_out(row)
+
+
+@router.put("/api/budget/income/{iid}", response_model=BudgetIncomeOut)
+def update_income(
+    iid: int, data: BudgetIncomePatch, uid: int = Depends(require_auth)
+) -> BudgetIncomeOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_income WHERE id=? AND user_id=?", (iid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        # exclude_none: budget income has no nullable columns, so an omitted
+        # field is left unchanged and `null` is never written.
+        patch = data.model_dump(exclude_none=True)
+        if "amount" in patch:
+            patch["amount_cents"] = to_cents(patch.pop("amount"))
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            conn.execute(
+                f"UPDATE budget_income SET {sets} WHERE id=?", [*patch.values(), iid]
+            )
+            conn.commit()
+        row = conn.execute("SELECT * FROM budget_income WHERE id=?", (iid,)).fetchone()
+    return _income_to_out(row)
+
+
+@router.delete("/api/budget/income/{iid}", response_model=OkOut)
+def delete_income(iid: int, uid: int = Depends(require_auth)) -> OkOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_income WHERE id=? AND user_id=?", (iid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        conn.execute("DELETE FROM budget_income WHERE id=?", (iid,))
+        conn.commit()
+    return OkOut(ok=True)
+
+
+# ── Group CRUD ────────────────────────────────────────────────────────────────
+
+
+@router.post("/api/budget/groups", status_code=201, response_model=BudgetGroupOut)
+def create_group(
+    data: BudgetGroupIn, uid: int = Depends(require_auth)
+) -> BudgetGroupOut:
+    with db() as conn:
+        cur = conn.execute(
+            "INSERT INTO budget_group(user_id, name, color, flexible, sort_order)"
+            " VALUES(?, ?, ?, ?, ?)",
+            (
+                uid,
+                data.name,
+                data.color,
+                int(data.flexible),
+                _next_sort_order(conn, "budget_group", uid),
+            ),
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT * FROM budget_group WHERE id=?", (cur.lastrowid,)
+        ).fetchone()
+    return _group_to_out(row)
+
+
+@router.put("/api/budget/groups/{gid}", response_model=BudgetGroupOut)
+def update_group(
+    gid: int, data: BudgetGroupPatch, uid: int = Depends(require_auth)
+) -> BudgetGroupOut:
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_group WHERE id=? AND user_id=?", (gid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        patch = data.model_dump(exclude_none=True)
+        if "flexible" in patch:
+            patch["flexible"] = int(patch["flexible"])
+        if patch:
+            sets = ", ".join(f"{k}=?" for k in patch)
+            conn.execute(
+                f"UPDATE budget_group SET {sets} WHERE id=?", [*patch.values(), gid]
+            )
+            conn.commit()
+        row = conn.execute("SELECT * FROM budget_group WHERE id=?", (gid,)).fetchone()
+    return _group_to_out(row)
+
+
+@router.delete("/api/budget/groups/{gid}", response_model=OkOut)
+def delete_group(gid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete a group; its envelopes cascade via the FK (db() runs with
+    foreign_keys ON)."""
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM budget_group WHERE id=? AND user_id=?", (gid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        conn.execute("DELETE FROM budget_group WHERE id=?", (gid,))
+        conn.commit()
+    return OkOut(ok=True)

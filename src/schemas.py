@@ -233,6 +233,32 @@ class GoalPatch(_In):
     account_id: Optional[int] = Field(default=None, ge=1)
 
 
+class BudgetIncomeIn(_In):
+    label: Annotated[str, Field(min_length=1, max_length=120)]
+    amount: Annotated[float, Field(ge=0, le=MAX_MONEY, allow_inf_nan=False)] = 0.0
+
+
+class BudgetIncomePatch(_In):
+    label: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    amount: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    sort_order: Optional[int] = Field(default=None, ge=0)
+
+
+class BudgetGroupIn(_In):
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#0F766E"
+    flexible: bool = False
+
+
+class BudgetGroupPatch(_In):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
+    flexible: Optional[bool] = None
+    sort_order: Optional[int] = Field(default=None, ge=0)
+
+
 class PrefsPatch(_In):
     """Partial update — only fields present are written."""
 
@@ -401,6 +427,12 @@ class BudgetGroupOut(BaseModel):
     color: str
     flexible: bool
     sort_order: int
+
+
+class BudgetGroupDetailOut(BudgetGroupOut):
+    """A group plus its envelopes (with live spent) — used by `GET /api/budget`.
+    The bare `BudgetGroupOut` is what the group CRUD endpoints return."""
+
     envelopes: list[BudgetEnvelopeOut]
 
 
@@ -412,7 +444,7 @@ class BudgetHistoryPoint(BaseModel):
 
 class BudgetOut(BaseModel):
     incomes: list[BudgetIncomeOut]
-    groups: list[BudgetGroupOut]
+    groups: list[BudgetGroupDetailOut]
     history: list[BudgetHistoryPoint]
     base_currency: str
     missing_rates: list[str]
