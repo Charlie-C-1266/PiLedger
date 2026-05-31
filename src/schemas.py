@@ -9,7 +9,6 @@ from constants import (
     AccountSubtype,
     AccountType,
     Currency,
-    Frequency,
     HEX_COLOR_PATTERN,
     ISO_FMT,
     MAX_MONEY,
@@ -118,21 +117,6 @@ class BalanceIn(_In):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone(timezone.utc).strftime(ISO_FMT)
-
-
-class BudgetItemIn(_In):
-    account_id: Annotated[int, Field(ge=1)]
-    name: Annotated[str, Field(min_length=1, max_length=120)]
-    amount: Annotated[float, Field(ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)]
-    frequency: Frequency
-
-
-class BudgetItemPatch(_In):
-    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
-    amount: Optional[float] = Field(
-        default=None, ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False
-    )
-    frequency: Optional[Frequency] = None
 
 
 class TransactionIn(_In):
@@ -356,16 +340,6 @@ class HistoryAccountOut(BaseModel):
     type: AccountType
     currency: Currency = "GBP"
     history: list[HistoryPointOut]
-
-
-class BudgetItemOut(BaseModel):
-    id: int
-    user_id: int
-    account_id: int
-    name: str
-    amount: float
-    frequency: Frequency
-    created_at: str
 
 
 class TransactionOut(BaseModel):

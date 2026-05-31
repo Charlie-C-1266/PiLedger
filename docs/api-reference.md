@@ -21,7 +21,7 @@ All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) req
 | `POST` | `/api/auth/logout` | — (reads cookie) | `{ok}` + deletes session + clears cookie |
 | `GET` | `/api/auth/me` | — | `{id, username}` |
 | `PUT` | `/api/auth/password` | `{current_password, new_password}` | `{ok}` + rotates every session and sets a fresh cookie, or `400` (weak new password) / `401` (current wrong) |
-| `DELETE` | `/api/auth/me` | `{password}` | `{ok}` + cascades every row owned by the user across `accounts` / `balance_history` / `budget_items` / `exchange_rates` / `transactions` / `goals`, kills all sessions, deletes the user row, and clears the session cookie. `401` if the password is wrong. |
+| `DELETE` | `/api/auth/me` | `{password}` | `{ok}` + cascades every row owned by the user across `accounts` / `balance_history` / `exchange_rates` / `transactions` / `goals`, kills all sessions, deletes the user row, and clears the session cookie. `401` if the password is wrong. |
 
 ## Accounts
 
@@ -49,20 +49,6 @@ Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
 | `GET` | `/api/history/all` | `?days=90` | Array of `{id, name, color, type, history[]}` for accounts that have at least one entry in the window |
 | `GET` | `/api/history/networth` | `?range=7D\|30D\|90D\|1Y` | Array of `{date, value}` net-worth data points over the selected range, converted to the user's base currency. Used by the Overview net-worth chart. |
 | `GET` | `/api/projections` | `?months=24` | Array of projection objects for each savings account; includes pre-computed `1yr`, `2yr`, `5yr` values and a full `points[]` array for charting |
-
-## Budget Planner
-
-All routes require auth and operate only on items owned by the calling user. The `account_id` on create / update is verified to belong to the user — a foreign account returns `404`.
-
-| Method | Path | Body / Params | Response |
-|---|---|---|---|
-| `GET` | `/api/budget` | — | Array of budget items: `{id, user_id, account_id, name, amount, frequency, created_at}` |
-| `POST` | `/api/budget` | `{account_id, name, amount, frequency}` | Created item. `amount` is signed (+ inflow, − outflow). `frequency` ∈ `weekly|monthly|quarterly|annually`. |
-| `PUT` | `/api/budget/{id}` | `{name?, amount?, frequency?}` | Updated item |
-| `DELETE` | `/api/budget/{id}` | — | `{ok}` |
-| `GET` | `/api/budget/projection` | `?months=3\|6\|12` | `{months, accounts[], net_worth[]}` — see below |
-
-The `accounts[]` array in `/api/budget/projection` contains one entry per account with `{id, name, type, color, current_balance, monthly_net, points[], final_balance}`. The `net_worth[]` array contains one entry per month (including month 0 = today) with `{month, balance, date}`, where `balance` is `Σ(assets) − Σ(loans)` at that month.
 
 ## Transactions
 
@@ -138,7 +124,7 @@ Per-user UI + currency preferences. Used by the SPA on every page load to drive 
 
 ## Exchange rates
 
-Manual FX table used by `/api/summary` and `/api/budget/projection` to convert per-account balances into the user's base currency. Rates are user-editable from the Settings modal — no outbound HTTP. A missing rate doesn't drop the account from totals; instead `/api/summary` falls back to 1.0 and returns the offending codes in `missing_rates` so the UI can warn.
+Manual FX table used by `/api/summary` and `/api/projections` to convert per-account balances into the user's base currency. Rates are user-editable from the Settings modal — no outbound HTTP. A missing rate doesn't drop the account from totals; instead `/api/summary` falls back to 1.0 and returns the offending codes in `missing_rates` so the UI can warn.
 
 | Method | Path | Body / Params | Response |
 |---|---|---|---|
@@ -151,7 +137,7 @@ Self-serve data portability. Pairs with the `DELETE /api/auth/me` endpoint in th
 
 | Method | Path | Params | Response |
 |---|---|---|---|
-| `GET` | `/api/export` | — | `{version, exported_at, user, accounts, balance_history, budget_items, exchange_rates, transactions, goals}` — a complete user-scoped JSON dump. The `user` sub-object excludes `password_hash`. Returned with `Content-Disposition: attachment; filename="piledger-export-<username>-<YYYY-MM-DD>.json"` so browsers save the response rather than render it. |
+| `GET` | `/api/export` | — | `{version, exported_at, user, accounts, balance_history, exchange_rates, transactions, goals}` — a complete user-scoped JSON dump. The `user` sub-object excludes `password_hash`. Returned with `Content-Disposition: attachment; filename="piledger-export-<username>-<YYYY-MM-DD>.json"` so browsers save the response rather than render it. |
 
 ## Projection calculation
 
@@ -163,14 +149,6 @@ balance(m) = initial_balance × (1 + monthly_rate)^m
 ```
 
 One data point per month for the requested horizon, plus pre-computed milestones at 12, 24, and 60 months.
-
-**Budget projections** (`/api/budget/projection`) — combines cash flows with interest compounding. For each month after month 0:
-
-```
-new_balance = (old_balance + monthly_net_cashflow) × (1 + monthly_rate)
-```
-
-Current accounts have `monthly_rate = 0`, so they accumulate cash flows linearly. Savings accounts grow on the post-cashflow balance. Loan accounts use the same formula — interest accrues on the outstanding balance each month, and negative budget items (payments) reduce that balance.
 
 ## Error responses
 

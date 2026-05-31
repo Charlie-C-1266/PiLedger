@@ -25,7 +25,6 @@ import constants
 USER_SCOPED_TABLES: tuple[str, ...] = (
     "accounts",
     "balance_history",
-    "budget_items",
     "exchange_rates",
     "transactions",
     "goals",
@@ -99,7 +98,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 5
+SCHEMA_VERSION: int = 6
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -209,29 +208,10 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.commit()
 
-    # 8. budget_items.amount (REAL) → amount_cents (INTEGER).
-    bi_cols = {r[1] for r in conn.execute("PRAGMA table_info(budget_items)").fetchall()}
-    if "amount" in bi_cols and "amount_cents" not in bi_cols:
-        conn.execute("PRAGMA foreign_keys = OFF")
-        conn.executescript("""
-            CREATE TABLE budget_items_new (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-                name         TEXT    NOT NULL,
-                amount_cents INTEGER NOT NULL,
-                frequency    TEXT    NOT NULL
-                    CHECK(frequency IN ('weekly','monthly','quarterly','annually')),
-                created_at   TEXT    DEFAULT (datetime('now'))
-            );
-            INSERT INTO budget_items_new (id, user_id, account_id, name, amount_cents, frequency, created_at)
-                SELECT id, user_id, account_id, name, CAST(ROUND(amount * 100) AS INTEGER), frequency, created_at
-                FROM budget_items;
-            DROP TABLE budget_items;
-            ALTER TABLE budget_items_new RENAME TO budget_items;
-        """)
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.commit()
+    # 8. Drop the retired budget_items table (recurring-cash-flow model,
+    #    superseded by the envelope budget). Idempotent: no-op if absent.
+    conn.execute("DROP TABLE IF EXISTS budget_items")
+    conn.commit()
 
     # 9. Add transactions.transfer_id (links the two legs of a transfer).
     _ensure_transfer_id_column(conn)
@@ -347,6 +327,15 @@ def _migrate_to_5(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_6(conn: sqlite3.Connection) -> None:
+    """Drop the retired budget_items table. Its recurring-cash-flow model and
+    orphaned /api/budget* endpoints are superseded by the envelope budget, which
+    reclaims the /api/budget namespace."""
+    conn.execute("DROP TABLE IF EXISTS budget_items")
+    _set_schema_version(conn, 6)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -396,16 +385,6 @@ def init() -> None:
                 balance_cents INTEGER NOT NULL,
                 notes         TEXT,
                 recorded_at   TEXT    DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS budget_items (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                account_id   INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-                name         TEXT    NOT NULL,
-                amount_cents INTEGER NOT NULL,
-                frequency    TEXT    NOT NULL
-                    CHECK(frequency IN ('weekly','monthly','quarterly','annually')),
-                created_at   TEXT    DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS transactions (
                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -467,6 +446,10 @@ def init() -> None:
         if version < 5:
             _migrate_to_5(conn)
             version = 5
+
+        if version < 6:
+            _migrate_to_6(conn)
+            version = 6
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

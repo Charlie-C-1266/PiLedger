@@ -54,15 +54,6 @@ def _seed(client):
         },
     ).json()
     client.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 100.0})
-    client.post(
-        "/api/budget",
-        json={
-            "account_id": acct["id"],
-            "name": "Rent",
-            "amount": -800.0,
-            "frequency": "monthly",
-        },
-    )
     client.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
     client.post(
         "/api/transactions",

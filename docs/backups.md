@@ -85,4 +85,4 @@ For a Docker deployment, wrap the `docker compose exec` form in a host-side cron
 
 ## Per-user data export
 
-For individual user portability (as opposed to a whole-database backup), PiLedger also provides `GET /api/export` (shipped in v0.20.0). This returns a JSON dump of a single user's accounts, balance history, budget items, and exchange rates — useful for migrating one user's data or for the user themselves to keep a personal archive. See [API Reference — Data lifecycle](api-reference.md#data-lifecycle).
+For individual user portability (as opposed to a whole-database backup), PiLedger also provides `GET /api/export` (shipped in v0.20.0). This returns a JSON dump of a single user's accounts, balance history, transactions, goals, and exchange rates — useful for migrating one user's data or for the user themselves to keep a personal archive. See [API Reference — Data lifecycle](api-reference.md#data-lifecycle).
