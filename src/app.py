@@ -36,7 +36,6 @@ from limiter import limiter
 from routers import auth as auth_router
 from routers import (
     accounts,
-    budget,
     categories,
     dashboard,
     goals,
@@ -93,7 +92,6 @@ app.include_router(auth_router.router)
 app.include_router(accounts.router)
 app.include_router(transactions.router)
 app.include_router(dashboard.router)
-app.include_router(budget.router)
 app.include_router(goals.router)
 app.include_router(prefs.router)
 app.include_router(rates.router)

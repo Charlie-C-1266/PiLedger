@@ -61,15 +61,6 @@ def _seed_alice(alice):
     ).json()
     alice.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 1234.56})
     alice.post(f"/api/accounts/{acct['id']}/balance", json={"balance": 1400.00})
-    alice.post(
-        "/api/budget",
-        json={
-            "account_id": acct["id"],
-            "name": "Rent",
-            "amount": -800.0,
-            "frequency": "monthly",
-        },
-    )
     alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.78}]})
     alice.post(
         "/api/transactions",
@@ -98,9 +89,6 @@ def test_export_round_trips_every_user_scoped_table(alice):
         140000,
         135750,
     }
-
-    assert len(body["budget_items"]) == 1
-    assert body["budget_items"][0]["amount_cents"] == -80000
 
     assert len(body["exchange_rates"]) == 1
     assert body["exchange_rates"][0]["currency"] == "USD"

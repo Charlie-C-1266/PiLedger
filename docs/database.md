@@ -49,20 +49,6 @@ Immutable log of balance snapshots. Every "Update Balance" action appends a new 
 | `notes` | TEXT | Optional free-text annotation |
 | `recorded_at` | TEXT | UTC ISO-8601, set by the server at insert time |
 
-## `budget_items`
-
-Recurring cash-flow items used by the Budget Planner — one row per item, attached to a single account. Positive amounts are inflows, negative amounts are outflows; for loan accounts a negative amount represents a payment that reduces the balance.
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | INTEGER PK | Auto-increment |
-| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
-| `account_id` | INTEGER FK → `accounts.id` | Cascade-deletes when account is removed |
-| `name` | TEXT | Display name, e.g. "Rent" or "Minimum monthly payment" |
-| `amount_cents` | INTEGER | Signed amount in cents (+ inflow, − outflow) |
-| `frequency` | TEXT | One of `'weekly'`, `'monthly'`, `'quarterly'`, `'annually'`. Normalised to a monthly equivalent via `FREQ_TO_MONTHLY` (in `constants.py`) before any projection is calculated. |
-| `created_at` | TEXT | UTC ISO-8601 |
-
 ## `exchange_rates`
 
 Manual FX rates per user. One row per currency pair. Rates express "1 unit of `currency` = `rate` units of the user's base currency". The base currency itself is never stored here — the rate against the base is always implicitly 1.
@@ -129,10 +115,11 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 5. **`accounts.currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
 6. **`users.base_currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
 7. **`balance_history.balance REAL` → `balance_cents INTEGER`** — table rebuilt; values converted with `CAST(ROUND(balance * 100) AS INTEGER)`.
-8. **`budget_items.amount REAL` → `amount_cents INTEGER`** — same approach as (7).
+8. **`budget_items` dropped** — the retired recurring-cash-flow table (superseded by the envelope budget) is removed with `DROP TABLE IF EXISTS budget_items`.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
 **Versioned migrations** (applied by `schema_version` gate after the legacy path):
 
 - **v1 (0.30.0)** — `accounts.type` constraint widened to include `'credit'` and `'invest'` (table rebuild); `transactions` and `goals` tables created.
+- **v6** — the retired `budget_items` table is dropped (superseded by the envelope budget; the old `/api/budget*` endpoints had no frontend caller).

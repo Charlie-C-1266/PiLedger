@@ -67,7 +67,6 @@ HEX_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
 AccountType = Literal["current", "savings", "loan", "credit", "invest"]
 RangeKey = Literal["7D", "30D", "90D", "1Y"]
 RANGE_TO_DAYS: dict[str, int] = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365}
-Frequency = Literal["weekly", "monthly", "quarterly", "annually"]
 
 # UK-market account sub-types. "general" is the catch-all for users who don't
 # want to record this level of detail and is valid for every parent type.
@@ -238,14 +237,6 @@ SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
         }
     ),
 }
-
-FREQ_TO_MONTHLY: dict[Frequency, float] = {
-    "weekly": 52 / 12,
-    "monthly": 1.0,
-    "quarterly": 1 / 3,
-    "annually": 1 / 12,
-}
-
 
 # ─── API bounds ───────────────────────────────────────────────────────────────
 # Money is bounded so float→cents conversion stays well within int64 head-room

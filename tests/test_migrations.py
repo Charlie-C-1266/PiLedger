@@ -14,7 +14,7 @@ The migrations under test (in execution order inside ``init()``):
 5. Add ``accounts.currency``.
 6. Add ``users.base_currency``.
 7. Convert ``balance_history.balance`` (REAL) → ``balance_cents`` (INTEGER).
-8. Convert ``budget_items.amount``  (REAL) → ``amount_cents``  (INTEGER).
+8. Drop the retired ``budget_items`` table (superseded by the envelope budget).
 
 After all legacy migrations run (or are no-ops on a fresh DB), ``init()``
 stamps a ``schema_version`` row in the ``meta`` table. Subsequent runs
@@ -279,22 +279,17 @@ def test_balance_history_values_converted_to_cents_exactly(migrated_db):
     assert rows == [(1, 123456), (2, 800000)]
 
 
-def test_budget_items_amount_real_renamed_to_amount_cents(migrated_db):
-    cols = _table_columns(migrated_db, "budget_items")
-    assert "amount_cents" in cols
-    assert "amount" not in cols
-
-
-def test_budget_items_values_converted_to_cents_exactly(migrated_db):
-    """3000.00 → 300000 cents; -1234.55 → -123455 cents (sign preserved)."""
+def test_budget_items_table_dropped(migrated_db):
+    """The retired budget_items table — seeded with rows in the v0 fixture —
+    must be gone after migration, even when it held data."""
     conn = sqlite3.connect(str(migrated_db))
     try:
-        rows = conn.execute(
-            "SELECT name, amount_cents FROM budget_items ORDER BY id"
-        ).fetchall()
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='budget_items'"
+        ).fetchone()
     finally:
         conn.close()
-    assert rows == [("Salary", 300000), ("Rent", -123455)]
+    assert row is None
 
 
 # ─── Idempotency + fresh-DB sanity ────────────────────────────────────────────
@@ -311,7 +306,6 @@ def test_running_init_twice_is_a_noop(migrated_db):
         pre_count_bh = conn.execute("SELECT COUNT(*) FROM balance_history").fetchone()[
             0
         ]
-        pre_count_bi = conn.execute("SELECT COUNT(*) FROM budget_items").fetchone()[0]
     finally:
         conn.close()
 
@@ -325,10 +319,6 @@ def test_running_init_twice_is_a_noop(migrated_db):
         assert (
             conn.execute("SELECT COUNT(*) FROM balance_history").fetchone()[0]
             == pre_count_bh
-        )
-        assert (
-            conn.execute("SELECT COUNT(*) FROM budget_items").fetchone()[0]
-            == pre_count_bi
         )
     finally:
         conn.close()
@@ -373,15 +363,6 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
         "balance_cents",
         "notes",
         "recorded_at",
-    }
-    assert _table_columns(db_path, "budget_items") >= {
-        "id",
-        "user_id",
-        "account_id",
-        "name",
-        "amount_cents",
-        "frequency",
-        "created_at",
     }
     assert _table_columns(db_path, "sessions") >= {"token", "user_id", "expires_at"}
     assert _table_columns(db_path, "exchange_rates") >= {
