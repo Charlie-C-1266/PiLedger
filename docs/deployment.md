@@ -82,9 +82,9 @@ Description=PiLedger Finance Dashboard
 After=network.target
 
 [Service]
-User=charlie
-WorkingDirectory=/home/charlie/git/piledger
-ExecStart=/home/charlie/git/piledger/venv/bin/uvicorn --app-dir /home/charlie/git/piledger/src app:app --host 0.0.0.0 --port 8080
+User=piledger
+WorkingDirectory=/path/to/piledger
+ExecStart=/path/to/piledger/venv/bin/uvicorn --app-dir /path/to/piledger/src app:app --host 0.0.0.0 --port 8080
 Restart=on-failure
 
 [Install]
