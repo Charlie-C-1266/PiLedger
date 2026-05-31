@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Hardcoded `/home/charlie/` paths removed from documentation.** The bare-metal sections of `docs/deployment.md` and `docs/backups.md` contained absolute paths specific to the original development environment (`/home/charlie/git/piledger`, `/home/charlie/backups/`). These have been replaced with generic placeholders (`/path/to/piledger`, `/path/to/backups/`) so the documentation works for any installation. The example restore filename has also been generalised from a hardcoded date to `piledger-YYYY-MM-DD.db`. Affected files: `docs/deployment.md`, `docs/backups.md`.
+
 ### Changed
 
 - **Began splitting the 1,656-line `src/app.py` into per-resource routers + shared services (refactor stage 1 of 8).** `app.py` had grown to mix app setup, ~36 route handlers, shared business helpers and SPA serving in one hard-to-review file. This first stage lands the scaffolding and proves the pattern on one low-risk router, with no behaviour change. The shared `Limiter` moved to `src/limiter.py` so routers can apply `@limiter.limit(...)` without importing `app` (which would cycle); the FX helpers (`_load_rates`, `_rescale_rates`, `_convert_to_base`) moved to `src/services/currency.py` and the account helpers (`_adjust_account_balance`, `_require_account`) to `src/services/accounts.py`; and the categories endpoints moved into `src/routers/categories.py` as an `APIRouter` mounted via `include_router` before the SPA routes. `app.py` re-exports `app`/`init`/`limiter` so the test suite needs no change. A new route-table snapshot test (`tests/test_route_table.py`) freezes the full set of `(path, method)` pairs as the migration safety net. Affected files: `src/limiter.py` (new), `src/services/__init__.py` + `currency.py` + `accounts.py` (new), `src/routers/__init__.py` + `categories.py` (new), `src/app.py` (helpers/limiter/categories removed, router included), `tests/test_route_table.py` (new).

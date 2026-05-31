@@ -24,8 +24,8 @@ docker compose cp piledger:/data/backups/ ./backups/
 ## Bare-metal: one-shot backup
 
 ```bash
-sqlite3 /home/charlie/git/piledger/piledger.db \
-  ".backup '/home/charlie/backups/piledger-$(date +%Y-%m-%d).db'"
+sqlite3 /path/to/piledger/piledger.db \
+  ".backup '/path/to/backups/piledger-$(date +%Y-%m-%d).db'"
 ```
 
 ## Automated backups with cron
@@ -40,7 +40,7 @@ crontab -e
 Add the following line (adjust paths as needed):
 
 ```cron
-0 3 * * * sqlite3 /home/charlie/git/piledger/piledger.db ".backup '/home/charlie/backups/piledger-$(date +\%Y-\%m-\%d).db'" && find /home/charlie/backups -name 'piledger-*.db' -mtime +7 -delete
+0 3 * * * sqlite3 /path/to/piledger/piledger.db ".backup '/path/to/backups/piledger-$(date +\%Y-\%m-\%d).db'" && find /path/to/backups -name 'piledger-*.db' -mtime +7 -delete
 ```
 
 This runs at 03:00 daily, creates a date-stamped backup, and deletes any backup older than seven days.
@@ -70,7 +70,7 @@ For a Docker deployment, wrap the `docker compose exec` form in a host-side cron
    docker compose cp ./backups/piledger-2026-05-20.db piledger:/data/piledger.db
 
    # Bare-metal — direct file copy (server is stopped, so cp is safe)
-   cp /home/charlie/backups/piledger-2026-05-20.db /home/charlie/git/piledger/piledger.db
+   cp /path/to/backups/piledger-YYYY-MM-DD.db /path/to/piledger/piledger.db
    ```
 
 3. **Start the application.**
