@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Hardcoded `/home/charlie/` paths removed from documentation.** The bare-metal sections of `docs/deployment.md` and `docs/backups.md` contained absolute paths specific to the original development environment (`/home/charlie/git/piledger`, `/home/charlie/backups/`). These have been replaced with generic placeholders (`/path/to/piledger`, `/path/to/backups/`) so the documentation works for any installation. The example restore filename has also been generalised from a hardcoded date to `piledger-YYYY-MM-DD.db`. Affected files: `docs/deployment.md`, `docs/backups.md`.
+
 ### Changed
 
 - **Accounts page now shows a single filterable list instead of three separate sections.** The page previously rendered "All accounts", "Assets", and "Debts" sections simultaneously, causing every account to appear at least twice and making the page confusing. All three sections are replaced by one unified list with an All / Assets / Debts pill filter above it; selecting "Assets" or "Debts" shows the running total in the matching colour; "All" restores the "Click to update balance" hint. Affected files: `frontend/src/screens/Accounts.tsx`, `frontend/src/screens/Accounts.module.css`.
