@@ -373,6 +373,51 @@ class NetWorthPointOut(BaseModel):
     value: float
 
 
+# ─── Envelope budget (read API) ───────────────────────────────────────────────
+# Money is exposed as pounds (floats). `budgeted` and income `amount` are monthly
+# figures; `spent` is the current month's actual, converted to the base currency.
+
+
+class BudgetIncomeOut(BaseModel):
+    id: int
+    label: str
+    amount: float
+    sort_order: int
+
+
+class BudgetEnvelopeOut(BaseModel):
+    id: int
+    group_id: int
+    label: str
+    category: str
+    budgeted: float
+    spent: float
+    sort_order: int
+
+
+class BudgetGroupOut(BaseModel):
+    id: int
+    name: str
+    color: str
+    flexible: bool
+    sort_order: int
+    envelopes: list[BudgetEnvelopeOut]
+
+
+class BudgetHistoryPoint(BaseModel):
+    month: str  # "YYYY-MM"
+    budgeted: float  # current total allocation (flat reference, not a snapshot)
+    spent: float  # that month's spend across enveloped categories, in base currency
+
+
+class BudgetOut(BaseModel):
+    incomes: list[BudgetIncomeOut]
+    groups: list[BudgetGroupOut]
+    history: list[BudgetHistoryPoint]
+    base_currency: str
+    missing_rates: list[str]
+
+
 class CategoryIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=100)]
 
