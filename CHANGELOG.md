@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **The header search button is now functional — searches accounts, goals, and transactions.** The "Search" pill in the desktop header was a static, non-interactive `<div>` (and there was no search affordance at all on mobile), so clicking it did nothing. It now opens a command-palette overlay: typing matches your accounts and goals by name (filtered client-side from the already-cached lists) and your transactions by merchant/note (server-side via the existing `GET /api/transactions?search=` param, debounced 200 ms and capped at 8 rows). Results are grouped under Accounts / Goals / Transactions, navigable by mouse or ↑/↓ + Enter, and dismissable with Esc or a backdrop click. Selecting a result jumps to the relevant screen — a transaction deep-links to `/transactions?q=<term>` so the Transactions list opens pre-filtered to that search. A matching search button was also added to the mobile header. Affected files: `frontend/src/components/SearchModal.tsx` (new), `frontend/src/components/SearchModal.module.css` (new), `frontend/src/components/Header.tsx` (search pill → button, `onSearch` prop, mobile search button), `frontend/src/components/Header.module.css` (button reset + hover on the pill), `frontend/src/components/Shell.tsx` (search overlay state + wiring), `frontend/src/screens/Transactions.tsx` (seed the search box from the `?q=` deep-link param).
+
 ### Fixed
 
 - **Hardcoded `/home/charlie/` paths removed from documentation.** The bare-metal sections of `docs/deployment.md` and `docs/backups.md` contained absolute paths specific to the original development environment (`/home/charlie/git/piledger`, `/home/charlie/backups/`). These have been replaced with generic placeholders (`/path/to/piledger`, `/path/to/backups/`) so the documentation works for any installation. The example restore filename has also been generalised from a hardcoded date to `piledger-YYYY-MM-DD.db`. Affected files: `docs/deployment.md`, `docs/backups.md`.

@@ -9,6 +9,7 @@ import AddAccountModal from "./AddAccountModal";
 import AddModal from "./AddModal";
 import TransferModal from "./TransferModal";
 import AddGoalModal from "./AddGoalModal";
+import SearchModal from "./SearchModal";
 import type { AddTarget } from "./AddMenu";
 import styles from "./Shell.module.css";
 
@@ -24,6 +25,7 @@ function getLayout(): Layout {
 export default function Shell() {
   const [layout, setLayout] = useState<Layout>(getLayout);
   const [modal, setModal] = useState<AddTarget | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { data: accounts } = useAccounts();
   const { data: me } = useMe();
 
@@ -40,7 +42,12 @@ export default function Shell() {
     <div className={`${styles.shell} ${mobile ? styles.mobileShell : ""}`}>
       {!mobile && <Sidebar compact={layout === "compact"} username={me?.username} />}
       <main className={`${styles.main} ${mobile ? styles.mainMobile : ""}`}>
-        <Header mobile={mobile} onAdd={setModal} username={me?.username} />
+        <Header
+          mobile={mobile}
+          onAdd={setModal}
+          onSearch={() => setSearchOpen(true)}
+          username={me?.username}
+        />
         {mobile && <TabStrip />}
         <Outlet />
       </main>
@@ -54,6 +61,7 @@ export default function Shell() {
       {modal === "goal" && (
         <AddGoalModal onClose={() => setModal(null)} />
       )}
+      {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }
