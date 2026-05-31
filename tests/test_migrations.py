@@ -373,6 +373,126 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
     }
 
 
+# ─── Envelope budget tables (schema_version 7) ───────────────────────────────
+
+
+@pytest.fixture
+def fresh_db(tmp_path, monkeypatch):
+    """A brand-new database after init() — current schema, no rows."""
+    db_path = tmp_path / "fresh.db"
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init
+
+    init()
+    return db_path
+
+
+def _connect(db_path: Path) -> sqlite3.Connection:
+    """Raw connection with FK enforcement on (so ON DELETE CASCADE fires)."""
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+def test_budget_tables_created_on_fresh_db(fresh_db):
+    assert _table_columns(fresh_db, "budget_income") >= {
+        "id",
+        "user_id",
+        "label",
+        "amount_cents",
+        "sort_order",
+        "created_at",
+    }
+    assert _table_columns(fresh_db, "budget_group") >= {
+        "id",
+        "user_id",
+        "name",
+        "color",
+        "flexible",
+        "sort_order",
+        "created_at",
+    }
+    assert _table_columns(fresh_db, "budget_envelope") >= {
+        "id",
+        "user_id",
+        "group_id",
+        "label",
+        "category",
+        "budgeted_cents",
+        "sort_order",
+        "created_at",
+    }
+
+
+def test_budget_tables_created_on_legacy_migration(migrated_db):
+    """The v0 fixture predates the budget tables; init() must create them on
+    the legacy path too (they come from the shared CREATE-IF-NOT-EXISTS DDL)."""
+    for table in ("budget_income", "budget_group", "budget_envelope"):
+        assert _table_columns(migrated_db, table), f"{table} missing after migration"
+
+
+def _seed_budget(conn: sqlite3.Connection) -> None:
+    conn.execute("INSERT INTO users(id, username, password_hash) VALUES(1, 'a', 'x')")
+    conn.execute(
+        "INSERT INTO budget_income(user_id, label, amount_cents) VALUES(1, 'Salary', 300000)"
+    )
+    conn.execute("INSERT INTO budget_group(id, user_id, name) VALUES(1, 1, 'Bills')")
+    conn.execute(
+        "INSERT INTO budget_envelope(user_id, group_id, label, category)"
+        " VALUES(1, 1, 'Rent', 'Bills')"
+    )
+    conn.commit()
+
+
+def test_budget_envelope_cascades_when_group_deleted(fresh_db):
+    """budget_envelope.group_id is ON DELETE CASCADE — dropping a group drops
+    its envelopes."""
+    conn = _connect(fresh_db)
+    try:
+        _seed_budget(conn)
+        conn.execute("DELETE FROM budget_group WHERE id=1")
+        conn.commit()
+        n = conn.execute("SELECT COUNT(*) FROM budget_envelope").fetchone()[0]
+    finally:
+        conn.close()
+    assert n == 0
+
+
+def test_budget_tables_cascade_when_user_deleted(fresh_db):
+    """All three tables cascade from users(id) — deleting the user clears them,
+    which is what DELETE /api/auth/me relies on."""
+    conn = _connect(fresh_db)
+    try:
+        _seed_budget(conn)
+        conn.execute("DELETE FROM users WHERE id=1")
+        conn.commit()
+        counts = [
+            conn.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            for t in ("budget_income", "budget_group", "budget_envelope")
+        ]
+    finally:
+        conn.close()
+    assert counts == [0, 0, 0]
+
+
+def test_budget_envelope_category_is_unique_per_user(fresh_db):
+    """UNIQUE(user_id, category) stops one category being enveloped twice
+    (which would double-count its spend)."""
+    conn = _connect(fresh_db)
+    try:
+        _seed_budget(conn)
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO budget_envelope(user_id, group_id, label, category)"
+                " VALUES(1, 1, 'Energy', 'Bills')"
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+
 # ─── schema_version stamp ───────────────────────────────────────────────────
 
 

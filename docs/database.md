@@ -91,6 +91,50 @@ Named savings goals. Independent of accounts — tracks a target amount and prog
 | `color` | TEXT | Hex colour for the goal card; defaults to `#0F766E` |
 | `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
 
+## `budget_income`
+
+Manual income lines for the zero-based envelope budget — what the user has to assign each month. Not derived from transactions. Amounts are stored monthly.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
+| `label` | TEXT | Display name, e.g. "Salary" |
+| `amount_cents` | INTEGER | Monthly amount in cents; defaults to 0 |
+| `sort_order` | INTEGER | Display order; defaults to 0 |
+| `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
+## `budget_group`
+
+A named group of envelopes (e.g. "Bills & Housing"). `flexible` drives the "safe to spend" calculation — only flexible groups count toward it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
+| `name` | TEXT | Group name |
+| `color` | TEXT | Hex colour for the group swatch/slices; defaults to `#0F766E` |
+| `flexible` | INTEGER | `1` = flexible (counts toward safe-to-spend), `0` = fixed; defaults to 0 |
+| `sort_order` | INTEGER | Display order; defaults to 0 |
+| `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
+## `budget_envelope`
+
+A single spending envelope inside a group. Each envelope tracks exactly one PiLedger transaction `category`; its actual `spent` is computed live from transactions and is never stored. Budgeted amounts are stored monthly.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment |
+| `user_id` | INTEGER FK → `users.id` | Cascade-deletes when user is removed |
+| `group_id` | INTEGER FK → `budget_group.id` | Cascade-deletes when the group is removed |
+| `label` | TEXT | Display name, e.g. "Rent" |
+| `category` | TEXT | The transaction category this envelope tracks for `spent` |
+| `budgeted_cents` | INTEGER | Monthly budgeted amount in cents; defaults to 0 |
+| `sort_order` | INTEGER | Display order within the group; defaults to 0 |
+| `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+
+`UNIQUE(user_id, category)` — a category may be enveloped at most once per user, so its spend is never double-counted.
+
 ## `meta`
 
 Key-value infrastructure table. Currently holds a single row: `schema_version`.
@@ -123,3 +167,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 
 - **v1 (0.30.0)** — `accounts.type` constraint widened to include `'credit'` and `'invest'` (table rebuild); `transactions` and `goals` tables created.
 - **v6** — the retired `budget_items` table is dropped (superseded by the envelope budget; the old `/api/budget*` endpoints had no frontend caller).
+- **v7** — the zero-based envelope budget tables are created: `budget_income`, `budget_group`, `budget_envelope`.
