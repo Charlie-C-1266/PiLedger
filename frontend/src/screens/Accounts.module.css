@@ -90,7 +90,8 @@
   color: var(--pl-text-soft);
 }
 
-.pillActive {
+.pillActive,
+.pillActive:hover {
   background: var(--pl-text);
   color: var(--pl-surface);
 }
