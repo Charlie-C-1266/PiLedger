@@ -57,6 +57,12 @@ The envelope budget: manual income lines, envelope groups, and the envelopes ins
 | Method | Path | Body / Params | Response |
 |---|---|---|---|
 | `GET` | `/api/budget` | — | `{incomes[], groups[], history[], base_currency, missing_rates}` — see below |
+| `POST` | `/api/budget/income` | `{label, amount?}` | Created income line `{id, label, amount, sort_order}`. `amount` defaults to 0; new lines append to the end. |
+| `PUT` | `/api/budget/income/{id}` | `{label?, amount?, sort_order?}` | Updated income line. `404` if not owned. |
+| `DELETE` | `/api/budget/income/{id}` | — | `{ok}`. `404` if not owned. |
+| `POST` | `/api/budget/groups` | `{name, color?, flexible?}` | Created group `{id, name, color, flexible, sort_order}` (no nested envelopes). `color` is a `#rrggbb` hex (defaults to `#0F766E`); `flexible` defaults to `false`; groups append to the end. |
+| `PUT` | `/api/budget/groups/{id}` | `{name?, color?, flexible?, sort_order?}` | Updated group. `404` if not owned. |
+| `DELETE` | `/api/budget/groups/{id}` | — | `{ok}` — deleting a group cascades its envelopes. `404` if not owned. |
 
 Read-only aggregate for the Budget screen:
 
