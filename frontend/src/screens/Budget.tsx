@@ -132,6 +132,7 @@ export default function Budget() {
                 group={g}
                 currency={currency}
                 factor={factor}
+                incomeTotal={incomeTotal}
                 onEditGroup={(group) => setGroupModal({ group })}
                 onAddEnvelope={(groupId) => setEnvModal({ groupId })}
                 onEditEnvelope={(envelope) => setEnvModal({ envelope })}

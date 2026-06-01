@@ -114,3 +114,31 @@ def test_period_toggle_rescales_and_slider_updates_totals(signed_in_page):
     # 1000 → 1500: the budgeted figure, the group total and the hero's allocated
     # stat all reflect it live (no save round-trip needed).
     expect(page.get_by_text("£1,500").first).to_be_visible()
+
+
+def test_slider_ceiling_is_stable_when_dragged_to_the_top(signed_in_page):
+    """Regression: the slider max used to be derived from the budget it sets, so
+    dragging to the top doubled the value, which doubled the max, which let the
+    next drag double again — running the figure up into the billions. The
+    ceiling must instead be a stable bound (the £3,000 income here)."""
+    page = signed_in_page
+    _seed_budget(page)
+    page.goto("/budget")
+
+    slider = page.get_by_role("slider", name="Groceries budgeted amount")
+    assert slider.get_attribute("max") == "3000"
+
+    # Drag all the way to the top, twice — the max must not ratchet upward.
+    for _ in range(2):
+        slider.evaluate(
+            """el => {
+              const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value'
+              ).set;
+              setter.call(el, el.max);
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+            }"""
+        )
+
+    assert slider.get_attribute("max") == "3000"
+    expect(page.get_by_text("£3,000").first).to_be_visible()
