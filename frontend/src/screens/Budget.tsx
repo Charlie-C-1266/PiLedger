@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { useBudget, useCreateGroup, useCreateIncome } from "../hooks/useBudget";
 import Hero from "../components/budget/Hero";
+import IncomeCard from "../components/budget/IncomeCard";
 import { PERIODS, type Period } from "../components/budget/period";
 import { fmt } from "../lib/currency";
 import styles from "./Budget.module.css";
 
 /**
- * Phase 7 scaffold. The designed hero (Left-to-budget + period toggle +
- * allocation balance bar + stat row) now sits at the top; the income card and
+ * Phase 8 scaffold. The designed hero and income card now lead the screen; the
  * envelope group cards below remain placeholder lists that the next phases
- * replace. The two no-argument "add" actions keep the screen demoable.
+ * replace. The "add group" action keeps the screen demoable.
  */
 export default function Budget() {
   const { data, isLoading } = useBudget();
@@ -81,24 +81,13 @@ export default function Budget() {
             onPeriodChange={setPeriod}
           />
 
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Income</h2>
-            {data.incomes.length === 0 && (
-              <div className={styles.muted}>No income lines yet.</div>
-            )}
-            {data.incomes.map((i) => (
-              <div key={i.id} className={styles.row}>
-                <span>{i.label}</span>
-                <span className={styles.num}>{fmt(i.amount * factor, currency)}</span>
-              </div>
-            ))}
-            <button
-              className={styles.addBtnSmall}
-              onClick={() => createIncome.mutate({ label: "New income", amount: 0 })}
-            >
-              + Add income
-            </button>
-          </section>
+          <IncomeCard
+            incomes={data.incomes}
+            currency={currency}
+            factor={factor}
+            period={period}
+            onAdd={() => createIncome.mutate({ label: "New income", amount: 0 })}
+          />
 
           {data.groups.map((g) => (
             <section key={g.id} className={styles.card}>
