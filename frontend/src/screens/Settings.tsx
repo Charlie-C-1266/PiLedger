@@ -368,6 +368,26 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Help */}
+      <div className={styles.card}>
+        <h2 className={styles.sectionTitle}>Help</h2>
+        <div className={styles.row}>
+          <div>
+            <div className={styles.label}>Documentation</div>
+            <div className={styles.hint}>Guides for setting up accounts, budgets, and more</div>
+          </div>
+          <a
+            className={styles.outlineBtn}
+            href="/guide"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "inline-block", textDecoration: "none" }}
+          >
+            Open docs
+          </a>
+        </div>
+      </div>
+
       {/* Session */}
       <div className={styles.card}>
         <h2 className={styles.sectionTitle}>Session</h2>
