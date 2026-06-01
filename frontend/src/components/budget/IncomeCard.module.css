@@ -1,0 +1,98 @@
+.card {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.sub {
+  margin: 5px 0 0;
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.total {
+  font: 700 20px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-up);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 96px auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--pl-rule);
+}
+
+.label {
+  font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.amount {
+  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.addBtn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent-soft);
+  color: var(--pl-accent);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addBtn:hover {
+  opacity: 0.85;
+}
+
+.addBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .amount {
+    display: none;
+  }
+}

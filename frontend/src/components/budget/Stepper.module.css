@@ -1,0 +1,28 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  cursor: pointer;
+  transition: opacity 160ms, color 160ms;
+}
+
+.btn:hover:not(:disabled) {
+  color: var(--pl-text);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
