@@ -1,0 +1,134 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font: 700 28px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.6px;
+  color: var(--pl-text);
+}
+
+.addBtn {
+  align-self: flex-start;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addBtn:hover {
+  opacity: 0.9;
+}
+
+/* Empty state */
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  background: var(--pl-surface);
+  border-radius: 18px;
+  box-shadow: var(--pl-shadow);
+}
+
+.emptyText {
+  max-width: 420px;
+  margin: 0 auto 20px;
+  font: 500 14px/1.6 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Scaffold (placeholder until the designed components land) */
+
+.scaffold {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font: 700 18px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  color: var(--pl-text);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.tag {
+  margin-left: auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-mute);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--pl-rule);
+  font: 600 14px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-soft);
+}
+
+.muted {
+  padding: 8px 0;
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.addBtnSmall {
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addBtnSmall:hover {
+  opacity: 0.85;
+}

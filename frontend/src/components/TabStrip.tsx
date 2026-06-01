@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { GridIcon, WalletIcon, ListIcon, FlagIcon, SettingsIcon } from "./icons";
+import { GridIcon, WalletIcon, ListIcon, BudgetIcon, FlagIcon, SettingsIcon } from "./icons";
 import styles from "./TabStrip.module.css";
 
 const tabs = [
   { to: "/overview", icon: <GridIcon />, label: "Overview" },
   { to: "/accounts", icon: <WalletIcon />, label: "Accounts" },
   { to: "/transactions", icon: <ListIcon />, label: "Txns" },
+  { to: "/budget", icon: <BudgetIcon />, label: "Budget" },
   { to: "/goals", icon: <FlagIcon />, label: "Goals" },
   { to: "/settings", icon: <SettingsIcon />, label: "Settings" },
 ];
