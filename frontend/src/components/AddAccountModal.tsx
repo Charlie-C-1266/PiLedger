@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createAccount, recordBalance } from "../api/client";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
+import { CURRENCIES } from "../lib/currency";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useSummary } from "../hooks/useSummary";
 import styles from "./AddModal.module.css";
 
 const TYPES = [
@@ -21,16 +23,27 @@ interface Props {
 
 export default function AddAccountModal({ onClose }: Props) {
   const mobile = useIsMobile();
+  const { data: summary } = useSummary();
   const [name, setName] = useState("");
   const [type, setType] = useState("current");
   const [balance, setBalance] = useState("");
+  const [currency, setCurrency] = useState("");
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [customColor, setCustomColor] = useState("");
   const queryClient = useQueryClient();
 
+  // Default to the user's base currency; fall back to GBP until summary loads.
+  const baseCurrency = summary?.base_currency ?? "GBP";
+  const selectedCurrency = currency || baseCurrency;
+
   const mutation = useMutation({
     mutationFn: async () => {
-      const account = await createAccount({ name: name.trim(), type, color });
+      const account = await createAccount({
+        name: name.trim(),
+        type,
+        color,
+        currency: selectedCurrency,
+      });
       const parsed = parseFloat(balance);
       if (!isNaN(parsed)) {
         await recordBalance(account.id, parsed);
@@ -87,6 +100,20 @@ export default function AddAccountModal({ onClose }: Props) {
           onChange={(e) => setBalance(e.target.value)}
           inputMode="decimal"
         />
+
+        <select
+          className={styles.select}
+          value={selectedCurrency}
+          onChange={(e) => setCurrency(e.target.value)}
+          aria-label="Account currency"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.name}
+              {c.code === baseCurrency ? " (base)" : ""}
+            </option>
+          ))}
+        </select>
 
         <div className={styles.chips}>
           {TYPES.map((t) => (

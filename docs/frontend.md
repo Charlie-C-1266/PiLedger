@@ -37,7 +37,7 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
-| `/settings` | `Settings` | Theme, dark mode, base currency, exchange rates, password change, account deletion |
+| `/settings` | `Settings` | Theme, dark mode, custom transaction categories, exchange-rate editor, password change, account deletion |
 
 All routes require a valid session. The server returns `302 → /login` for unauthenticated requests; the client also redirects on receiving `401` from any API call.
 
@@ -60,6 +60,7 @@ All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query h
 | `useTransactions(filters)` | `GET /api/transactions` | 30 s |
 | `useGoals()` | `GET /api/goals` | 30 s |
 | `useBudget()` | `GET /api/budget` | default |
+| `useRates()` | `GET /api/rates` | default |
 | `useSummary()` | `GET /api/summary` | 30 s |
 | `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
 | `useMe()` | `GET /api/auth/me` | Infinity |
@@ -88,7 +89,7 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 
 | Modal | Trigger | Operation |
 |---|---|---|
-| Add Account | "+ Add" menu | Creates account; optionally records an opening balance. |
+| Add Account | "+ Add" menu | Creates an account (name, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
 | Update Balance / Edit Colour | Click account card | Records a new `balance_history` row and/or updates the account colour. |
 | Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
 | Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |

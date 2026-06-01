@@ -11,6 +11,27 @@ const SYMBOLS: Record<string, string> = {
   NOK: "kr",
 };
 
+/**
+ * Supported currencies — mirrors the backend `Currency` literal / `CURRENCY_INFO`
+ * in `src/constants.py`. Adding one means appending here and in both backend spots.
+ */
+export const CURRENCIES: { code: string; name: string }[] = [
+  { code: "GBP", name: "British Pound" },
+  { code: "USD", name: "US Dollar" },
+  { code: "EUR", name: "Euro" },
+  { code: "JPY", name: "Japanese Yen" },
+  { code: "CAD", name: "Canadian Dollar" },
+  { code: "AUD", name: "Australian Dollar" },
+  { code: "CHF", name: "Swiss Franc" },
+  { code: "NZD", name: "New Zealand Dollar" },
+  { code: "SEK", name: "Swedish Krona" },
+  { code: "NOK", name: "Norwegian Krone" },
+];
+
+export function currencySymbol(currency: string): string {
+  return SYMBOLS[currency] ?? currency + " ";
+}
+
 function symbol(currency: string): string {
   return SYMBOLS[currency] ?? currency + " ";
 }

@@ -7,6 +7,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-currency is now usable end-to-end: account currency picker + manual FX-rate editor + a missing-rate warning.** The `GET/PUT /api/rates` endpoints existed but had no frontend caller (an orphaned/regressed feature), and net worth silently treated unconvertible foreign balances at 1:1 — `GET /api/summary` returned `missing_rates` but nothing surfaced it and there was no rate editor. This wires the whole flow up:
+  - **Account currency picker** — the Add Account modal now has a currency `<select>` (the 10 supported currencies, defaulting to the user's base currency) and passes `currency` to `POST /api/accounts`. Previously every UI-created account was forced to GBP, so a foreign balance couldn't even be created.
+  - **Exchange-rate editor** — a new "Exchange rates" card in Settings reads `GET /api/rates`, lists one editable row per currency (`1 USD = … GBP`), supports adding a currency from a picker or removing one, and saves the whole table via `PUT /api/rates`. It pre-seeds an empty row for every currency in `summary.missing_rates` so the unset ones are immediately fillable. Saving invalidates the rates, summary, and net-worth caches so every figure re-converts.
+  - **Missing-rate warning** — the Overview screen shows a banner (when `summary.missing_rates` is non-empty) explaining net worth may be inaccurate and linking to the editor.
+  - New `frontend/src/lib/currency.ts` `CURRENCIES` list (mirrors the backend `Currency` literal), `Rate`/`Rates` types, `getRates`/`updateRates` client functions, and a `useRates`/`useUpdateRates` hook. Closes Stage 2 of the Orphaned Endpoints audit (a correctness gap, not just feature parity). No backend change — the endpoints and account-currency validation already existed. Affected files: `frontend/src/lib/currency.ts`, `frontend/src/types.ts`, `frontend/src/api/client.ts`, `frontend/src/hooks/useRates.ts` (new), `frontend/src/components/AddAccountModal.tsx`, `frontend/src/screens/Settings.tsx` + `Settings.module.css`, `frontend/src/screens/Overview.tsx` + `Overview.module.css`, `tests/e2e/test_rates.py` (new), `docs/frontend.md`.
+
 ### Fixed
 
 - **Removed two phantom chart rows from `docs/frontend.md`.** The charts table listed a "Savings projection" chart (`GET /api/projections`) and an "Account balance" chart (`GET /api/accounts/{id}/history`), but neither exists in the React frontend — both endpoints are orphaned (no caller in `frontend/src`), a regression from the vanilla-JS rebuild that the v3.0.0 docs refresh carried over unverified. Dropped the two rows so the table reflects only the charts that actually render (net worth, distribution donut, and the three Budget charts). The endpoints themselves are untouched and still tracked in the Orphaned Endpoints audit. Affected files: `docs/frontend.md`.

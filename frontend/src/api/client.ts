@@ -10,6 +10,7 @@ import type {
   NetWorthPoint,
   Prefs,
   RangeKey,
+  Rates,
   Summary,
   Transaction,
   TransactionFilters,
@@ -100,6 +101,15 @@ export const getSummary = () => json<Summary>("/api/summary");
 
 export const getNetWorthSeries = (range: RangeKey = "30D") =>
   json<NetWorthPoint[]>(`/api/history/networth?range=${range}`);
+
+// Exchange rates
+
+export const getRates = () => json<Rates>("/api/rates");
+
+/** Replace the user's whole manual-rates table. Rates are 1 unit of `currency`
+ * expressed in the base currency; a rate against the base itself is rejected. */
+export const updateRates = (rates: { currency: string; rate: number }[]) =>
+  put<Rates>("/api/rates", { rates });
 
 // Transactions
 
