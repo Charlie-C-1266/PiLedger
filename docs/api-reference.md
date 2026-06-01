@@ -10,6 +10,7 @@ All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) req
 | `GET` | `/docs` | session | Swagger UI. Unauthenticated browsers are 302-redirected to `/login`. |
 | `GET` | `/redoc` | session | ReDoc. Same redirect behaviour as `/docs`. |
 | `GET` | `/api/openapi.json` | session | OpenAPI 3 spec consumed by the Swagger/ReDoc UIs above. Returns `401` without a session — FastAPI's default `/openapi.json` mount is disabled so an anonymous scanner cannot fingerprint the API. |
+| `GET` | `/api/docs/{slug}` | none | Raw Markdown (`text/markdown`) for one of the project docs, consumed by the public `/guide` documentation viewer. `slug` is validated against a fixed allowlist (path-traversal–safe); `404` for an unknown slug. |
 
 ## Auth
 
@@ -52,7 +53,7 @@ Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
 
 ## Budget (zero-based envelopes)
 
-The envelope budget: manual income lines, envelope groups, and the envelopes inside them. Budgeted and income figures are user-entered and stored monthly (in pounds via the API). Each envelope's `spent` is computed live and is never stored. CRUD endpoints for income / groups / envelopes are added in later phases.
+The envelope budget: manual income lines, envelope groups, and the envelopes inside them. Budgeted and income figures are user-entered and stored monthly (in pounds via the API). Each envelope's `spent` is computed live and is never stored. Full CRUD is available for income lines, groups, and envelopes; the read-only `GET /api/budget` aggregate (detailed after the table) is what the Budget screen renders.
 
 | Method | Path | Body / Params | Response |
 |---|---|---|---|
@@ -187,7 +188,8 @@ Bad input returns `400` with a `{"detail": ...}` body. Authentication failures r
 | `/overview` | Dashboard — net-worth chart, account cards, recent transactions, goals progress |
 | `/accounts` | Account list with card stack and asset/debt breakdown |
 | `/transactions` | Transaction browser with search, filters, and pagination |
+| `/budget` | Zero-based envelope budget — income, envelope groups, hero, period toggle, right rail, and trend |
 | `/goals` | Savings goals grid with progress tracking and ETA |
 | `/settings` | User preferences, password change, exchange rates, account deletion |
 
-All five routes require a valid session; unauthenticated requests are 302-redirected to `/login`. Static assets are served under the `/static/` prefix by FastAPI's `StaticFiles` mount, which is registered last so it cannot shadow any API routes.
+All six routes require a valid session; unauthenticated requests are 302-redirected to `/login`. Two standalone pages live outside the SPA shell: `/login` (the login / register page) and `/guide` (the public documentation viewer) — both are self-contained static HTML and `/guide` needs no session. Static assets are served under the `/static/` prefix by FastAPI's `StaticFiles` mount, which is registered last so it cannot shadow any API routes.

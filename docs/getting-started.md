@@ -5,8 +5,10 @@ Pick the path that fits how you want to run PiLedger. Docker Compose is the lowe
 | Path | Best for | Prereqs |
 |---|---|---|
 | [Docker Compose](#run-with-docker-compose) | Just trying it / self-hosting on a server you already use Docker on | Docker Engine + Compose v2 (`docker compose ...`) |
-| [Local — `uv`](#local-setup-with-uv-fast) | Developers who want the fastest possible install | Python 3.12, [uv](https://docs.astral.sh/uv/) |
-| [Local — `pip` + `venv`](#local-setup-with-pip--venv) | Developers without `uv`, or anyone who prefers the standard toolchain | Python 3.12 |
+| [Local — `uv`](#local-setup-with-uv-fast) | Developers who want the fastest possible install | Python 3.12, [uv](https://docs.astral.sh/uv/), Node 20+ |
+| [Local — `pip` + `venv`](#local-setup-with-pip--venv) | Developers without `uv`, or anyone who prefers the standard toolchain | Python 3.12, Node 20+ |
+
+> **Local paths need Node** because the React frontend is built with Vite and the compiled SPA bundle (`src/static/dist/`) is gitignored — a fresh clone has to build it once before the dashboard will load. The Docker path builds it for you inside the image.
 
 Whichever path you pick, the dashboard ends up on **http://localhost:8080**. The first visit redirects to `/login`; click **Register** to create your first account.
 
@@ -51,6 +53,7 @@ The host port (`8080`) is set in `docker-compose.yml`; change the left half of `
 ```bash
 # From the project root
 uv sync                                      # install all deps (runtime + dev) from uv.lock
+( cd frontend && npm ci && npm run build )   # build the React SPA → src/static/dist/
 
 ./start.sh                                   # serves on 0.0.0.0:8080
 ```
@@ -65,6 +68,7 @@ The standard-library flow — no extra tooling required beyond Python 3.12 itsel
 # From the project root
 python3 -m venv venv                                 # create the virtual environment
 ./venv/bin/pip install -r requirements.txt           # install runtime dependencies
+( cd frontend && npm ci && npm run build )           # build the React SPA → src/static/dist/
 
 ./start.sh                                           # serves on 0.0.0.0:8080
 ```

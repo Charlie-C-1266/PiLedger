@@ -5,7 +5,7 @@ This is the deeper reference for running PiLedger in production-like environment
 ## Prerequisites
 
 - Python 3.12
-- No other system-level dependencies
+- Node 20+ — to build the React frontend from source (see below). Not needed at runtime, only at build time; the Docker image builds it in a separate stage so a containerised deploy needs neither Node nor Python on the host.
 
 ## First-time setup
 
@@ -29,6 +29,14 @@ python3 -m venv venv
 ```
 
 The `uv` flow creates `.venv/` by default; the `pip` flow creates `venv/`. Both work with `./start.sh` and the systemd snippet below. For dev tools (pytest, ruff, mypy, etc.) in the pip flow, install them manually or use `uv sync` instead.
+
+**Then build the frontend** (either recipe). The compiled SPA bundle (`src/static/dist/`) is gitignored, so a from-source deploy must build it once before the dashboard will serve; rebuild it whenever the frontend changes:
+
+```bash
+cd /path/to/piledger/frontend
+npm ci
+npm run build      # outputs to ../src/static/dist/
+```
 
 ## Environment variables
 

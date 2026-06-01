@@ -22,6 +22,10 @@ A self-contained page with no external JavaScript dependencies. It contains:
 - Inline error display using `role="alert"` on error elements.
 - After a successful registration the page automatically posts a login request and redirects to `/`, so the user never has to sign in manually after creating their account.
 
+## Guide page (`guide.html`)
+
+A standalone, publicly accessible documentation page served at `/guide` (outside the SPA and the session gate). It renders Markdown to HTML in the browser using the vendored `marked.js` (`static/vendor/marked.min.js`) and shares the app's theme via `theme-bootstrap.js`.
+
 ## SPA screens
 
 The SPA is mounted from `static/dist/index.html` (the Vite production build). React Router handles client-side navigation between six screens:
