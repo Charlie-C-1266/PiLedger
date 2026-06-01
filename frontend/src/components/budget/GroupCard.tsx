@@ -40,7 +40,11 @@ export default function GroupCard({
           <span className={styles.total}>
             {fmt(total * factor, currency, { decimals: 0 })}
           </span>
-          <button className={styles.editBtn} onClick={() => onEditGroup(group)}>
+          <button
+            className={styles.editBtn}
+            onClick={() => onEditGroup(group)}
+            aria-label={`Edit ${group.name}`}
+          >
             Edit
           </button>
         </div>

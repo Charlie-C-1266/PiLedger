@@ -37,8 +37,8 @@ Browser  ──HTTP──►  FastAPI (src/app.py — thin wiring)
 | R9 | Interest rates on savings accounts | Annual interest rate (AER %) stored per savings account; used for monthly-compounding projections |
 | R10 | Login-gated access | Login page required before the dashboard is visible; session cookie enforced on every API route |
 | R11 | Per-user account isolation | Every account row carries a `user_id` foreign key; all queries filter by the authenticated user |
-| R12 | Budget planning with recurring items | `budget_items` table plus a dedicated Budget Planner view; month-by-month projections combining cash flows with interest compounding |
-| R13 | Loan / debt tracking with net-worth view | `'loan'` account type; balances subtract from net worth; APR-based interest accrual; payments modelled as negative budget items |
+| R12 | Budgeting | Zero-based envelope **Budget** screen backed by the `budget_income` / `budget_group` / `budget_envelope` tables; the user assigns income across envelope groups and actual spend per envelope is computed live from transactions by category |
+| R13 | Loan / debt tracking with net-worth view | `'loan'` account type; balances subtract from net worth; APR-based interest accrual |
 
 ## File Structure
 

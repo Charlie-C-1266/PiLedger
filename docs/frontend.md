@@ -24,13 +24,14 @@ A self-contained page with no external JavaScript dependencies. It contains:
 
 ## SPA screens
 
-The SPA is mounted from `static/dist/index.html` (the Vite production build). React Router handles client-side navigation between five screens:
+The SPA is mounted from `static/dist/index.html` (the Vite production build). React Router handles client-side navigation between six screens:
 
 | Route | Component | Purpose |
 |---|---|---|
 | `/overview` | `Overview` | Net-worth chart, account card stack, recent transactions, goals progress rings, asset distribution donut |
 | `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), assets-vs-debts sections, account type filter |
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
+| `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
 | `/settings` | `Settings` | Theme, dark mode, base currency, exchange rates, password change, account deletion |
 
@@ -40,7 +41,7 @@ All routes require a valid session. The server returns `302 → /login` for unau
 
 `Shell.tsx` wraps every screen and renders:
 
-- **Sidebar** — navigation rail with links to the five screens, the signed-in username at the bottom, and a Sign Out button. Uses `useMe()` to resolve the username from `GET /api/auth/me` on load.
+- **Sidebar** — navigation rail with links to the six screens, the signed-in username at the bottom, and a Sign Out button. Uses `useMe()` to resolve the username from `GET /api/auth/me` on load.
 - **Header** — top bar with the current date, a greeting, a global search input, a dark-mode toggle, and an **+ Add** dropdown menu.
 
 The sidebar collapses to a bottom tab strip (`TabStrip.tsx`) on narrow viewports.
@@ -54,25 +55,30 @@ All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query h
 | `useAccounts()` | `GET /api/accounts` | 30 s |
 | `useTransactions(filters)` | `GET /api/transactions` | 30 s |
 | `useGoals()` | `GET /api/goals` | 30 s |
+| `useBudget()` | `GET /api/budget` | default |
 | `useSummary()` | `GET /api/summary` | 30 s |
 | `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
 | `useMe()` | `GET /api/auth/me` | Infinity |
 
 Any hook receiving a `401` response redirects to `/login` immediately.
 
+The Budget screen's sliders and steppers edit through `useBudgetEdit`: it patches the cached `["budget"]` payload synchronously so every derived figure (group totals, the hero, the donut, safe-to-spend) re-renders instantly, then debounces the matching `PUT` (~400 ms, like the Goals contribution slider) and reconciles with the server on success.
+
 ## Charts
 
-All charts use **Recharts** with responsive containers.
+Line/area charts use **Recharts**; the donut and the horizontal/trend bars are hand-rolled SVG and CSS components in `src/components/charts/` (`Donut`, `HBar`) and the Budget screen.
 
 | Chart | Screen | Type | Data source |
 |---|---|---|---|
 | Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
 | Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
 | Account balance | Accounts | Stepped line | `GET /api/accounts/{id}/history` |
-| Budget projection | Settings | Multi-series line | `GET /api/budget/projection?months=3\|6\|12` |
 | Savings projection | Overview | Smooth line | `GET /api/projections` |
+| Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
+| Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
+| Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |
 
-The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart.
+The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
 
 ## Modals
 
@@ -80,11 +86,12 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 
 | Modal | Trigger | Operation |
 |---|---|---|
-| Add Account | "+ Add" menu | Creates account; optionally records an opening balance. For loans, also accepts a minimum monthly payment and creates a matching budget item. |
+| Add Account | "+ Add" menu | Creates account; optionally records an opening balance. |
 | Update Balance / Edit Colour | Click account card | Records a new `balance_history` row and/or updates the account colour. |
 | Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
 | Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |
-| Add / Edit Budget Item | Budget section on Settings | Creates or edits a recurring cash-flow item. |
+| Add / Edit Group | Budget screen | Creates, edits, or deletes an envelope group (name, colour, fixed/flexible). |
+| Add / Edit Envelope | Budget screen | Creates, edits, or deletes an envelope (label, tracked category, group, monthly budget). |
 | Confirm Delete | Within any edit modal | Two-step confirmation before any destructive action. |
 
 ## Theme system

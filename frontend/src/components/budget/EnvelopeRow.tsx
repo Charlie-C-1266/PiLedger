@@ -56,6 +56,7 @@ export default function EnvelopeRow({
         <button
           className={styles.label}
           onClick={() => onEdit(env)}
+          aria-label={`Edit ${env.label}`}
           title="Edit envelope"
         >
           {env.label}
