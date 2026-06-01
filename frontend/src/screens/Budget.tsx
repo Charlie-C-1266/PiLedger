@@ -1,21 +1,28 @@
 import { useMemo, useState } from "react";
-import { useBudget, useCreateGroup, useCreateIncome } from "../hooks/useBudget";
+import { useBudget, useCreateIncome } from "../hooks/useBudget";
 import Hero from "../components/budget/Hero";
 import IncomeCard from "../components/budget/IncomeCard";
+import GroupCard from "../components/budget/GroupCard";
+import AddGroupModal from "../components/budget/AddGroupModal";
+import AddEnvelopeModal from "../components/budget/AddEnvelopeModal";
 import { PERIODS, type Period } from "../components/budget/period";
-import { fmt } from "../lib/currency";
+import type { BudgetEnvelope, BudgetGroup } from "../types";
 import styles from "./Budget.module.css";
 
+type GroupModal = { group?: BudgetGroup };
+type EnvModal = { envelope?: BudgetEnvelope; groupId?: number };
+
 /**
- * Phase 8 scaffold. The designed hero and income card now lead the screen; the
- * envelope group cards below remain placeholder lists that the next phases
- * replace. The "add group" action keeps the screen demoable.
+ * Phase 9. The left column is now fully built: hero, income card, and one
+ * editable card per envelope group (live sliders + add/edit/delete via modals).
+ * The right rail (safe-to-spend, donut, spent-so-far) and trend land next.
  */
 export default function Budget() {
   const { data, isLoading } = useBudget();
   const createIncome = useCreateIncome();
-  const createGroup = useCreateGroup();
   const [period, setPeriod] = useState<Period>("monthly");
+  const [groupModal, setGroupModal] = useState<GroupModal | null>(null);
+  const [envModal, setEnvModal] = useState<EnvModal | null>(null);
 
   const currency = data?.base_currency ?? "GBP";
   const factor = PERIODS[period].factor;
@@ -59,10 +66,7 @@ export default function Budget() {
             >
               + Add income
             </button>
-            <button
-              className={styles.addBtn}
-              onClick={() => createGroup.mutate({ name: "New group" })}
-            >
+            <button className={styles.addBtn} onClick={() => setGroupModal({})}>
               + Add group
             </button>
           </div>
@@ -90,34 +94,32 @@ export default function Budget() {
           />
 
           {data.groups.map((g) => (
-            <section key={g.id} className={styles.card}>
-              <h2 className={styles.cardTitle}>
-                <span className={styles.swatch} style={{ background: g.color }} />
-                {g.name}
-                <span className={styles.tag}>{g.flexible ? "Flexible" : "Fixed"}</span>
-              </h2>
-              {g.envelopes.length === 0 && (
-                <div className={styles.muted}>No envelopes yet.</div>
-              )}
-              {g.envelopes.map((e) => (
-                <div key={e.id} className={styles.row}>
-                  <span>{e.label}</span>
-                  <span className={styles.num}>
-                    {fmt(e.spent * factor, currency)} /{" "}
-                    {fmt(e.budgeted * factor, currency)}
-                  </span>
-                </div>
-              ))}
-            </section>
+            <GroupCard
+              key={g.id}
+              group={g}
+              currency={currency}
+              factor={factor}
+              onEditGroup={(group) => setGroupModal({ group })}
+              onAddEnvelope={(groupId) => setEnvModal({ groupId })}
+              onEditEnvelope={(envelope) => setEnvModal({ envelope })}
+            />
           ))}
 
-          <button
-            className={styles.addBtn}
-            onClick={() => createGroup.mutate({ name: "New group" })}
-          >
+          <button className={styles.addBtn} onClick={() => setGroupModal({})}>
             + Add group
           </button>
         </div>
+      )}
+
+      {groupModal && (
+        <AddGroupModal group={groupModal.group} onClose={() => setGroupModal(null)} />
+      )}
+      {envModal && (
+        <AddEnvelopeModal
+          envelope={envModal.envelope}
+          groupId={envModal.groupId}
+          onClose={() => setEnvModal(null)}
+        />
       )}
     </div>
   );

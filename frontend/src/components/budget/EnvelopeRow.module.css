@@ -1,0 +1,68 @@
+.row {
+  padding: 14px 0;
+}
+
+.row + .row {
+  border-top: 1px solid var(--pl-rule);
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.label {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color 160ms;
+}
+
+.label:hover {
+  color: var(--pl-accent);
+}
+
+.figures {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.spent {
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-mute);
+}
+
+.spent.over {
+  color: var(--pl-down);
+}
+
+.budgeted {
+  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.barWrap {
+  margin-bottom: 8px;
+}
+
+.slider {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
