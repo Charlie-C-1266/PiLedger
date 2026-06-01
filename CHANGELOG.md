@@ -9,6 +9,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
+- **Documentation link in Settings.** The built docs were reachable from the login page (`/guide`) but had no entry point once logged in, so signed-in users couldn't get back to them without logging out. Adds a "Help" card to the Settings screen with an "Open docs" link that opens `/guide` in a new tab. Affected files: `frontend/src/screens/Settings.tsx`, `docs/frontend.md`.
+
 - **Multi-currency is now usable end-to-end: account currency picker + manual FX-rate editor + a missing-rate warning.** The `GET/PUT /api/rates` endpoints existed but had no frontend caller (an orphaned/regressed feature), and net worth silently treated unconvertible foreign balances at 1:1 — `GET /api/summary` returned `missing_rates` but nothing surfaced it and there was no rate editor. This wires the whole flow up:
   - **Account currency picker** — the Add Account modal now has a currency `<select>` (the 10 supported currencies, defaulting to the user's base currency) and passes `currency` to `POST /api/accounts`. Previously every UI-created account was forced to GBP, so a foreign balance couldn't even be created.
   - **Exchange-rate editor** — a new "Exchange rates" card in Settings reads `GET /api/rates`, lists one editable row per currency (`1 USD = … GBP`), supports adding a currency from a picker or removing one, and saves the whole table via `PUT /api/rates`. It pre-seeds an empty row for every currency in `summary.missing_rates` so the unset ones are immediately fillable. Saving invalidates the rates, summary, and net-worth caches so every figure re-converts.
