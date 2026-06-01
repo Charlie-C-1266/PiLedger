@@ -55,10 +55,42 @@
   justify-content: center;
 }
 
-/* Left column — hero, income card and one card per envelope group, stacked. */
+/* Two-column layout — left content + sticky right rail; single column < 720px. */
 
-.scaffold {
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.left {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
+  /* Let the hero / income / group cards respond to the column's real width
+     (it gets narrow in the two-column zone) rather than the viewport. */
+  container-type: inline-size;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+/* Collapse to a single column well before the cards get cramped. The app's
+   persistent side nav eats width the design's 720px assumed was free, so at
+   ~720px the two-column left card is only ~210px — too tight for the hero. */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+  }
 }

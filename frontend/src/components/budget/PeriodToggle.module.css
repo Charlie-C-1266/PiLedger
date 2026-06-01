@@ -25,3 +25,20 @@
   background: var(--pl-text);
   color: var(--pl-surface);
 }
+
+/* On a genuinely tiny card (small phones) the compact pill row would overflow,
+   so let it fill the width with three equal pills and a smaller font that still
+   fits "Monthly" without clipping. */
+@container (max-width: 320px) {
+  .group {
+    width: 100%;
+  }
+
+  .pill {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+}

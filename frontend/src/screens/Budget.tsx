@@ -3,6 +3,9 @@ import { useBudget, useCreateIncome } from "../hooks/useBudget";
 import Hero from "../components/budget/Hero";
 import IncomeCard from "../components/budget/IncomeCard";
 import GroupCard from "../components/budget/GroupCard";
+import SafeToSpendCard from "../components/budget/SafeToSpendCard";
+import AllocationDonut from "../components/budget/AllocationDonut";
+import SpentSoFarCard from "../components/budget/SpentSoFarCard";
 import AddGroupModal from "../components/budget/AddGroupModal";
 import AddEnvelopeModal from "../components/budget/AddEnvelopeModal";
 import { PERIODS, type Period } from "../components/budget/period";
@@ -13,9 +16,9 @@ type GroupModal = { group?: BudgetGroup };
 type EnvModal = { envelope?: BudgetEnvelope; groupId?: number };
 
 /**
- * Phase 9. The left column is now fully built: hero, income card, and one
- * editable card per envelope group (live sliders + add/edit/delete via modals).
- * The right rail (safe-to-spend, donut, spent-so-far) and trend land next.
+ * Phase 10. Both columns are now built: the left has the hero, income card and
+ * editable envelope groups; the right rail carries safe-to-spend, the
+ * allocation donut and spent-so-far. The budget-vs-actual trend lands next.
  */
 export default function Budget() {
   const { data, isLoading } = useBudget();
@@ -43,6 +46,30 @@ export default function Budget() {
     [data]
   );
   const allocated = segments.reduce((s, g) => s + g.total, 0);
+
+  const totalSpent = useMemo(
+    () =>
+      (data?.groups ?? []).reduce(
+        (s, g) => s + g.envelopes.reduce((a, e) => a + e.spent, 0),
+        0
+      ),
+    [data]
+  );
+  // Safe-to-spend draws only on flexible groups' remaining budget.
+  const flexRemaining = useMemo(
+    () =>
+      (data?.groups ?? [])
+        .filter((g) => g.flexible)
+        .reduce(
+          (s, g) => s + g.envelopes.reduce((a, e) => a + (e.budgeted - e.spent), 0),
+          0
+        ),
+    [data]
+  );
+  const envelopeCount = (data?.groups ?? []).reduce(
+    (s, g) => s + g.envelopes.length,
+    0
+  );
 
   return (
     <div className={styles.page}>
@@ -74,40 +101,68 @@ export default function Budget() {
       )}
 
       {data && !isEmpty && (
-        <div className={styles.scaffold}>
-          <Hero
-            incomeTotal={incomeTotal}
-            allocated={allocated}
-            segments={segments}
-            currency={currency}
-            factor={factor}
-            period={period}
-            onPeriodChange={setPeriod}
-          />
-
-          <IncomeCard
-            incomes={data.incomes}
-            currency={currency}
-            factor={factor}
-            period={period}
-            onAdd={() => createIncome.mutate({ label: "New income", amount: 0 })}
-          />
-
-          {data.groups.map((g) => (
-            <GroupCard
-              key={g.id}
-              group={g}
+        <div className={styles.layout}>
+          <div className={styles.left}>
+            <Hero
+              incomeTotal={incomeTotal}
+              allocated={allocated}
+              segments={segments}
               currency={currency}
               factor={factor}
-              onEditGroup={(group) => setGroupModal({ group })}
-              onAddEnvelope={(groupId) => setEnvModal({ groupId })}
-              onEditEnvelope={(envelope) => setEnvModal({ envelope })}
+              period={period}
+              onPeriodChange={setPeriod}
             />
-          ))}
 
-          <button className={styles.addBtn} onClick={() => setGroupModal({})}>
-            + Add group
-          </button>
+            <IncomeCard
+              incomes={data.incomes}
+              currency={currency}
+              factor={factor}
+              period={period}
+              onAdd={() => createIncome.mutate({ label: "New income", amount: 0 })}
+            />
+
+            {data.groups.map((g) => (
+              <GroupCard
+                key={g.id}
+                group={g}
+                currency={currency}
+                factor={factor}
+                onEditGroup={(group) => setGroupModal({ group })}
+                onAddEnvelope={(groupId) => setEnvModal({ groupId })}
+                onEditEnvelope={(envelope) => setEnvModal({ envelope })}
+              />
+            ))}
+
+            <button className={styles.addBtn} onClick={() => setGroupModal({})}>
+              + Add group
+            </button>
+          </div>
+
+          <div className={styles.rail}>
+            <SafeToSpendCard
+              flexRemaining={flexRemaining}
+              currency={currency}
+              factor={factor}
+              period={period}
+            />
+            <AllocationDonut
+              slices={segments.map((s) => ({
+                label: s.name,
+                value: s.total,
+                color: s.color,
+              }))}
+              allocated={allocated}
+              currency={currency}
+              factor={factor}
+            />
+            <SpentSoFarCard
+              totalSpent={totalSpent}
+              allocated={allocated}
+              envelopeCount={envelopeCount}
+              currency={currency}
+              factor={factor}
+            />
+          </div>
         </div>
       )}
 

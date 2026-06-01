@@ -122,7 +122,9 @@
   color: var(--pl-down);
 }
 
-@media (max-width: 600px) {
+/* Keyed to the left column's width (see Budget.module.css .left container), so
+   the hero shrinks when the two-column layout squeezes it, not just on phones. */
+@container (max-width: 430px) {
   .hero {
     padding: 22px;
   }
