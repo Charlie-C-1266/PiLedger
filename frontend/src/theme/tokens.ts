@@ -10,6 +10,7 @@ export interface ThemeTokens {
   rule: string;
   up: string;
   down: string;
+  warn: string;
   shadow: string;
   shadowLg: string;
 }
@@ -24,6 +25,7 @@ export const lightTokens: ThemeTokens = {
   rule: "rgba(15,18,24,0.07)",
   up: "#16A565",
   down: "#E25555",
+  warn: "#C8861A",
   shadow: "0 1px 2px rgba(15,18,24,0.06)",
   shadowLg: "0 14px 28px rgba(15,18,24,0.18)",
 };
@@ -38,6 +40,7 @@ export const darkTokens: ThemeTokens = {
   rule: "rgba(255,255,255,0.07)",
   up: "#3FD79A",
   down: "#FF7A8A",
+  warn: "#F5B544",
   shadow: "0 1px 2px rgba(0,0,0,0.4)",
   shadowLg: "0 14px 28px rgba(0,0,0,0.5)",
 };
