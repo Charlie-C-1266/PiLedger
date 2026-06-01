@@ -7,6 +7,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-06-01
+
 ### Removed
 
 - **Retired the orphaned `budget_items` model and its `/api/budget*` endpoints.** These backed an old recurring-cash-flow "Budget Planner" plus a balance/net-worth projection, but the React rebuild left them with no frontend caller (see the Orphaned Endpoints audit), and they squat on the `/api/budget` namespace needed for the upcoming zero-based envelope **Budget** screen. Removed `GET/POST/PUT/DELETE /api/budget` and `GET /api/budget/projection` (the whole `src/routers/budget.py`), the `BudgetItemIn/Patch/Out` schemas, and the now-unused `Frequency` type alias + `FREQ_TO_MONTHLY` map in `constants.py`. A new schema-version-6 migration (plus the idempotent legacy step) drops the `budget_items` table, and it is removed from `USER_SCOPED_TABLES`; existing budget-item rows are discarded. The savings projection at `/api/projections` (a separate dashboard route) is unaffected. Affected files: `src/routers/budget.py` (deleted), `src/app.py` (router unwired), `src/schemas.py` (budget schemas removed), `src/constants.py` (`Frequency`/`FREQ_TO_MONTHLY` removed), `src/db.py` (`_migrate_to_6` + legacy drop, `SCHEMA_VERSION` 5→6, `USER_SCOPED_TABLES`), `tests/test_budget.py` (deleted), `tests/test_loans.py` (projection tests removed), `tests/test_export.py` + `tests/test_delete_me.py` + `tests/test_migrations.py` + `tests/test_route_table.py` (updated), `docs/api-reference.md`, `docs/database.md`, `docs/backups.md`.
