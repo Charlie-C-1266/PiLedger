@@ -1,0 +1,133 @@
+.hero {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: var(--pl-shadow);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.bigRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.checkBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--pl-up), transparent 84%);
+  color: var(--pl-up);
+}
+
+.big {
+  font: 700 50px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -1.4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sentence {
+  max-width: 320px;
+  margin: 12px 0 0;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.barWrap {
+  margin-top: 24px;
+}
+
+.track {
+  display: flex;
+  position: relative;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--pl-surface-alt);
+  overflow: hidden;
+}
+
+.segment {
+  height: 100%;
+  transition: width 400ms cubic-bezier(0.4, 0.2, 0.2, 1);
+}
+
+.hatch {
+  flex: 1;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--pl-down),
+    var(--pl-down) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.statLabel {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.statValue {
+  font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+/* Hero state colours — defined after .big / .statValue so they win on equal
+   specificity when applied alongside them. */
+.up {
+  color: var(--pl-up);
+}
+
+.warn {
+  color: var(--pl-warn);
+}
+
+.down {
+  color: var(--pl-down);
+}
+
+@media (max-width: 600px) {
+  .hero {
+    padding: 22px;
+  }
+
+  .big {
+    font-size: 38px;
+  }
+}

@@ -57,6 +57,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--pl-rule", theme.rule);
     root.style.setProperty("--pl-up", theme.up);
     root.style.setProperty("--pl-down", theme.down);
+    root.style.setProperty("--pl-warn", theme.warn);
     root.style.setProperty("--pl-shadow", theme.shadow);
     root.style.setProperty("--pl-shadow-lg", theme.shadowLg);
     root.style.setProperty("--pl-accent", theme.accent);

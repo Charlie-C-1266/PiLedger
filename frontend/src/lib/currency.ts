@@ -15,12 +15,17 @@ function symbol(currency: string): string {
   return SYMBOLS[currency] ?? currency + " ";
 }
 
-export function fmt(value: number, currency = "GBP"): string {
+export function fmt(
+  value: number,
+  currency = "GBP",
+  opts?: { decimals?: number }
+): string {
   const s = symbol(currency);
   const abs = Math.abs(value);
+  const dp = opts?.decimals ?? (currency === "JPY" ? 0 : 2);
   const formatted = abs.toLocaleString("en-GB", {
-    minimumFractionDigits: currency === "JPY" ? 0 : 2,
-    maximumFractionDigits: currency === "JPY" ? 0 : 2,
+    minimumFractionDigits: dp,
+    maximumFractionDigits: dp,
   });
   return value < 0 ? `−${s}${formatted}` : `${s}${formatted}`;
 }
