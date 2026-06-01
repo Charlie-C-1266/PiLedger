@@ -73,6 +73,18 @@ export interface NetWorthPoint {
   value: number;
 }
 
+/** One manual FX rate: 1 unit of `currency` = `rate` units of the base currency. */
+export interface Rate {
+  currency: Currency;
+  rate: number;
+  updated_at: string;
+}
+
+export interface Rates {
+  base_currency: Currency;
+  rates: Rate[];
+}
+
 export interface User {
   id: number;
   username: string;

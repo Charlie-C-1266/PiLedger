@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
@@ -78,7 +79,18 @@ export default function Overview() {
   );
 
   return (
-    <div className={styles.grid}>
+    <>
+      {summary && summary.missing_rates.length > 0 && (
+        <Link to="/settings" className={styles.rateBanner}>
+          <span>
+            ⚠ Net worth may be inaccurate — {summary.missing_rates.join(", ")}{" "}
+            {summary.missing_rates.length > 1 ? "have" : "has"} no exchange rate
+            and {summary.missing_rates.length > 1 ? "are" : "is"} converted at 1:1.
+          </span>
+          <span className={styles.rateBannerCta}>Set rates →</span>
+        </Link>
+      )}
+      <div className={styles.grid}>
       {/* ── Left column ──────────────────────────────────── */}
       <div className={styles.left}>
         {/* 1. Net-worth hero */}
@@ -296,6 +308,7 @@ export default function Overview() {
         />
       )}
       {showGoalModal && <AddGoalModal onClose={() => setShowGoalModal(false)} />}
-    </div>
+      </div>
+    </>
   );
 }

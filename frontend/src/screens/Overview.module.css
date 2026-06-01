@@ -4,6 +4,33 @@
   gap: 20px;
 }
 
+.rateBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--pl-warn), transparent 55%);
+  background: color-mix(in oklab, var(--pl-warn), transparent 88%);
+  color: var(--pl-text);
+  font: 500 13px/1.45 "Plus Jakarta Sans", sans-serif;
+  text-decoration: none;
+  transition: background 160ms;
+}
+
+.rateBanner:hover {
+  background: color-mix(in oklab, var(--pl-warn), transparent 80%);
+}
+
+.rateBannerCta {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: var(--pl-warn);
+  white-space: nowrap;
+}
+
 @media (max-width: 1079px) {
   .grid {
     grid-template-columns: 1fr;

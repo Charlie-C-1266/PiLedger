@@ -247,3 +247,56 @@
   flex: 1;
   margin-bottom: 0;
 }
+
+/* Exchange rates editor */
+.warnBanner {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--pl-warn), transparent 55%);
+  background: color-mix(in oklab, var(--pl-warn), transparent 88%);
+  color: var(--pl-text);
+  font: 500 13px/1.45 "Plus Jakarta Sans", sans-serif;
+}
+
+.rateList {
+  display: flex;
+  flex-direction: column;
+}
+
+.rateRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pl-rule);
+}
+
+.rateLabel {
+  flex: 0 0 auto;
+  min-width: 64px;
+  font: 600 13px/1 "JetBrains Mono", monospace;
+  color: var(--pl-text);
+}
+
+.rateInput {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pl-rule);
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+  font: 500 14px/1 "JetBrains Mono", monospace;
+}
+
+.rateInput:focus {
+  outline: none;
+  border-color: var(--pl-accent);
+}
+
+.rateBase {
+  flex: 0 0 auto;
+  font: 600 13px/1 "JetBrains Mono", monospace;
+  color: var(--pl-text-mute);
+}
