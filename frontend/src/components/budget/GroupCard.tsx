@@ -8,6 +8,8 @@ interface Props {
   group: BudgetGroup;
   currency: string;
   factor: number;
+  /** Monthly income total — the zero-based ceiling for the envelope sliders. */
+  incomeTotal: number;
   onEditGroup: (group: BudgetGroup) => void;
   onAddEnvelope: (groupId: number) => void;
   onEditEnvelope: (env: BudgetEnvelope) => void;
@@ -22,6 +24,7 @@ export default function GroupCard({
   group,
   currency,
   factor,
+  incomeTotal,
   onEditGroup,
   onAddEnvelope,
   onEditEnvelope,
@@ -40,7 +43,11 @@ export default function GroupCard({
           <span className={styles.total}>
             {fmt(total * factor, currency, { decimals: 0 })}
           </span>
-          <button className={styles.editBtn} onClick={() => onEditGroup(group)}>
+          <button
+            className={styles.editBtn}
+            onClick={() => onEditGroup(group)}
+            aria-label={`Edit ${group.name}`}
+          >
             Edit
           </button>
         </div>
@@ -54,6 +61,7 @@ export default function GroupCard({
             groupColor={group.color}
             currency={currency}
             factor={factor}
+            incomeTotal={incomeTotal}
             onEdit={onEditEnvelope}
           />
         ))}

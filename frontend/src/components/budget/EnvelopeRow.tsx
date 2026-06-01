@@ -10,8 +10,13 @@ interface Props {
   groupColor: string;
   currency: string;
   factor: number;
+  /** Monthly income total — the zero-based ceiling for the budget slider. */
+  incomeTotal: number;
   onEdit: (env: BudgetEnvelope) => void;
 }
+
+/** Floor for the slider's range so it stays usable before any income is set. */
+const SLIDER_FLOOR = 1000;
 
 /**
  * One envelope: spent/budgeted line, a spend bar (turns red when overspent),
@@ -25,12 +30,20 @@ export default function EnvelopeRow({
   groupColor,
   currency,
   factor,
+  incomeTotal,
   onEdit,
 }: Props) {
   const { patch, persist } = useBudgetEdit();
   const over = env.spent > env.budgeted;
-  // Headroom to drag above the current value, rounded to a tidy £50 step.
-  const sliderMax = Math.max(100, Math.ceil((env.budgeted * 2) / 50) * 50);
+  // A single envelope tops out at the whole income (the zero-based ceiling),
+  // with a floor so the control still works before any income is entered. The
+  // ceiling is independent of the live `budgeted` value — deriving it from
+  // `budgeted` (as the design prototype did) made dragging right ratchet the
+  // max ever higher, so each pull doubled the amount into the billions. The
+  // current value is folded in only so an over-income budget set in the modal
+  // stays representable; rounded up to a tidy £100.
+  const ceiling = Math.max(incomeTotal, env.budgeted, SLIDER_FLOOR);
+  const sliderMax = Math.ceil(ceiling / 100) * 100;
   const show = (v: number) => fmt(v * factor, currency, { decimals: 0 });
 
   function setBudgeted(budgeted: number) {
@@ -56,6 +69,7 @@ export default function EnvelopeRow({
         <button
           className={styles.label}
           onClick={() => onEdit(env)}
+          aria-label={`Edit ${env.label}`}
           title="Edit envelope"
         >
           {env.label}

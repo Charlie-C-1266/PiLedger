@@ -78,7 +78,11 @@ export default function Budget() {
         <h1 className={styles.title}>Budget</h1>
       </div>
 
-      {isLoading && <div className={styles.empty}>Loading…</div>}
+      {isLoading && (
+        <div className={styles.empty} role="status">
+          Loading…
+        </div>
+      )}
 
       {isEmpty && (
         <div className={styles.empty}>
@@ -128,6 +132,7 @@ export default function Budget() {
                 group={g}
                 currency={currency}
                 factor={factor}
+                incomeTotal={incomeTotal}
                 onEditGroup={(group) => setGroupModal({ group })}
                 onAddEnvelope={(groupId) => setEnvModal({ groupId })}
                 onEditEnvelope={(envelope) => setEnvModal({ envelope })}
