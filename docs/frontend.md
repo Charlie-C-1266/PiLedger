@@ -76,8 +76,6 @@ Line/area charts use **Recharts**; the donut and the horizontal/trend bars are h
 |---|---|---|---|
 | Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
 | Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
-| Account balance | Accounts | Stepped line | `GET /api/accounts/{id}/history` |
-| Savings projection | Overview | Smooth line | `GET /api/projections` |
 | Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
 | Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
 | Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |

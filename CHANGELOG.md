@@ -7,6 +7,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Removed two phantom chart rows from `docs/frontend.md`.** The charts table listed a "Savings projection" chart (`GET /api/projections`) and an "Account balance" chart (`GET /api/accounts/{id}/history`), but neither exists in the React frontend — both endpoints are orphaned (no caller in `frontend/src`), a regression from the vanilla-JS rebuild that the v3.0.0 docs refresh carried over unverified. Dropped the two rows so the table reflects only the charts that actually render (net worth, distribution donut, and the three Budget charts). The endpoints themselves are untouched and still tracked in the Orphaned Endpoints audit. Affected files: `docs/frontend.md`.
+
 ## [3.0.0] — 2026-06-01
 
 ### Removed
