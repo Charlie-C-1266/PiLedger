@@ -166,8 +166,12 @@ curl -s "http://localhost:8080/api/projections?months=12" \
 ### Static asset tests
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/static/style.css
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/static/app.js
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/static/login.css
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/static/login.js
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/login
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/guide
 # All expected: 200
+# The SPA bundle under /static/dist/ uses content-hashed filenames; check it
+# via a route instead, e.g. an authenticated GET /overview (200), or /login
+# when signed out (302 → /login).
 ```

@@ -18,7 +18,7 @@ Browser  ──HTTP──►  FastAPI (src/app.py — thin wiring)
 
 **Backend:** Python 3.12, FastAPI, Uvicorn. The application source lives under `src/`. `app.py` is a thin (~100-line) wiring module: it constructs the FastAPI app, registers the security-headers middleware and the 422→400 validation handler, calls `init()`, and includes every router. The HTTP handlers themselves live in per-resource routers under `routers/` (one `APIRouter` each: `auth`, `accounts`, `transactions`, `dashboard`, `budget`, `goals`, `prefs`, `rates`, `categories`, `ops`, `pages`), and business logic shared by two or more routers lives in `services/` (`currency` FX conversion, `accounts` balance adjustment). The remaining modules are shared infrastructure: `schemas.py` (Pydantic request/response models), `auth.py` (password hashing + session lifecycle + `require_auth` dependency), `db.py` (connection context manager, schema init/migrations, money helpers), `constants.py` (DB path, cookie flags, type aliases, API bounds), `security.py` (the defensive-headers middleware), and `limiter.py` (the shared rate limiter). Routers depend on these but never import `app`, so the dependency graph stays acyclic. The database is SQLite, accessed directly via the standard-library `sqlite3` module — no ORM.
 
-**Frontend:** Vanilla JavaScript (no framework), Chart.js 4.4 vendored from `/static/vendor/`, Inter font self-hosted. The SPA has two views — Overview and Budget Planner — switched via a sticky nav tab inside the header. No build step is required.
+**Frontend:** A React 19 single-page app written in TypeScript and built with Vite (TanStack Query for the server cache, React Router for navigation). Charts are a mix of Recharts (line/area) and hand-rolled SVG/CSS (the asset donut, the horizontal bars and the budget-vs-actual trend). Fonts — Plus Jakarta Sans (UI) and JetBrains Mono (figures) — are self-hosted from `/static/fonts/`. The SPA has six screens — Overview, Accounts, Transactions, Budget, Goals and Settings — reached through a sidebar that collapses to a bottom tab strip on narrow viewports. `npm run build` in `frontend/` emits the production bundle to `src/static/dist/`, which the backend serves for every SPA route; the login and guide (documentation) pages are separate self-contained static HTML pages. See [Frontend](frontend.md) for detail.
 
 **Database:** A single SQLite file. Defaults to `piledger.db` at the project root (one level above `src/`); can be overridden via the `PILEDGER_DB` environment variable. Money is stored as integer cents inside the database; the JSON API exposes plain floating-point pounds.
 
@@ -54,12 +54,19 @@ piledger/
 │   ├── constants.py       DB path, cookie flags, type aliases, money/rate/days bounds, static dir
 │   ├── schemas.py         Pydantic request/response models (validation lives here)
 │   ├── security.py        SecurityHeadersMiddleware (HSTS, CSP, frame-deny, …)
-│   └── static/
-│       ├── index.html     Dashboard SPA — Overview + Budget Planner + all modals
-│       ├── login.html     Login / register page
-│       ├── style.css      All styles (shared between dashboard and login page)
-│       ├── app.js         Dashboard JavaScript — API calls, chart rendering, modals
-│       └── vendor/        Vendored Chart.js + Inter font (served self-hosted)
+│   └── static/            Served under /static (plus the SPA build below)
+│       ├── dist/          React SPA production build — Vite output (gitignored; built from frontend/)
+│       ├── login.{html,js,css}   Standalone login / register page
+│       ├── guide.{html,js,css}   Standalone documentation page (renders Markdown via vendored marked.js)
+│       ├── theme-bootstrap.js    Applies the saved theme before first paint (avoids a flash)
+│       ├── fonts/         Self-hosted Plus Jakarta Sans + JetBrains Mono (woff2)
+│       └── vendor/        Vendored third-party JS (marked.min.js)
+├── frontend/              React SPA source (TypeScript + Vite); build outputs to src/static/dist
+│   ├── src/               App.tsx, screens/, components/, hooks/, api/, lib/, theme/, types.ts
+│   ├── public/            Assets copied verbatim into the build (PWA icons, manifest)
+│   ├── index.html         Vite entry HTML
+│   ├── package.json       Frontend deps + scripts (build, lint)
+│   └── vite.config.ts     Vite config (outDir → ../src/static/dist)
 ├── docs/                  Documentation (you are here)
 ├── pyproject.toml         Dependency declarations (runtime + dev)
 ├── uv.lock                Locked dependency versions for reproducible installs
