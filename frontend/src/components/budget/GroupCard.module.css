@@ -1,0 +1,111 @@
+.card {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.name {
+  margin: 0;
+  font: 700 17px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  color: var(--pl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--pl-surface-alt);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.headRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.total {
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.editBtn {
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  cursor: pointer;
+  transition: color 160ms;
+}
+
+.editBtn:hover {
+  color: var(--pl-text);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  padding: 8px 0;
+  font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.addBtn {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent-soft);
+  color: var(--pl-accent);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addBtn:hover {
+  opacity: 0.85;
+}
+
+.addBtn svg {
+  width: 14px;
+  height: 14px;
+}
