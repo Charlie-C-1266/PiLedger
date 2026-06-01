@@ -1,0 +1,43 @@
+.card {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.eyebrow {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.planPct {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-soft);
+}
+
+.big {
+  margin-top: 12px;
+  font: 700 26px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.6px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.bar {
+  margin-top: 14px;
+}
+
+.caption {
+  margin-top: 12px;
+  font: 500 12px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}

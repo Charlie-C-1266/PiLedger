@@ -55,10 +55,36 @@
   justify-content: center;
 }
 
-/* Left column — hero, income card and one card per envelope group, stacked. */
+/* Two-column layout — left content + sticky right rail; single column < 720px. */
 
-.scaffold {
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.left {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    position: static;
+  }
 }

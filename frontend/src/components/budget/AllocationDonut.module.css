@@ -1,0 +1,86 @@
+.card {
+  background: var(--pl-surface);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--pl-shadow);
+}
+
+.title {
+  margin: 0 0 18px;
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  color: var(--pl-text);
+}
+
+.empty {
+  margin: 0;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.chart {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.centerEyebrow {
+  font: 500 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.centerValue {
+  margin-top: 6px;
+  font: 700 19px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.centerSub {
+  margin-top: 4px;
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.legendRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  transition: opacity 160ms;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.legendLabel {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendPct {
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-mute);
+}
+
+.legendAmount {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
