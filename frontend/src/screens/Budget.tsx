@@ -3,6 +3,7 @@ import { useBudget, useCreateIncome } from "../hooks/useBudget";
 import Hero from "../components/budget/Hero";
 import IncomeCard from "../components/budget/IncomeCard";
 import GroupCard from "../components/budget/GroupCard";
+import BudgetTrend from "../components/budget/BudgetTrend";
 import SafeToSpendCard from "../components/budget/SafeToSpendCard";
 import AllocationDonut from "../components/budget/AllocationDonut";
 import SpentSoFarCard from "../components/budget/SpentSoFarCard";
@@ -136,6 +137,13 @@ export default function Budget() {
             <button className={styles.addBtn} onClick={() => setGroupModal({})}>
               + Add group
             </button>
+
+            <BudgetTrend
+              history={data.history}
+              currency={currency}
+              factor={factor}
+              period={period}
+            />
           </div>
 
           <div className={styles.rail}>
