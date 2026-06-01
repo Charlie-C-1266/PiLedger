@@ -51,8 +51,12 @@
 }
 
 .label {
+  min-width: 0;
   font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .amount {
@@ -87,7 +91,9 @@
   height: 14px;
 }
 
-@media (max-width: 600px) {
+/* Keyed to the left column's width: when it's too narrow to fit label + amount
+   + stepper, drop the amount so the stepper stays inside the card. */
+@container (max-width: 380px) {
   .row {
     grid-template-columns: 1fr auto;
   }
