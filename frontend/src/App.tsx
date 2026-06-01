@@ -3,6 +3,7 @@ import Shell from "./components/Shell";
 import Overview from "./screens/Overview";
 import Accounts from "./screens/Accounts";
 import Transactions from "./screens/Transactions";
+import Budget from "./screens/Budget";
 import Goals from "./screens/Goals";
 import Settings from "./screens/Settings";
 
@@ -13,6 +14,7 @@ export default function App() {
         <Route path="/overview" element={<Overview />} />
         <Route path="/accounts" element={<Accounts />} />
         <Route path="/transactions" element={<Transactions />} />
+        <Route path="/budget" element={<Budget />} />
         <Route path="/goals" element={<Goals />} />
         <Route path="/settings" element={<Settings />} />
       </Route>

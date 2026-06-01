@@ -93,3 +93,46 @@ export interface Categories {
   defaults: string[];
   custom: CustomCategory[];
 }
+
+// Zero-based envelope budget. All money is in pounds (the API exposes cents as
+// floats). `spent` is computed live server-side and is never sent on writes.
+
+export interface BudgetIncome {
+  id: number;
+  label: string;
+  amount: number;
+  sort_order: number;
+}
+
+export interface BudgetEnvelope {
+  id: number;
+  group_id: number;
+  label: string;
+  category: string;
+  budgeted: number;
+  spent: number;
+  sort_order: number;
+}
+
+export interface BudgetGroup {
+  id: number;
+  name: string;
+  color: string;
+  flexible: boolean;
+  sort_order: number;
+  envelopes: BudgetEnvelope[];
+}
+
+export interface BudgetHistoryPoint {
+  month: string; // "YYYY-MM"
+  budgeted: number;
+  spent: number;
+}
+
+export interface Budget {
+  incomes: BudgetIncome[];
+  groups: BudgetGroup[];
+  history: BudgetHistoryPoint[];
+  base_currency: Currency;
+  missing_rates: Currency[];
+}

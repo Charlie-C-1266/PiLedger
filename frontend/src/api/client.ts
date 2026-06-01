@@ -1,5 +1,9 @@
 import type {
   Account,
+  Budget,
+  BudgetEnvelope,
+  BudgetGroup,
+  BudgetIncome,
   Categories,
   CustomCategory,
   Goal,
@@ -11,6 +15,11 @@ import type {
   TransactionFilters,
   User,
 } from "../types";
+
+// Group/envelope CRUD return the bare row (no nested envelopes / no live spent);
+// the full aggregate comes from getBudget.
+type BudgetGroupRow = Omit<BudgetGroup, "envelopes">;
+type BudgetEnvelopeRow = Omit<BudgetEnvelope, "spent">;
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -157,3 +166,49 @@ export const createCategory = (name: string) =>
 
 export const deleteCategory = (id: number) =>
   del<{ ok: boolean }>(`/api/categories/${id}`);
+
+// Budget (zero-based envelopes)
+
+export const getBudget = () => json<Budget>("/api/budget");
+
+export const createIncome = (data: { label: string; amount?: number }) =>
+  post<BudgetIncome>("/api/budget/income", data);
+
+export const updateIncome = (
+  id: number,
+  data: Partial<Pick<BudgetIncome, "label" | "amount" | "sort_order">>
+) => put<BudgetIncome>(`/api/budget/income/${id}`, data);
+
+export const deleteIncome = (id: number) =>
+  del<{ ok: boolean }>(`/api/budget/income/${id}`);
+
+export const createGroup = (data: {
+  name: string;
+  color?: string;
+  flexible?: boolean;
+}) => post<BudgetGroupRow>("/api/budget/groups", data);
+
+export const updateGroup = (
+  id: number,
+  data: Partial<Pick<BudgetGroup, "name" | "color" | "flexible" | "sort_order">>
+) => put<BudgetGroupRow>(`/api/budget/groups/${id}`, data);
+
+export const deleteGroup = (id: number) =>
+  del<{ ok: boolean }>(`/api/budget/groups/${id}`);
+
+export const createEnvelope = (data: {
+  group_id: number;
+  label: string;
+  category: string;
+  budgeted?: number;
+}) => post<BudgetEnvelopeRow>("/api/budget/envelopes", data);
+
+export const updateEnvelope = (
+  id: number,
+  data: Partial<
+    Pick<BudgetEnvelope, "group_id" | "label" | "category" | "budgeted" | "sort_order">
+  >
+) => put<BudgetEnvelopeRow>(`/api/budget/envelopes/${id}`, data);
+
+export const deleteEnvelope = (id: number) =>
+  del<{ ok: boolean }>(`/api/budget/envelopes/${id}`);

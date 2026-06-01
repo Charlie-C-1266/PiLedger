@@ -17,6 +17,7 @@ import app
 EXPECTED_ROUTES = {
     ("/", "GET"),
     ("/accounts", "GET"),
+    ("/budget", "GET"),
     ("/api/accounts", "GET"),
     ("/api/accounts", "POST"),
     ("/api/accounts/{aid}", "DELETE"),
