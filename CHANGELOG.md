@@ -20,6 +20,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Fixed
 
+- Mobile no longer zooms in when opening the add/edit transaction, goal, account, and transfer modals. The form fields render below iOS Safari's 16px focus-zoom threshold, and the existing guard couldn't override their CSS-module class size; it now forces 16px on touch widths.
 - Removed two phantom chart rows (savings projection, account balance) from the frontend docs — neither chart exists in the React frontend.
 
 ## [3.0.0] — 2026-06-01
