@@ -17,6 +17,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Changed
 
 - Changelog handling slimmed down: entries are now concise one-liners (no affected-file lists or root-cause essays), released history moved to `CHANGELOG-ARCHIVE.md`, and the `CLAUDE.md` guidance updated to match so the bulky history is no longer loaded into context on every change.
+- Split the 453-line `Settings` screen into per-section card components under `components/settings/` (Appearance, Categories, Exchange rates, Change password, Help, Session, Danger zone) behind a shared `SettingsCard` wrapper. No behaviour change; the screen is now a ~20-line shell.
 
 ### Fixed
 
