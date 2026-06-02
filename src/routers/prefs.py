@@ -18,6 +18,8 @@ router = APIRouter(tags=["prefs"])
 
 
 def _prefs_out(row: sqlite3.Row) -> PrefsOut:
+    """Map a ``users`` row to ``PrefsOut``, defaulting legacy NULLs and coercing
+    the 0/1 ``dark_mode`` column to a bool."""
     return PrefsOut(
         theme=row["theme"] or "olive",
         dark_mode=bool(row["dark_mode"]),
@@ -27,6 +29,7 @@ def _prefs_out(row: sqlite3.Row) -> PrefsOut:
 
 @router.get("/api/prefs", response_model=PrefsOut)
 def get_prefs(uid: int = Depends(require_auth)) -> PrefsOut:
+    """Return the user's display preferences (theme, dark mode, base currency)."""
     with db() as conn:
         row = conn.execute(
             "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
@@ -41,6 +44,11 @@ def update_prefs(
     data: PrefsPatch,
     uid: int = Depends(require_auth),
 ) -> PrefsOut:
+    """Patch the supplied preference fields and return the updated set.
+
+    Changing ``base_currency`` re-scales the stored exchange rates (via
+    ``_rescale_rates``) so each keeps meaning "1 unit = rate units of base".
+    """
     patch = data.model_dump(exclude_none=True)
     if "dark_mode" in patch:
         # SQLite has no native bool, store as 0/1

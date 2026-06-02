@@ -91,6 +91,7 @@ def db() -> Iterator[sqlite3.Connection]:
 
 
 def utcnow_iso() -> str:
+    """Return the current UTC time as a canonical ``ISO_FMT`` string."""
     return datetime.now(timezone.utc).strftime(constants.ISO_FMT)
 
 
@@ -111,6 +112,7 @@ def _get_schema_version(conn: sqlite3.Connection) -> int | None:
 
 
 def _set_schema_version(conn: sqlite3.Connection, version: int) -> None:
+    """Stamp the schema version into the ``meta`` table (insert or replace)."""
     conn.execute(
         "INSERT OR REPLACE INTO meta(key, value) VALUES('schema_version', ?)",
         (str(version),),

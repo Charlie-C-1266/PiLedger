@@ -15,6 +15,8 @@ router = APIRouter(tags=["rates"])
 
 @router.get("/api/rates", response_model=RatesOut)
 def get_rates(uid: int = Depends(require_auth)) -> RatesOut:
+    """Return the user's base currency and their stored exchange rates (sorted by
+    currency). The base currency is implicit 1.0 and never appears in the list."""
     with db() as conn:
         row = conn.execute(
             "SELECT base_currency FROM users WHERE id=?", (uid,)

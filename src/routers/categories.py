@@ -14,6 +14,8 @@ router = APIRouter(tags=["categories"])
 
 @router.get("/api/categories", response_model=CategoriesOut)
 def list_categories(uid: int = Depends(require_auth)) -> CategoriesOut:
+    """Return the built-in default categories plus the user's custom ones
+    (oldest first), so the client can offer both when logging a transaction."""
     with db() as conn:
         rows = conn.execute(
             "SELECT id, name FROM user_categories WHERE user_id=? ORDER BY created_at",
@@ -29,6 +31,11 @@ def list_categories(uid: int = Depends(require_auth)) -> CategoriesOut:
 def create_category(
     data: CategoryIn, uid: int = Depends(require_auth)
 ) -> CustomCategoryOut:
+    """Create a custom category for the user.
+
+    Rejects with 422 once ``MAX_CUSTOM_CATEGORIES`` is reached, and with 409 if
+    the name collides with an existing one (the per-user UNIQUE constraint).
+    """
     with db() as conn:
         count = conn.execute(
             "SELECT COUNT(*) FROM user_categories WHERE user_id=?", (uid,)
@@ -53,6 +60,8 @@ def create_category(
 
 @router.delete("/api/categories/{cid}", response_model=OkOut)
 def delete_category(cid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's custom categories (404 if not theirs). Existing
+    transactions keep their stored category string; only the option is removed."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM user_categories WHERE id=? AND user_id=?", (cid, uid)

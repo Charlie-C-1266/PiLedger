@@ -35,6 +35,8 @@ _TXN_SORT_MAP: dict[str, str] = {
 
 
 def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
+    """Map a ``transactions`` row to ``TransactionOut`` (cents → dollars, NULL
+    note → empty string, ``transfer_id`` present only on transfer legs)."""
     return TransactionOut(
         id=row["id"],
         user_id=row["user_id"],
@@ -59,6 +61,12 @@ def list_transactions(
     per_page: int = Query(default=50, ge=1, le=200),
     uid: int = Depends(require_auth),
 ) -> list[TransactionOut]:
+    """List the user's transactions with optional search (merchant/category),
+    account and category filters, sorting, and pagination.
+
+    ``sort`` is mapped through a fixed whitelist (``_TXN_SORT_MAP``) so the
+    value can be interpolated into the ORDER BY without injection risk.
+    """
     clauses = ["user_id=?"]
     params: list = [uid]
     if search:
@@ -87,6 +95,8 @@ def create_transaction(
     data: TransactionIn,
     uid: int = Depends(require_auth),
 ) -> TransactionOut:
+    """Create a transaction on one of the user's accounts (404 if not theirs)
+    and adjust that account's running balance by the signed amount."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (data.account_id, uid)
@@ -182,6 +192,13 @@ def update_transaction(
     data: TransactionPatch,
     uid: int = Depends(require_auth),
 ) -> TransactionOut:
+    """Patch the supplied fields of one of the user's transactions (404 if not
+    theirs; 400 for a transfer leg, which can't be edited).
+
+    When the amount or account changes, the old amount is reversed off the
+    original account and the new amount applied to the (possibly new) account so
+    balances stay consistent.
+    """
     with db() as conn:
         old = conn.execute(
             "SELECT * FROM transactions WHERE id=? AND user_id=?", (tid, uid)
@@ -221,6 +238,9 @@ def update_transaction(
 
 @router.delete("/api/transactions/{tid}", response_model=OkOut)
 def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's transactions (404 if not theirs), reversing its
+    balance effect. Deleting either leg of a transfer removes both legs and
+    reverses both adjustments so the accounts can't drift."""
     with db() as conn:
         txn = conn.execute(
             "SELECT id, account_id, amount_cents, transfer_id"
