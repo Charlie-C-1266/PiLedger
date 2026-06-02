@@ -94,6 +94,14 @@ def db() -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(constants.DB)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Wait for a lock instead of failing fast: concurrent requests run in
+    # Uvicorn's threadpool and each opens its own connection, so two writes can
+    # briefly contend. WAL lets readers proceed while a writer holds the lock,
+    # which keeps GET dashboards responsive during a write. Both are connection
+    # PRAGMAs (busy_timeout) / idempotent persistent settings (WAL) — cheap to
+    # set every open, and skipped gracefully for an in-memory DB.
+    conn.execute(f"PRAGMA busy_timeout = {constants.DB_BUSY_TIMEOUT_MS}")
+    conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
     finally:
