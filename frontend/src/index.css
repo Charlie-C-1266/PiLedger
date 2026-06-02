@@ -62,12 +62,18 @@ body {
   border: 0;
 }
 
-/* Prevent iOS Safari viewport zoom on input focus (requires font-size >= 16px) */
+/* Prevent iOS Safari viewport zoom on input focus (it zooms whenever a focused
+   control's font-size is < 16px). `!important` is required: the modal fields are
+   styled through hashed CSS-module classes (e.g. `.AddModal_input`) whose class
+   specificity (0,1,0) beats this bare element rule (0,0,1), and the hashed names
+   can't be targeted from here — so without it this rule loses and the controls
+   stay at their 13px design size on mobile, re-triggering the zoom. Forcing 16px
+   on touch widths keeps every current and future modal field zoom-safe. */
 @media (max-width: 719px) {
   input,
   select,
   textarea {
-    font-size: 1rem;
+    font-size: 1rem !important;
   }
 }
 
