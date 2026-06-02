@@ -19,6 +19,12 @@ DB: str = os.environ.get(
     # Resolve via one parent traversal from this module's location.
     os.path.normpath(os.path.join(os.path.dirname(__file__), os.pardir, "piledger.db")),
 )
+# How long a connection waits for a lock before giving up with "database is
+# locked". Sync handlers run in Uvicorn's threadpool, so concurrent requests
+# open concurrent connections and can briefly contend on a write; without this
+# SQLite errors immediately rather than waiting the other writer out.
+DB_BUSY_TIMEOUT_MS: int = int(os.environ.get("PILEDGER_DB_BUSY_TIMEOUT_MS", "5000"))
+
 DOCS_DIR: str = os.path.normpath(
     os.path.join(os.path.dirname(__file__), os.pardir, "docs")
 )
