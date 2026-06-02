@@ -43,6 +43,7 @@ _HISTORY_MONTHS = 6
 
 
 def _income_to_out(row: sqlite3.Row) -> BudgetIncomeOut:
+    """Map a ``budget_income`` row to ``BudgetIncomeOut`` (cents → dollars)."""
     return BudgetIncomeOut(
         id=row["id"],
         label=row["label"],
@@ -52,6 +53,7 @@ def _income_to_out(row: sqlite3.Row) -> BudgetIncomeOut:
 
 
 def _group_to_out(row: sqlite3.Row) -> BudgetGroupOut:
+    """Map a ``budget_group`` row to ``BudgetGroupOut`` (0/1 ``flexible`` → bool)."""
     return BudgetGroupOut(
         id=row["id"],
         name=row["name"],
@@ -62,6 +64,8 @@ def _group_to_out(row: sqlite3.Row) -> BudgetGroupOut:
 
 
 def _envelope_to_out(row: sqlite3.Row) -> BudgetEnvelopeOut:
+    """Map a ``budget_envelope`` row to the bare ``BudgetEnvelopeOut`` (CRUD
+    shape, without the live ``spent`` that the ``GET /api/budget`` aggregate adds)."""
     return BudgetEnvelopeOut(
         id=row["id"],
         group_id=row["group_id"],
@@ -116,6 +120,15 @@ def _month_keys(now: datetime, count: int) -> list[str]:
 
 @router.get("/api/budget", response_model=BudgetOut)
 def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
+    """Return the whole budget the screen renders: income lines, groups nesting
+    their envelopes, and a 6-month budgeted-vs-spent trend.
+
+    Each envelope's ``spent`` is the current month's negative transactions in its
+    category, converted to base currency (missing rates fall back to 1:1 and are
+    reported in ``missing_rates``). The trend compares each month's actual spend
+    against the *current* total allocation as a flat line, and is empty until the
+    user has at least one envelope.
+    """
     now = datetime.now(timezone.utc)
     months = _month_keys(now, _HISTORY_MONTHS)
     current_key = months[-1]
@@ -243,6 +256,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
 def create_income(
     data: BudgetIncomeIn, uid: int = Depends(require_auth)
 ) -> BudgetIncomeOut:
+    """Create an income line for the user, appended to the end of their list."""
     with db() as conn:
         cur = conn.execute(
             "INSERT INTO budget_income(user_id, label, amount_cents, sort_order)"
@@ -265,6 +279,8 @@ def create_income(
 def update_income(
     iid: int, data: BudgetIncomePatch, uid: int = Depends(require_auth)
 ) -> BudgetIncomeOut:
+    """Patch the supplied fields of one of the user's income lines (404 if not
+    theirs). Used for renames, amount edits, and reordering via ``sort_order``."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM budget_income WHERE id=? AND user_id=?", (iid, uid)
@@ -287,6 +303,7 @@ def update_income(
 
 @router.delete("/api/budget/income/{iid}", response_model=OkOut)
 def delete_income(iid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's income lines (404 if not theirs)."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM budget_income WHERE id=? AND user_id=?", (iid, uid)
@@ -304,6 +321,9 @@ def delete_income(iid: int, uid: int = Depends(require_auth)) -> OkOut:
 def create_group(
     data: BudgetGroupIn, uid: int = Depends(require_auth)
 ) -> BudgetGroupOut:
+    """Create an envelope group for the user, appended to the end of their list.
+    The ``flexible`` flag marks a group whose remaining budget counts as
+    safe-to-spend."""
     with db() as conn:
         cur = conn.execute(
             "INSERT INTO budget_group(user_id, name, color, flexible, sort_order)"
@@ -327,6 +347,8 @@ def create_group(
 def update_group(
     gid: int, data: BudgetGroupPatch, uid: int = Depends(require_auth)
 ) -> BudgetGroupOut:
+    """Patch the supplied fields of one of the user's groups (404 if not theirs)
+    — name, colour, flexible flag, or ``sort_order``."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM budget_group WHERE id=? AND user_id=?", (gid, uid)
@@ -366,6 +388,12 @@ def delete_group(gid: int, uid: int = Depends(require_auth)) -> OkOut:
 def create_envelope(
     data: BudgetEnvelopeIn, uid: int = Depends(require_auth)
 ) -> BudgetEnvelopeOut:
+    """Create an envelope in one of the user's groups.
+
+    Validates that the group is owned (404) and the category is real (422), and
+    surfaces the ``UNIQUE(user_id, category)`` clash as 409 so a category can't
+    be enveloped twice (which would double-count its spend).
+    """
     with db() as conn:
         _require_owned_group(conn, data.group_id, uid)
         _require_category(conn, uid, data.category)
@@ -396,6 +424,12 @@ def create_envelope(
 def update_envelope(
     eid: int, data: BudgetEnvelopePatch, uid: int = Depends(require_auth)
 ) -> BudgetEnvelopeOut:
+    """Patch the supplied fields of one of the user's envelopes (404 if not
+    theirs).
+
+    Can move it to another owned group (404 otherwise) or change its category
+    (re-validated, 422 otherwise); a category clash surfaces as 409.
+    """
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM budget_envelope WHERE id=? AND user_id=?", (eid, uid)
@@ -426,6 +460,7 @@ def update_envelope(
 
 @router.delete("/api/budget/envelopes/{eid}", response_model=OkOut)
 def delete_envelope(eid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's envelopes (404 if not theirs)."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM budget_envelope WHERE id=? AND user_id=?", (eid, uid)

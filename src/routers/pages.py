@@ -26,6 +26,8 @@ _PWA_ICONS = frozenset({"icon-192.png", "icon-512.png", "icon-512-maskable.png"}
 
 
 def _serve_spa(session: Optional[str]) -> Response:
+    """Serve the built SPA shell for a logged-in user, redirect to /login
+    otherwise, or 503 if the frontend hasn't been built yet."""
     if not session_uid(session):
         return RedirectResponse("/login", status_code=302)
     if not os.path.isfile(_DIST_INDEX):
@@ -38,6 +40,7 @@ def _serve_spa(session: Optional[str]) -> Response:
 
 @router.get("/")
 def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
+    """Serve the SPA at the site root (or redirect anonymous visitors to /login)."""
     return _serve_spa(session)
 
 
@@ -48,6 +51,8 @@ def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 @router.get("/goals")
 @router.get("/settings")
 def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
+    """Serve the same SPA shell for every in-app deep link so a refresh or
+    direct navigation to a client route loads the app rather than 404ing."""
     return _serve_spa(session)
 
 
@@ -56,6 +61,7 @@ def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 # is built, mirroring the SPA's missing-dist behaviour.
 @router.get("/manifest.json", include_in_schema=False)
 def manifest() -> FileResponse:
+    """Serve the public PWA manifest (404 until the frontend is built)."""
     path = os.path.join(_DIST_DIR, "manifest.json")
     if not os.path.isfile(path):
         raise HTTPException(404)
@@ -64,6 +70,8 @@ def manifest() -> FileResponse:
 
 @router.get("/icons/{name}", include_in_schema=False)
 def pwa_icon(name: str) -> FileResponse:
+    """Serve a public PWA icon by name, restricted to a fixed allowlist so the
+    ``{name}`` segment can't be used for path traversal."""
     if name not in _PWA_ICONS:
         raise HTTPException(404)
     path = os.path.join(_DIST_DIR, "icons", name)

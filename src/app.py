@@ -72,6 +72,8 @@ init()
 # the documented status code.
 @app.exception_handler(RequestValidationError)
 def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Re-emit Pydantic's 422 validation errors as 400 to match the documented
+    public contract, with the error payload coerced to a JSON-safe shape."""
     # Pydantic puts the raw exception in `ctx` for model-level validators; that
     # object is not JSON-serializable, so coerce ctx values to strings before
     # returning.

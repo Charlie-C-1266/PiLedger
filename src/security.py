@@ -58,6 +58,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Attach default security headers to every outgoing response."""
 
     async def dispatch(self, request: Request, call_next):
+        """Run the request, then fill in any default header the route didn't
+        already set (``setdefault`` lets a route override per-response)."""
         response: Response = await call_next(request)
         for name, value in DEFAULT_HEADERS.items():
             response.headers.setdefault(name, value)

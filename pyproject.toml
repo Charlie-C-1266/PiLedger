@@ -26,3 +26,16 @@ dev = [
 python_version = "3.12"
 strict = true
 files = ["src/schemas.py", "src/auth.py", "src/db.py", "src/constants.py"]
+
+[tool.ruff.lint]
+# Keep ruff's default rules (E/F) and add pydocstyle's *presence* checks so new
+# public functions and methods must carry a docstring. Only the presence codes
+# are enabled (not the D2xx/D4xx formatting rules), so existing docstring wording
+# is left untouched. Note: pydocstyle's D1xx fire on public names only, so
+# private (underscore-prefixed) helpers aren't enforced by the linter — those are
+# documented by hand.
+extend-select = ["D102", "D103"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test functions are self-documenting through their names.
+"tests/**" = ["D"]

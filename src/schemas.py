@@ -41,6 +41,8 @@ class RegisterIn(_In):
     @field_validator("username")
     @classmethod
     def _strip_and_check_username(cls, v: str) -> str:
+        """Trim surrounding whitespace and reject names under 2 characters once
+        trimmed (so a name of only spaces can't satisfy the length bound)."""
         v = v.strip()
         if len(v) < 2:
             raise ValueError("Username must be at least 2 characters after trimming")
@@ -76,6 +78,8 @@ class AccountIn(_In):
 
     @model_validator(mode="after")
     def _subtype_matches_type(self) -> "AccountIn":
+        """Reject a subtype that isn't valid for the chosen account type, per
+        ``SUBTYPES_BY_TYPE`` (e.g. a 'mortgage' subtype on a 'cash' account)."""
         if self.subtype not in SUBTYPES_BY_TYPE[self.type]:
             raise ValueError(
                 f"subtype '{self.subtype}' is not valid for type '{self.type}'"
@@ -101,6 +105,13 @@ class BalanceIn(_In):
     @field_validator("recorded_at")
     @classmethod
     def _normalise_recorded_at(cls, v: Optional[str]) -> Optional[str]:
+        """Accept None or any ISO-8601 datetime, returning it in the canonical
+        UTC ``ISO_FMT``.
+
+        The canonical form is tried first as a cheap fast path; other ISO-8601
+        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
+        and re-emitted canonically, and anything unparseable raises.
+        """
         if v is None:
             return None
         # Canonical form first (cheap, matches our own emitted timestamps).
@@ -130,6 +141,13 @@ class TransactionIn(_In):
     @field_validator("occurred_at")
     @classmethod
     def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        """Accept None or any ISO-8601 datetime, returning it in the canonical
+        UTC ``ISO_FMT``.
+
+        The canonical form is tried first as a cheap fast path; other ISO-8601
+        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
+        and re-emitted canonically, and anything unparseable raises.
+        """
         if v is None:
             return None
         try:
@@ -159,6 +177,13 @@ class TransactionPatch(_In):
     @field_validator("occurred_at")
     @classmethod
     def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        """Accept None or any ISO-8601 datetime, returning it in the canonical
+        UTC ``ISO_FMT``.
+
+        The canonical form is tried first as a cheap fast path; other ISO-8601
+        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
+        and re-emitted canonically, and anything unparseable raises.
+        """
         if v is None:
             return None
         try:
@@ -188,6 +213,13 @@ class TransferIn(_In):
     @field_validator("occurred_at")
     @classmethod
     def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
+        """Accept None or any ISO-8601 datetime, returning it in the canonical
+        UTC ``ISO_FMT``.
+
+        The canonical form is tried first as a cheap fast path; other ISO-8601
+        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
+        and re-emitted canonically, and anything unparseable raises.
+        """
         if v is None:
             return None
         try:
@@ -480,6 +512,8 @@ class CategoryIn(_In):
     @field_validator("name")
     @classmethod
     def _strip_name(cls, v: str) -> str:
+        """Trim surrounding whitespace and reject a name that is blank once
+        trimmed."""
         v = v.strip()
         if not v:
             raise ValueError("Category name must not be blank")

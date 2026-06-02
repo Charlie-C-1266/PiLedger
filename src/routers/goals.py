@@ -56,6 +56,8 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
 
 @router.get("/api/goals", response_model=list[GoalOut])
 def list_goals(uid: int = Depends(require_auth)) -> list[GoalOut]:
+    """List the user's goals (oldest first), each with its live or stored
+    ``saved`` amount resolved by ``_goal_row_to_out``."""
     with db() as conn:
         rows = conn.execute(
             "SELECT * FROM goals WHERE user_id=? ORDER BY created_at", (uid,)
@@ -65,6 +67,8 @@ def list_goals(uid: int = Depends(require_auth)) -> list[GoalOut]:
 
 @router.post("/api/goals", status_code=201, response_model=GoalOut)
 def create_goal(data: GoalIn, uid: int = Depends(require_auth)) -> GoalOut:
+    """Create a goal for the user. If an ``account_id`` is given it must be one
+    of the user's accounts (else 404) and the goal then tracks its balance."""
     with db() as conn:
         if data.account_id is not None:
             _require_account(conn, data.account_id, uid)
@@ -94,6 +98,12 @@ def update_goal(
     data: GoalPatch,
     uid: int = Depends(require_auth),
 ) -> GoalOut:
+    """Patch the supplied fields of one of the user's goals (404 if not theirs).
+
+    Uses ``exclude_unset`` so an explicit ``account_id: null`` unlinks the goal
+    while an omitted field is left unchanged; a new non-null link is validated
+    for ownership.
+    """
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)
@@ -120,6 +130,7 @@ def update_goal(
 
 @router.delete("/api/goals/{gid}", response_model=OkOut)
 def delete_goal(gid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's goals (404 if not theirs)."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM goals WHERE id=? AND user_id=?", (gid, uid)

@@ -54,11 +54,14 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/login")
 def login_page() -> FileResponse:
+    """Serve the standalone login page (a static HTML file outside the SPA)."""
     return FileResponse(os.path.join(STATIC_DIR, "login.html"))
 
 
 @router.post("/api/auth/register", status_code=201, response_model=RegisterOut)
 def register(data: RegisterIn) -> RegisterOut:
+    """Create a new user with a hashed password, returning 409 if the username
+    is already taken (enforced by the UNIQUE constraint)."""
     with db() as conn:
         try:
             cur = conn.execute(
@@ -74,6 +77,12 @@ def register(data: RegisterIn) -> RegisterOut:
 @router.post("/api/auth/login", response_model=LoginOut)
 @limiter.limit(LOGIN_RATE_LIMIT)
 def login(request: Request, data: LoginIn, response: Response) -> LoginOut:
+    """Authenticate a user and set the session cookie on success.
+
+    On an unknown username the password is still checked against a dummy hash so
+    the response timing doesn't leak whether the account exists, and both
+    failure modes return the same 401. Rate-limited via the shared limiter.
+    """
     username = data.username.strip()
     with db() as conn:
         user = conn.execute(
@@ -101,6 +110,7 @@ def logout(
     response: Response,
     session: Optional[str] = Cookie(None, alias=SESSION_COOKIE),
 ) -> OkOut:
+    """Delete the current session row (if any) and clear the session cookie."""
     if session:
         with db() as conn:
             conn.execute("DELETE FROM sessions WHERE token=?", (session,))
@@ -111,6 +121,7 @@ def logout(
 
 @router.get("/api/auth/me", response_model=UserOut)
 def get_me(uid: int = Depends(require_auth)) -> UserOut:
+    """Return the authenticated user's id and username (the client's auth probe)."""
     with db() as conn:
         user = conn.execute(
             "SELECT id, username FROM users WHERE id=?", (uid,)

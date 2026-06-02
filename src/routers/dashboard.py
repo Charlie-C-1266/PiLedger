@@ -26,6 +26,13 @@ router = APIRouter(tags=["dashboard"])
 
 @router.get("/api/summary", response_model=SummaryOut)
 def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
+    """Roll up the user's accounts into a net-worth summary in their base
+    currency.
+
+    Each account's latest balance is converted to base; loan/credit balances
+    are subtracted as magnitudes (``abs``). Currencies with no rate fall back to
+    1:1 and are reported in ``missing_rates`` so the UI can warn.
+    """
     with db() as conn:
         user = conn.execute(
             "SELECT base_currency FROM users WHERE id=?", (uid,)
@@ -86,6 +93,8 @@ def all_history(
     days: Annotated[int, Query(ge=1, le=MAX_DAYS)] = 90,
     uid: int = Depends(require_auth),
 ) -> list[HistoryAccountOut]:
+    """Return each account's balance-history series over the last ``days``
+    (default 90). Accounts with no points in the window are omitted."""
     with db() as conn:
         since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
         accounts = conn.execute(
@@ -124,6 +133,14 @@ def networth_history(
     range_key: RangeKey = Query(default="30D", alias="range"),
     uid: int = Depends(require_auth),
 ) -> list[NetWorthPointOut]:
+    """Return the net-worth time series (in base currency) over the selected
+    range.
+
+    Each account's balance is carried forward from its last point before the
+    window, so the line starts at the true net worth rather than zero, and a new
+    point is emitted on every date any account's balance changed. Loan/credit
+    balances are subtracted as magnitudes to match ``/api/summary``.
+    """
     days = RANGE_TO_DAYS[range_key]
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
     with db() as conn:
@@ -196,6 +213,12 @@ def get_projections(
     months: Annotated[int, Query(ge=1, le=MAX_MONTHS)] = 24,
     uid: int = Depends(require_auth),
 ) -> list[dict]:
+    """Project each savings account's balance forward under monthly compounding
+    of its interest rate, for ``months`` ahead (default 24).
+
+    Returns the full monthly series plus 1/2/5-year milestones per account. Each
+    account's figures stay in its own currency (no base conversion here).
+    """
     with db() as conn:
         rows = conn.execute(
             """

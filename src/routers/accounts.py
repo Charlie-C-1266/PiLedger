@@ -28,6 +28,8 @@ router = APIRouter(tags=["accounts"])
 
 
 def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
+    """Map an ``accounts`` row to ``AccountOut``, filling sensible defaults for
+    legacy NULLs and surfacing the joined latest balance when present."""
     return AccountOut(
         id=row["id"],
         user_id=row["user_id"],
@@ -47,6 +49,8 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
 
 @router.get("/api/accounts", response_model=list[AccountOut])
 def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
+    """List the user's accounts, each joined to its most recent balance-history
+    entry (current balance + when it was last updated), oldest first."""
     with db() as conn:
         rows = conn.execute(
             """
@@ -68,6 +72,8 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
 
 @router.post("/api/accounts", status_code=201, response_model=AccountOut)
 def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> AccountOut:
+    """Create an account for the user. It starts with no balance history, so the
+    returned ``current_balance``/``last_updated`` are None until one is recorded."""
     with db() as conn:
         cur = conn.execute(
             "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color)"
@@ -107,6 +113,13 @@ def update_account(
     data: AccountPatch,
     uid: int = Depends(require_auth),
 ) -> AccountOut:
+    """Patch the supplied fields of one of the user's accounts (404 if not
+    theirs).
+
+    Only non-None fields are applied. Subtype is re-checked against the row's
+    existing ``type`` here because a partial patch omits ``type``, so the
+    schema-level validator can't see it.
+    """
     with db() as conn:
         existing = conn.execute(
             "SELECT type FROM accounts WHERE id=? AND user_id=?", (aid, uid)
@@ -147,6 +160,8 @@ def update_account(
 
 @router.delete("/api/accounts/{aid}", response_model=OkOut)
 def delete_account(aid: int, uid: int = Depends(require_auth)) -> OkOut:
+    """Delete one of the user's accounts (404 if not theirs). Linked
+    transactions and balance history cascade via the schema's foreign keys."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
@@ -166,6 +181,8 @@ def record_balance(
     data: BalanceIn,
     uid: int = Depends(require_auth),
 ) -> OkOut:
+    """Append a balance-history point for one of the user's accounts (404 if not
+    theirs), timestamped now unless the body supplies ``recorded_at``."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
@@ -187,6 +204,8 @@ def get_history(
     days: Annotated[int, Query(ge=1, le=MAX_DAYS)] = 90,
     uid: int = Depends(require_auth),
 ) -> list[BalanceEntryOut]:
+    """Return the balance-history points for one of the user's accounts (404 if
+    not theirs) over the last ``days`` (default 90), oldest first."""
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)

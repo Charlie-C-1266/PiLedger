@@ -18,6 +18,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 - Changelog handling slimmed down: entries are now concise one-liners (no affected-file lists or root-cause essays), released history moved to `CHANGELOG-ARCHIVE.md`, and the `CLAUDE.md` guidance updated to match so the bulky history is no longer loaded into context on every change.
 - Split the 453-line `Settings` screen into per-section card components under `components/settings/` (Appearance, Categories, Exchange rates, Change password, Help, Session, Danger zone) behind a shared `SettingsCard` wrapper. No behaviour change; the screen is now a ~20-line shell.
+- Documented every Python function in `src/` (docstring coverage 36% → 100%), explaining intent and edge cases in the existing prose style, and added a ruff rule (D102/D103, tests exempt) so new public functions and methods must carry a docstring.
 
 ### Fixed
 
