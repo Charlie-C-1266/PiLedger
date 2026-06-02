@@ -34,6 +34,16 @@ _TXN_SORT_MAP: dict[str, str] = {
 }
 
 
+def _escape_like(term: str) -> str:
+    """Escape LIKE wildcards so search input matches literally, not as a pattern.
+
+    Without this, a user searching for ``50%`` or ``a_b`` would have the ``%``
+    and ``_`` interpreted as wildcards. Backslash is escaped first (it's the
+    ESCAPE character) so the order can't double-process an already-escaped char.
+    """
+    return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
     """Map a ``transactions`` row to ``TransactionOut`` (cents → dollars, NULL
     note → empty string, ``transfer_id`` present only on transfer legs)."""
@@ -70,8 +80,9 @@ def list_transactions(
     clauses = ["user_id=?"]
     params: list = [uid]
     if search:
-        clauses.append("(merchant LIKE ? OR category LIKE ?)")
-        params += [f"%{search}%", f"%{search}%"]
+        clauses.append("(merchant LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\')")
+        like = f"%{_escape_like(search)}%"
+        params += [like, like]
     if account is not None:
         clauses.append("account_id=?")
         params.append(account)

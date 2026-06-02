@@ -133,6 +133,26 @@ def test_search_is_case_insensitive(alice):
     assert len(results) == 1
 
 
+def test_search_percent_is_literal_not_wildcard(alice):
+    """A '%' in the query must match the literal character, not act as a
+    LIKE wildcard. Without escaping, '50%' would also match '5000 reward'."""
+    aid = _acct(alice)
+    _txn(alice, aid, merchant="50% off deal")
+    _txn(alice, aid, merchant="5000 reward")
+    results = alice.get("/api/transactions", params={"search": "50%"}).json()
+    assert [t["merchant"] for t in results] == ["50% off deal"]
+
+
+def test_search_underscore_is_literal_not_wildcard(alice):
+    """An '_' in the query must match a literal underscore, not any single
+    character. Without escaping, 'a_b' would also match 'axb'."""
+    aid = _acct(alice)
+    _txn(alice, aid, merchant="a_b store")
+    _txn(alice, aid, merchant="axb store")
+    results = alice.get("/api/transactions", params={"search": "a_b"}).json()
+    assert [t["merchant"] for t in results] == ["a_b store"]
+
+
 def test_filter_by_account(alice):
     a1 = _acct(alice, name="Account A")
     a2 = _acct(alice, name="Account B")
