@@ -2,22 +2,18 @@
 
 ## Changelog
 
-**Always update `CHANGELOG.md` when making code changes.** Version bumps are *decoupled* from individual PRs (see Releases) — a normal PR does **not** bump `VERSION` and does **not** add a version header. Instead it records its change under the `## [Unreleased]` section at the top of the file.
+**Always record meaningful changes in `CHANGELOG.md` before the work is considered done.** Version bumps are *decoupled* from individual PRs (see Releases) — a normal PR does **not** bump `VERSION` and does **not** add a version header. Instead it adds a concise entry under the `## [Unreleased]` section at the top of the file, in the subsection matching its type:
 
-Every meaningful change must be recorded before the work is considered done. Add the entry under `## [Unreleased]`, in the subsection matching its type:
-
-- Bug fixes → `### Fixed`
 - New features → `### Added`
-- Breaking changes → `### Changed` or `### Removed`
+- Behaviour changes → `### Changed`
+- Bug fixes → `### Fixed`
+- Removals / breaking changes → `### Removed` (or `### Changed`)
 
 If `## [Unreleased]` doesn't exist yet (the previous release just cut it away), create it at the top with the relevant subsection.
 
-Each entry must include:
-1. What changed (the symptom or capability)
-2. Why it changed or what caused it (root cause for fixes, motivation for features)
-3. Which files were affected
+**Keep entries concise and user-facing — one line per change.** State *what* changed (the capability or the fixed symptom) and, only where it isn't obvious from that, a short clause on *why*. Do **not** list affected files, paste root-cause essays, or narrate the implementation: the commit diff and the originating PR already hold that detail, and duplicating it here is what bloated the old file. Aim for the tone of a release note a user would read, e.g. *"Goals can be linked to an account for automatic balance tracking."*
 
-Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. The `## [Unreleased]` section stays at the top; released versions sit below it, newest first.
+Use [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. **Only touch the top of the file:** the `## [Unreleased]` block is the first section, so read just the opening lines (`Read` with a small `limit`, ~40 lines) to find and append to it — never read the whole `CHANGELOG.md` into context. Released history below `[Unreleased]` is closed; older releases live in `CHANGELOG-ARCHIVE.md`, which should not be read or edited during normal work.
 
 ## Releases
 
@@ -30,8 +26,9 @@ To cut a release (only on explicit user request), follow the standard PR workflo
 1. `git checkout main && git pull`, then branch (e.g. `release-X.Y.Z`).
 2. Choose `X.Y.Z` per SemVer from the accumulated `## [Unreleased]` entries: any breaking change → major; otherwise any new feature → minor; otherwise (only fixes) → patch.
 3. In `CHANGELOG.md`, rename `## [Unreleased]` to `## [X.Y.Z] — YYYY-MM-DD` and add a fresh empty `## [Unreleased]` above it.
-4. Bump `VERSION` in `src/constants.py` to `X.Y.Z`.
-5. Open the release PR. **After the user confirms it is merged**, `git checkout main && git pull`, then tag the merge commit:
+4. Keep the live `CHANGELOG.md` to just `[Unreleased]` + the release being cut: move the *previously* most-recent release section (now the second-newest) down to the top of `CHANGELOG-ARCHIVE.md`, directly under that file's `---` header. The archive stays newest-first.
+5. Bump `VERSION` in `src/constants.py` to `X.Y.Z`.
+6. Open the release PR. **After the user confirms it is merged**, `git checkout main && git pull`, then tag the merge commit:
    ```bash
    git tag -a vX.Y.Z -m "$(cat <<'EOF'
    vX.Y.Z release notes title
