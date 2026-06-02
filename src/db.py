@@ -6,6 +6,7 @@ the API boundary.
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterator, Optional
 import sqlite3
 
@@ -63,8 +64,17 @@ def user_scoped_delete_sql(table: str) -> str:
 
 
 def to_cents(dollars: float) -> int:
-    """Convert dollars to integer cents (banker-rounding via round())."""
-    return int(round(dollars * 100))
+    """Convert dollars to integer cents, rounding half away from zero.
+
+    Going through ``Decimal(str(dollars))`` rounds the value the user actually
+    typed rather than its binary float approximation: ``round(2.675 * 100)``
+    yields 267 because 2.675 is stored as 2.67499…, whereas this yields 268.
+    ``str()`` gives the shortest round-tripping decimal, so the artefact never
+    reaches the arithmetic. Inputs are bounded and finite (schemas reject
+    inf/nan), so the conversion can't overflow or raise.
+    """
+    cents = (Decimal(str(dollars)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return int(cents)
 
 
 def from_cents(cents: Optional[int]) -> Optional[float]:
@@ -84,6 +94,14 @@ def db() -> Iterator[sqlite3.Connection]:
     conn = sqlite3.connect(constants.DB)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Wait for a lock instead of failing fast: concurrent requests run in
+    # Uvicorn's threadpool and each opens its own connection, so two writes can
+    # briefly contend. WAL lets readers proceed while a writer holds the lock,
+    # which keeps GET dashboards responsive during a write. Both are connection
+    # PRAGMAs (busy_timeout) / idempotent persistent settings (WAL) — cheap to
+    # set every open, and skipped gracefully for an in-memory DB.
+    conn.execute(f"PRAGMA busy_timeout = {constants.DB_BUSY_TIMEOUT_MS}")
+    conn.execute("PRAGMA journal_mode = WAL")
     try:
         yield conn
     finally:

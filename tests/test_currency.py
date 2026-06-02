@@ -165,6 +165,62 @@ def test_summary_flags_missing_rates(alice):
     assert body["missing_rates"] == ["USD"]
 
 
+def test_summary_missing_rate_counts_at_parity(alice):
+    """A balance in a currency with no rate is *deliberately* folded into the
+    headline total at 1:1 (so money is never silently dropped), and the currency
+    is surfaced in missing_rates so the UI can warn. This pins that contract — if
+    the fallback ever changes (e.g. to exclude unconvertible amounts), it must be
+    a conscious edit to this assertion, not a silent regression."""
+    gbp = alice.post("/api/accounts", json={"name": "G", "type": "current"}).json()[
+        "id"
+    ]
+    usd = alice.post(
+        "/api/accounts",
+        json={"name": "U", "type": "current", "currency": "USD"},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{gbp}/balance", json={"balance": 100})
+    alice.post(f"/api/accounts/{usd}/balance", json={"balance": 200})
+    # No USD rate set.
+
+    body = alice.get("/api/summary").json()
+    # 100 GBP + 200 USD-at-parity = 300, with USD flagged as unconverted.
+    assert body["total_current"] == 300.0
+    assert body["total"] == 300.0
+    assert body["missing_rates"] == ["USD"]
+
+
+def test_budget_spent_missing_rate_counts_at_parity(alice):
+    """The same 1:1 fallback governs an envelope's live `spent`: a transaction in
+    an unrated currency is counted at parity and the currency reported in the
+    budget's missing_rates."""
+    usd = alice.post(
+        "/api/accounts",
+        json={"name": "U", "type": "current", "currency": "USD"},
+    ).json()["id"]
+    group = alice.post(
+        "/api/budget/groups", json={"name": "Living", "color": "#0F766E"}
+    ).json()["id"]
+    alice.post(
+        "/api/budget/envelopes",
+        json={"group_id": group, "label": "Food", "category": "Groceries"},
+    )
+    alice.post(
+        "/api/transactions",
+        json={
+            "account_id": usd,
+            "amount": -50,
+            "merchant": "Shop",
+            "category": "Groceries",
+        },
+    )
+    # No USD rate set.
+
+    body = alice.get("/api/budget").json()
+    env = body["groups"][0]["envelopes"][0]
+    assert env["spent"] == 50.0  # 50 USD counted at 1:1
+    assert body["missing_rates"] == ["USD"]
+
+
 def test_summary_loans_subtract_in_base(alice):
     asset = alice.post("/api/accounts", json={"name": "A", "type": "current"}).json()[
         "id"
@@ -208,10 +264,43 @@ def test_base_change_rescales_rates(alice):
     assert round(by_cur["EUR"], 4) == 1.8
 
 
-def test_base_change_without_pivot_drops_rates(alice):
-    # Switching to a base we have no rate for means we can't safely rescale.
+def test_base_change_without_pivot_is_rejected(alice):
+    # Switching to a base we have no rate for can't be rescaled. Rather than
+    # silently discarding the whole rate table, the change is rejected and both
+    # the base currency and the rates are left untouched.
     alice.put("/api/rates", json={"rates": [{"currency": "EUR", "rate": 0.9}]})
-    alice.put("/api/prefs", json={"base_currency": "JPY"})
+    r = alice.put("/api/prefs", json={"base_currency": "JPY"})
+    assert r.status_code == 400
+    body = alice.get("/api/rates").json()
+    assert body["base_currency"] == "GBP"  # unchanged
+    assert {x["currency"]: x["rate"] for x in body["rates"]} == {"EUR": 0.9}
+
+
+def test_base_change_without_pivot_allowed_after_adding_rate(alice):
+    # Adding a rate for the incoming base provides the pivot, so the switch then
+    # succeeds and the other rates are rescaled against it.
+    alice.put(
+        "/api/rates",
+        json={
+            "rates": [
+                {"currency": "EUR", "rate": 0.9},
+                {"currency": "JPY", "rate": 0.005},  # 1 JPY = 0.005 GBP
+            ]
+        },
+    )
+    assert alice.put("/api/prefs", json={"base_currency": "JPY"}).status_code == 200
+    body = alice.get("/api/rates").json()
+    assert body["base_currency"] == "JPY"
+    by_cur = {x["currency"]: x["rate"] for x in body["rates"]}
+    # GBP gains a row (1 GBP = 1/0.005 = 200 JPY); EUR rescaled to 0.9/0.005=180.
+    assert round(by_cur["GBP"], 4) == 200.0
+    assert round(by_cur["EUR"], 4) == 180.0
+
+
+def test_base_change_with_no_rates_is_allowed(alice):
+    # Nothing to rescale or lose, so the switch goes through with an empty table.
+    r = alice.put("/api/prefs", json={"base_currency": "JPY"})
+    assert r.status_code == 200
     body = alice.get("/api/rates").json()
     assert body["base_currency"] == "JPY"
     assert body["rates"] == []

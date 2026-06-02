@@ -2,7 +2,9 @@
 
 Changing the base currency rescales the stored exchange rates via
 ``services/currency._rescale_rates`` so each rate keeps meaning "1 unit =
-rate units of base".
+rate units of base". The switch is rejected (400) when the rates can't be
+rescaled — i.e. there are rates but none for the incoming base to pivot on —
+rather than silently discarding the whole table.
 """
 
 import sqlite3
@@ -66,6 +68,23 @@ def update_prefs(
             old_base = (old["base_currency"] if old else None) or "GBP"
             new_base = patch["base_currency"]
             if new_base != old_base:
+                # Rescaling pivots on the new base's rate against the old base.
+                # Without that pivot the stored rates can't be re-expressed and
+                # would simply be discarded — silent data loss. Reject instead,
+                # so the user adds the missing rate (or clears rates) on purpose.
+                rate_currencies = {
+                    r["currency"]
+                    for r in conn.execute(
+                        "SELECT currency FROM exchange_rates WHERE user_id=?", (uid,)
+                    ).fetchall()
+                }
+                if rate_currencies and new_base not in rate_currencies:
+                    raise HTTPException(
+                        400,
+                        f"Add an exchange rate for {new_base} before making it your "
+                        "base currency, or clear your rates first — switching now "
+                        "would discard the rates that can't be rescaled.",
+                    )
                 _rescale_rates(conn, uid, old_base, new_base)
         if patch:
             sets = ", ".join(f"{k}=?" for k in patch)

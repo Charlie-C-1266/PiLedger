@@ -562,3 +562,198 @@ def test_meta_table_exists_on_fresh_db(tmp_path, monkeypatch):
     finally:
         conn.close()
     assert "meta" in tables
+
+
+# ─── Version-gated migration ladder ──────────────────────────────────────────
+# The fixtures above all reach the current schema via one of two paths: a fresh
+# DB (jumps straight to SCHEMA_VERSION) or the legacy sniff path (no meta table).
+# Neither walks the `if version < N` ladder in init() — i.e. the migrations a
+# *stamped, already-upgraded* install actually runs. These tests stamp a DB at an
+# intermediate version and assert it climbs, exercising _migrate_to_2..7.
+
+
+# Accounts as they looked when the DB was stamped at schema_version 1: the nine
+# columns _migrate_to_2's `INSERT INTO accounts_new SELECT *` depends on, but the
+# narrow type CHECK from before 'credit'/'invest' existed.
+_V1_SCHEMA = """
+    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE users (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        password_hash TEXT NOT NULL,
+        theme         TEXT DEFAULT 'olive',
+        dark_mode     INTEGER DEFAULT 0,
+        base_currency TEXT DEFAULT 'GBP',
+        created_at    TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE accounts (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id       INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        name          TEXT    NOT NULL,
+        type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan')),
+        subtype       TEXT    DEFAULT 'general',
+        currency      TEXT    NOT NULL DEFAULT 'GBP',
+        interest_rate REAL    DEFAULT 0,
+        color         TEXT    DEFAULT '#6366f1',
+        created_at    TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE TABLE balance_history (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id    INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        balance_cents INTEGER NOT NULL,
+        notes         TEXT,
+        recorded_at   TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE TABLE exchange_rates (
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        currency   TEXT    NOT NULL,
+        rate       REAL    NOT NULL,
+        updated_at TEXT    DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, currency)
+    );
+    CREATE TABLE budget_items (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        name       TEXT    NOT NULL,
+        amount     REAL    NOT NULL,
+        frequency  TEXT    NOT NULL,
+        created_at TEXT    DEFAULT (datetime('now'))
+    );
+"""
+
+
+@pytest.fixture
+def stamped_v1_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 1, seeded so the ladder has real work to do:
+    a plain loan, a loan+credit_card (which _migrate_to_2 converts to 'credit'),
+    and a budget_items row (which _migrate_to_6 must drop). Running init() should
+    climb to SCHEMA_VERSION via the version-gated migrations."""
+    db_path = tmp_path / "v1.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.executescript(_V1_SCHEMA)
+        conn.execute("INSERT INTO meta(key, value) VALUES('schema_version', '1')")
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type, subtype) VALUES"
+            "(1, 1, 'Current', 'current', 'general'),"
+            "(2, 1, 'Car loan', 'loan', 'general'),"
+            "(3, 1, 'Visa', 'loan', 'credit_card')"
+        )
+        conn.execute(
+            "INSERT INTO budget_items(user_id, account_id, name, amount, frequency)"
+            " VALUES(1, 1, 'Rent', 1000.0, 'monthly')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init
+
+    init()
+    return db_path
+
+
+def test_stamped_db_climbs_to_current_version(stamped_v1_db):
+    """The whole point: a version-1 stamp ends at SCHEMA_VERSION after init()."""
+    from db import SCHEMA_VERSION
+
+    assert _read_schema_version(stamped_v1_db) == SCHEMA_VERSION
+
+
+def test_gated_path_widens_account_type_check(stamped_v1_db):
+    """_migrate_to_2 recreates accounts so the CHECK admits the newer types."""
+    sql = _table_sql(stamped_v1_db, "accounts")
+    assert "'credit'" in sql
+    assert "'invest'" in sql
+
+
+def test_gated_path_converts_credit_card_loan_to_credit(stamped_v1_db):
+    """_migrate_to_2 reclassifies a loan+credit_card account as type='credit',
+    while a plain loan is left untouched."""
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        types = dict(
+            conn.execute("SELECT name, type FROM accounts ORDER BY id").fetchall()
+        )
+    finally:
+        conn.close()
+    assert types == {"Current": "current", "Car loan": "loan", "Visa": "credit"}
+
+
+def test_gated_path_preserves_existing_account_rows(stamped_v1_db):
+    """The accounts drop+recreate in _migrate_to_2 must not lose rows or ids."""
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        ids = [r[0] for r in conn.execute("SELECT id FROM accounts ORDER BY id")]
+    finally:
+        conn.close()
+    assert ids == [1, 2, 3]
+
+
+def test_gated_path_creates_later_tables(stamped_v1_db):
+    """Tables introduced after v1 (transactions, goals, user_categories, the
+    envelope budget) must all exist once the ladder has run."""
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        tables = {
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+    finally:
+        conn.close()
+    assert {
+        "transactions",
+        "goals",
+        "user_categories",
+        "budget_income",
+        "budget_group",
+        "budget_envelope",
+    } <= tables
+
+
+def test_gated_path_drops_budget_items(stamped_v1_db):
+    """_migrate_to_6 drops the retired budget_items table even on the gated path."""
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='budget_items'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is None
+
+
+def test_gated_path_adds_transfer_id_and_goal_account_id(stamped_v1_db):
+    """_migrate_to_4 / _migrate_to_5 columns are present after the climb."""
+    assert "transfer_id" in _table_columns(stamped_v1_db, "transactions")
+    assert "account_id" in _table_columns(stamped_v1_db, "goals")
+
+
+@pytest.mark.parametrize("start_version", [2, 3, 4, 5, 6])
+def test_climb_from_each_intermediate_version(tmp_path, monkeypatch, start_version):
+    """Stamping at any intermediate version and running init() reaches
+    SCHEMA_VERSION without error — each `if version < N` branch is taken in turn.
+    A current-shape DB is used so only the version stamp drives the ladder."""
+    db_path = tmp_path / f"v{start_version}.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, SCHEMA_VERSION, db, _set_schema_version
+
+    init()  # build a full current-schema DB...
+    with db() as conn:
+        _set_schema_version(conn, start_version)  # ...then pretend it's older
+        conn.commit()
+
+    init()  # re-run: the gated ladder must climb from start_version
+    assert _read_schema_version(db_path) == SCHEMA_VERSION
