@@ -24,6 +24,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 - Mobile no longer zooms in when opening the add/edit transaction, goal, account, and transfer modals. The form fields render below iOS Safari's 16px focus-zoom threshold, and the existing guard couldn't override their CSS-module class size; it now forces 16px on touch widths.
 - Removed two phantom chart rows (savings projection, account balance) from the frontend docs — neither chart exists in the React frontend.
+- Amounts ending in a half-cent (e.g. 2.675) no longer lose a penny on save — money is now rounded on the value entered rather than its binary-float approximation.
 - Concurrent requests no longer fail with "database is locked": connections now wait on a lock (5s busy timeout) and use WAL journaling so reads stay responsive during a write.
 
 ## [3.0.0] — 2026-06-01
