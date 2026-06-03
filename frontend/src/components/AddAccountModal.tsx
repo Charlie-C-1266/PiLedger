@@ -8,12 +8,70 @@ import { useSummary } from "../hooks/useSummary";
 import styles from "./AddModal.module.css";
 
 const TYPES = [
-  { value: "current", label: "Current" },
-  { value: "savings", label: "Savings" },
+  { value: "current", label: "Current Account" },
+  { value: "savings", label: "Savings Account" },
   { value: "credit", label: "Credit" },
   { value: "invest", label: "Investment" },
   { value: "loan", label: "Loan" },
 ];
+
+const SUBTYPE_LABELS: Record<string, string> = {
+  general: "General",
+  // Current
+  standard: "Standard",
+  joint: "Joint",
+  student: "Student",
+  premier: "Premier",
+  basic: "Basic",
+  business: "Business",
+  // Savings
+  cash_isa: "Cash ISA",
+  stocks_shares_isa: "Stocks & Shares ISA",
+  lifetime_isa: "Lifetime ISA",
+  junior_isa: "Junior ISA",
+  regular_saver: "Regular Saver",
+  easy_access: "Instant Access",
+  fixed_term_bond: "Fixed Term Bond",
+  notice_account: "Notice Account",
+  premium_bonds: "Premium Bonds",
+  sipp: "SIPP",
+  workplace_pension: "Workplace Pension",
+  // Loan
+  bank_loan: "Bank Loan",
+  mortgage: "Mortgage",
+  student_loan: "Student Loan",
+  car_finance: "Car Finance",
+  overdraft: "Overdraft",
+  bnpl: "Buy Now Pay Later",
+  // Credit
+  credit_card: "Credit Card",
+  store_card: "Store Card",
+  charge_card: "Charge Card",
+  // Invest
+  trading_account: "Trading Account",
+  crypto: "Crypto",
+};
+
+const SUBTYPES_BY_TYPE: Record<string, string[]> = {
+  current: ["general", "standard", "joint", "student", "premier", "basic", "business"],
+  savings: [
+    "general",
+    "easy_access",
+    "regular_saver",
+    "fixed_term_bond",
+    "notice_account",
+    "cash_isa",
+    "stocks_shares_isa",
+    "lifetime_isa",
+    "junior_isa",
+    "premium_bonds",
+    "sipp",
+    "workplace_pension",
+  ],
+  loan: ["general", "mortgage", "bank_loan", "student_loan", "car_finance", "overdraft", "bnpl"],
+  credit: ["general", "credit_card", "store_card", "charge_card"],
+  invest: ["general", "trading_account", "crypto"],
+};
 
 const DEFAULT_COLOR = "#6366f1";
 
@@ -26,7 +84,9 @@ export default function AddAccountModal({ onClose }: Props) {
   const { data: summary } = useSummary();
   const [name, setName] = useState("");
   const [type, setType] = useState("current");
+  const [subtype, setSubtype] = useState("general");
   const [balance, setBalance] = useState("");
+  const [interestRate, setInterestRate] = useState("");
   const [currency, setCurrency] = useState("");
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [customColor, setCustomColor] = useState("");
@@ -36,13 +96,21 @@ export default function AddAccountModal({ onClose }: Props) {
   const baseCurrency = summary?.base_currency ?? "GBP";
   const selectedCurrency = currency || baseCurrency;
 
+  const handleTypeChange = (newType: string) => {
+    setType(newType);
+    setSubtype("general");
+  };
+
   const mutation = useMutation({
     mutationFn: async () => {
+      const rate = parseFloat(interestRate);
       const account = await createAccount({
         name: name.trim(),
         type,
+        subtype,
         color,
         currency: selectedCurrency,
+        interest_rate: !isNaN(rate) && rate >= 0 ? rate : 0,
       });
       const parsed = parseFloat(balance);
       if (!isNaN(parsed)) {
@@ -115,17 +183,39 @@ export default function AddAccountModal({ onClose }: Props) {
           ))}
         </select>
 
-        <div className={styles.chips}>
+        <select
+          className={styles.select}
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          aria-label="Account type"
+        >
           {TYPES.map((t) => (
-            <button
-              key={t.value}
-              className={`${styles.chip} ${t.value === type ? styles.chipActive : ""}`}
-              onClick={() => setType(t.value)}
-            >
+            <option key={t.value} value={t.value}>
               {t.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
+
+        <select
+          className={styles.select}
+          value={subtype}
+          onChange={(e) => setSubtype(e.target.value)}
+          aria-label="Account subtype"
+        >
+          {SUBTYPES_BY_TYPE[type].map((s) => (
+            <option key={s} value={s}>
+              {SUBTYPE_LABELS[s]}
+            </option>
+          ))}
+        </select>
+
+        <input
+          className={styles.input}
+          placeholder="Interest rate % p.a. (optional, e.g. 4.5)"
+          value={interestRate}
+          onChange={(e) => setInterestRate(e.target.value)}
+          inputMode="decimal"
+        />
 
         {/* Colour picker */}
         <div className={styles.colorSection}>
