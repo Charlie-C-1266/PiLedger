@@ -6,6 +6,7 @@ import { useSummary } from "../hooks/useSummary";
 import { updateGoal } from "../api/client";
 import { fmt } from "../lib/currency";
 import HBar from "../components/charts/HBar";
+import GoalProjectionModal from "../components/goals/GoalProjectionModal";
 import AddGoalModal from "../components/AddGoalModal";
 import type { Goal } from "../types";
 import styles from "./Goals.module.css";
@@ -118,15 +119,26 @@ export default function Goals() {
   const { data: summary } = useSummary();
   const currency = summary?.base_currency ?? "GBP";
   const [showModal, setShowModal] = useState(false);
+  const [showProjections, setShowProjections] = useState(false);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
         <h1 className={styles.title}>Goals</h1>
-        <button className={styles.addBtn} onClick={() => setShowModal(true)}>
-          + Add goal
-        </button>
+        <div className={styles.headerActions}>
+          {(goals?.length ?? 0) > 0 && (
+            <button
+              className={styles.secondaryBtn}
+              onClick={() => setShowProjections(true)}
+            >
+              Projections
+            </button>
+          )}
+          <button className={styles.addBtn} onClick={() => setShowModal(true)}>
+            + Add goal
+          </button>
+        </div>
       </div>
       <div className={styles.grid}>
         {(goals ?? []).map((g) => (
@@ -141,6 +153,13 @@ export default function Goals() {
       {showModal && <AddGoalModal onClose={() => setShowModal(false)} />}
       {editGoal && (
         <AddGoalModal goal={editGoal} onClose={() => setEditGoal(null)} />
+      )}
+      {showProjections && (
+        <GoalProjectionModal
+          goals={goals ?? []}
+          currency={currency}
+          onClose={() => setShowProjections(false)}
+        />
       )}
     </div>
   );

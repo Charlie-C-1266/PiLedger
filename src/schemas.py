@@ -440,6 +440,7 @@ class GoalOut(BaseModel):
     color: str
     account_id: Optional[int] = None
     account_name: Optional[str] = None
+    interest_rate: Optional[float] = None
     created_at: str
 
 

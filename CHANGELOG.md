@@ -11,6 +11,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- Goal projections: a "Projections" view on the Goals screen charts each savings goal's balance forward from its monthly contribution and any linked-account interest, with colour-coded chips to filter to specific goals.
 - Account subtype and interest rate fields when creating an account — the type selector is now a dropdown, a contextual subtype dropdown follows it (e.g. Cash ISA, Regular Saver, Fixed Term Bond for savings; Mortgage, Overdraft for loans), and an optional interest rate field records the account's % p.a.
 - Documentation link in Settings — signed-in users can reopen the built docs (`/guide`) without logging out.
 - Multi-currency end to end: account currency picker, manual FX-rate editor, and a missing-rate warning on Overview. Wires up the previously orphaned `/api/rates` endpoints so net worth no longer treats unconvertible foreign balances as 1:1.
