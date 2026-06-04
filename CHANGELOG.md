@@ -9,6 +9,8 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-06-04
+
 ### Added
 
 - Goal projections: a "Projections" view on the Goals screen charts each savings goal's balance forward from its monthly contribution and any linked-account interest, with colour-coded chips to filter to specific goals.
@@ -30,26 +32,3 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Switching your base currency to one you have no rate for is now rejected with a clear message instead of silently wiping your whole exchange-rate table.
 - Amounts ending in a half-cent (e.g. 2.675) no longer lose a penny on save — money is now rounded on the value entered rather than its binary-float approximation.
 - Concurrent requests no longer fail with "database is locked": connections now wait on a lock (5s busy timeout) and use WAL journaling so reads stay responsive during a write.
-
-## [3.0.0] — 2026-06-01
-
-### Added
-
-- Zero-based envelope **Budget** screen: income lines, envelope groups with live sliders, a "left to budget" hero, a safe-to-spend rail, an allocation donut, and a budget-vs-actual trend chart — backed by a new `GET /api/budget` plus income/group/envelope CRUD (schema v7).
-- Functional header search across accounts, goals, and transactions (command-palette overlay, with a mobile search button).
-- Goals can be edited, deleted, and linked to an account for automatic balance tracking.
-
-### Changed
-
-- Accounts page shows a single filterable list (All / Assets / Debts) instead of three overlapping sections.
-- Split the 1,656-line `src/app.py` into per-resource routers + shared services (8-stage refactor, no behaviour change).
-- Removed hardcoded `/home/charlie/` paths from the deployment and backup docs.
-
-### Fixed
-
-- Refreshed the docs to match the React/Vite stack and retire the old "Budget Planner".
-- Budget envelope sliders no longer run away into the billions when dragged — the slider ceiling is now stable and independent of the dragged value.
-
-### Removed
-
-- Retired the orphaned `budget_items` model and its `/api/budget*` endpoints, freeing the namespace for the envelope Budget screen (schema v6 drops the table).
