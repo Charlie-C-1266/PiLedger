@@ -6,6 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.0.0] — 2026-06-01
+
+### Added
+
+- Zero-based envelope **Budget** screen: income lines, envelope groups with live sliders, a "left to budget" hero, a safe-to-spend rail, an allocation donut, and a budget-vs-actual trend chart — backed by a new `GET /api/budget` plus income/group/envelope CRUD (schema v7).
+- Functional header search across accounts, goals, and transactions (command-palette overlay, with a mobile search button).
+- Goals can be edited, deleted, and linked to an account for automatic balance tracking.
+
+### Changed
+
+- Accounts page shows a single filterable list (All / Assets / Debts) instead of three overlapping sections.
+- Split the 1,656-line `src/app.py` into per-resource routers + shared services (8-stage refactor, no behaviour change).
+- Removed hardcoded `/home/charlie/` paths from the deployment and backup docs.
+
+### Fixed
+
+- Refreshed the docs to match the React/Vite stack and retire the old "Budget Planner".
+- Budget envelope sliders no longer run away into the billions when dragged — the slider ceiling is now stable and independent of the dragged value.
+
+### Removed
+
+- Retired the orphaned `budget_items` model and its `/api/budget*` endpoints, freeing the namespace for the envelope Budget screen (schema v6 drops the table).
+
 ## [2.1.0] — 2026-05-29
 
 ### Changed
