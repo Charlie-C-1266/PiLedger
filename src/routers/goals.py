@@ -25,15 +25,17 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
     account_id = row["account_id"] if "account_id" in row.keys() else None
     saved = from_cents(row["saved_cents"]) or 0.0
     account_name = None
+    interest_rate = None
     if account_id is not None:
         acc = conn.execute(
-            "SELECT name FROM accounts WHERE id=? AND user_id=?",
+            "SELECT name, interest_rate FROM accounts WHERE id=? AND user_id=?",
             (account_id, row["user_id"]),
         ).fetchone()
         if acc is None:
             account_id = None
         else:
             account_name = acc["name"]
+            interest_rate = acc["interest_rate"]
             bal = conn.execute(
                 "SELECT balance_cents FROM balance_history WHERE account_id=?"
                 " ORDER BY recorded_at DESC, id DESC LIMIT 1",
@@ -50,6 +52,7 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
         color=row["color"],
         account_id=account_id,
         account_name=account_name,
+        interest_rate=interest_rate,
         created_at=row["created_at"],
     )
 

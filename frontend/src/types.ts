@@ -50,6 +50,7 @@ export interface Goal {
   color: string;
   account_id?: number | null;
   account_name?: string | null;
+  interest_rate?: number | null;
   created_at: string;
 }
 
