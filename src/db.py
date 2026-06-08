@@ -242,6 +242,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 10. Add goals.account_id (links a goal to an account it tracks).
     _ensure_goal_account_id_column(conn)
 
+    # 11. Add accounts.counts_to_net_worth (the Accessible-net-worth flag).
+    _ensure_counts_to_net_worth_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -262,6 +265,18 @@ def _ensure_goal_account_id_column(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE goals ADD COLUMN account_id INTEGER"
             " REFERENCES accounts(id) ON DELETE SET NULL"
+        )
+        conn.commit()
+
+
+def _ensure_counts_to_net_worth_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add accounts.counts_to_net_worth — the per-account 'count
+    toward Accessible net worth' flag (ADR-0003). Defaults to 1 so every
+    existing account keeps counting; the user opts accounts out individually."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    if "counts_to_net_worth" not in cols:
+        conn.execute(
+            "ALTER TABLE accounts ADD COLUMN counts_to_net_worth INTEGER NOT NULL DEFAULT 1"
         )
         conn.commit()
 
@@ -404,14 +419,9 @@ def _migrate_to_7(conn: sqlite3.Connection) -> None:
 
 
 def _migrate_to_8(conn: sqlite3.Connection) -> None:
-    """Add accounts.counts_to_net_worth — the per-account 'count toward Accessible
-    net worth' flag (ADR-0003). Defaults to 1 so every existing account keeps
-    counting; the user opts accounts out individually."""
-    acc_cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
-    if "counts_to_net_worth" not in acc_cols:
-        conn.execute(
-            "ALTER TABLE accounts ADD COLUMN counts_to_net_worth INTEGER NOT NULL DEFAULT 1"
-        )
+    """Add accounts.counts_to_net_worth — the Accessible-net-worth flag (ADR-0003).
+    Shares the idempotent column-add with the legacy path so the two can't drift."""
+    _ensure_counts_to_net_worth_column(conn)
     _set_schema_version(conn, 8)
     conn.commit()
 

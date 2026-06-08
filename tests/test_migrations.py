@@ -241,6 +241,26 @@ def test_existing_accounts_default_to_gbp_currency(migrated_db):
     assert all(r[0] == "GBP" for r in rows)
 
 
+def test_adds_accounts_counts_to_net_worth(migrated_db):
+    """A pre-stamp (legacy) DB whose accounts table predates the flag must gain
+    the column via _run_legacy_migrations — init() stamps straight past the
+    version-gated _migrate_to_8, so the legacy path has to add it itself."""
+    assert "counts_to_net_worth" in _table_columns(migrated_db, "accounts")
+
+
+def test_existing_accounts_default_to_counting(migrated_db):
+    """Every account already in a legacy DB keeps counting toward net worth on
+    rollout (ADR-0003: opt-out, never a silent change)."""
+    conn = sqlite3.connect(str(migrated_db))
+    try:
+        rows = conn.execute(
+            "SELECT counts_to_net_worth FROM accounts ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] == 1 for r in rows)
+
+
 def test_adds_users_base_currency(migrated_db):
     assert "base_currency" in _table_columns(migrated_db, "users")
 
@@ -355,6 +375,7 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
         "currency",
         "interest_rate",
         "color",
+        "counts_to_net_worth",
         "created_at",
     }
     assert _table_columns(db_path, "balance_history") >= {
@@ -738,7 +759,19 @@ def test_gated_path_adds_transfer_id_and_goal_account_id(stamped_v1_db):
     assert "account_id" in _table_columns(stamped_v1_db, "goals")
 
 
-@pytest.mark.parametrize("start_version", [2, 3, 4, 5, 6])
+def test_gated_path_adds_counts_to_net_worth(stamped_v1_db):
+    """_migrate_to_8 adds the flag on the version-gated ladder, defaulting every
+    pre-existing account to counting."""
+    assert "counts_to_net_worth" in _table_columns(stamped_v1_db, "accounts")
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        rows = conn.execute("SELECT counts_to_net_worth FROM accounts").fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] == 1 for r in rows)
+
+
+@pytest.mark.parametrize("start_version", [2, 3, 4, 5, 6, 7])
 def test_climb_from_each_intermediate_version(tmp_path, monkeypatch, start_version):
     """Stamping at any intermediate version and running init() reaches
     SCHEMA_VERSION without error — each `if version < N` branch is taken in turn.

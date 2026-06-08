@@ -215,6 +215,24 @@ def test_summary_flag_toggle_moves_account_between_buckets(alice):
     assert body["total_net_worth"] == 8000.0
 
 
+def test_summary_savings_rate_ignores_set_aside_savings(alice):
+    # savings_rate is Accessible-only: a set-aside savings pot must not inflate
+    # it, and its balance must not appear in accessible assets either.
+    cur = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    pot = alice.post(
+        "/api/accounts",
+        json={"name": "ISA", "type": "savings", "counts_to_net_worth": False},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{cur}/balance", json={"balance": 1000.0})
+    alice.post(f"/api/accounts/{pot}/balance", json={"balance": 5000.0})
+    body = alice.get("/api/summary").json()
+    assert body["assets"] == 1000.0
+    assert body["total_savings"] == 0.0
+    assert body["savings_rate"] == 0.0
+
+
 # ── History / all ─────────────────────────────────────────────────────────────
 
 
