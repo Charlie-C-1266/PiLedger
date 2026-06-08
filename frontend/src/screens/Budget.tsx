@@ -156,7 +156,6 @@ export default function Budget() {
               flexRemaining={flexRemaining}
               currency={currency}
               factor={factor}
-              period={period}
             />
             <AllocationDonut
               slices={segments.map((s) => ({
