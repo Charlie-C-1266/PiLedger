@@ -149,3 +149,60 @@ def test_slider_ceiling_is_stable_when_dragged_to_the_top(signed_in_page):
 
     assert slider.get_attribute("max") == "3000"
     expect(page.get_by_text("£3,000").first).to_be_visible()
+
+
+def test_safe_to_spend_shows_hint_when_no_flexible_groups(signed_in_page):
+    """Regression: all groups default to Fixed, so safe-to-spend shows £0 and
+    a setup hint rather than a silent zero that looks like a bug."""
+    page = signed_in_page
+    page.request.post("/api/budget/income", data={"label": "Salary", "amount": 3000})
+    group = page.request.post(
+        "/api/budget/groups",
+        data={"name": "Bills", "color": "#3b82f6", "flexible": False},
+    ).json()
+    page.request.post(
+        "/api/budget/envelopes",
+        data={
+            "group_id": group["id"],
+            "label": "Rent",
+            "category": "Bills",
+            "budgeted": 1200,
+        },
+    )
+    page.goto("/budget")
+
+    # No flexible groups → card shows £0 and a guidance caption, not blank.
+    expect(page.locator("text=Safe to spend")).to_be_visible()
+    expect(page.get_by_text("Mark a group as Flexible", exact=False)).to_be_visible()
+
+
+def test_safe_to_spend_reflects_flexible_envelope_balance(signed_in_page):
+    """Safe-to-spend shows the correct remaining figure for flexible groups and
+    updates live when the envelope slider is dragged."""
+    page = signed_in_page
+    _seed_budget(page)  # flexible group, budgeted £1000, spent £250
+    page.goto("/budget")
+
+    # With £750 remaining (1000 - 250 spent), the card should show £750.
+    sts_card = page.locator("section", has=page.get_by_text("Safe to spend"))
+    expect(sts_card.get_by_text("£750")).to_be_visible()
+
+    # The per-day pacing caption appears in every period view.
+    for label in ["Monthly", "Weekly", "Yearly"]:
+        page.get_by_role("radio", name=label).click()
+        expect(sts_card.get_by_text("/day", exact=False)).to_be_visible()
+
+    # Slider drag in the flexible envelope updates the safe-to-spend live.
+    page.get_by_role("radio", name="Monthly").click()
+    slider = page.get_by_role("slider", name="Groceries budgeted amount")
+    slider.evaluate(
+        """el => {
+          const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value'
+          ).set;
+          setter.call(el, '2000');
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        }"""
+    )
+    # budgeted 2000 - spent 250 = £1750
+    expect(sts_card.get_by_text("£1,750")).to_be_visible()

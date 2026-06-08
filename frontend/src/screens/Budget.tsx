@@ -69,6 +69,7 @@ export default function Budget() {
         ),
     [data]
   );
+  const hasFlexibleGroups = (data?.groups ?? []).some((g) => g.flexible);
   const envelopeCount = (data?.groups ?? []).reduce(
     (s, g) => s + g.envelopes.length,
     0
@@ -154,6 +155,7 @@ export default function Budget() {
           <div className={styles.rail}>
             <SafeToSpendCard
               flexRemaining={flexRemaining}
+              hasFlexibleGroups={hasFlexibleGroups}
               currency={currency}
               factor={factor}
             />
