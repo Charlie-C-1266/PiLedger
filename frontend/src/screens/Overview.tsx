@@ -51,6 +51,21 @@ export default function Overview() {
   // series are already restricted to counting accounts server-side.
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
   const setAside = summary?.set_aside ?? 0;
+
+  // Percentage change in net worth across the selected range: from the first
+  // point in the trend to the value shown in the headline (which follows the
+  // hovered point, else the latest). |first| is the denominator so the sign
+  // reflects direction even when net worth starts negative. Null — and the pill
+  // hidden — when the series is too short or starts at zero (no defined %).
+  const series = nwSeries ?? [];
+  const firstValue = series.length > 1 ? series[0].value : null;
+  const currentValue = hoverPoint?.value ?? series[series.length - 1]?.value ?? null;
+  const pctChange =
+    firstValue != null && firstValue !== 0 && currentValue != null
+      ? ((currentValue - firstValue) / Math.abs(firstValue)) * 100
+      : null;
+  const pctUp = pctChange != null && pctChange >= 0;
+  const pctColor = pctUp ? theme.up : theme.down;
   // Asset accounts with a positive balance that count toward net worth — the
   // donut is the Accessible "ASSETS" distribution, so loan/credit (debt) and
   // set-aside accounts are excluded. Mirrors /api/summary's classification.
@@ -122,6 +137,22 @@ export default function Overview() {
                 {fmt(summary.assets - Math.abs(summary.debts), currency)}
               </span>
               <span className={styles.metaMute}>net position</span>
+              {pctChange != null && (
+                <>
+                  <span
+                    className={styles.deltaPill}
+                    style={{
+                      background: `color-mix(in oklab, ${pctColor}, transparent 86%)`,
+                      color: pctColor,
+                    }}
+                    title={`Net worth change over the ${range} period`}
+                    aria-label={`Net worth ${pctUp ? "up" : "down"} ${Math.abs(pctChange).toFixed(1)} percent over ${range}`}
+                  >
+                    {pctUp ? "▲" : "▼"} {Math.abs(pctChange).toFixed(1)}%
+                  </span>
+                  <span className={styles.metaMute}>{range}</span>
+                </>
+              )}
             </div>
           )}
           <span className="sr-only">
