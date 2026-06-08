@@ -59,6 +59,30 @@
   white-space: nowrap;
 }
 
+/* The label doubles as the edit affordance — a text button that opens the
+   income modal to rename or delete the line. */
+.labelBtn {
+  min-width: 0;
+  justify-self: start;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 160ms;
+}
+
+.labelBtn:hover {
+  color: var(--pl-accent);
+}
+
 .amount {
   font: 700 15px/1 "Plus Jakarta Sans", sans-serif;
   text-align: right;
