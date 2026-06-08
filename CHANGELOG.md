@@ -11,6 +11,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- Overview net-worth hero now shows the percentage change over the selected chart range as a colour-coded pill (green up / red down) next to the net-position figure, and it tracks the hovered point on the trend line.
 - Accounts can be set aside from your net-worth headline, so day-to-day balances aren't swamped by large investment or pension swings. The Overview now shows your "Accessible" net worth (counting accounts only) with a dedicated "Set aside" card, while the Accounts page keeps the full "Total net worth" and badges set-aside accounts. Toggle "Count toward net worth" when adding or editing an account.
 
 ### Fixed
