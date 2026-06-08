@@ -1,5 +1,4 @@
 import { fmt } from "../../lib/currency";
-import type { Period } from "./period";
 import styles from "./SafeToSpendCard.module.css";
 
 interface Props {
@@ -7,19 +6,17 @@ interface Props {
   flexRemaining: number;
   currency: string;
   factor: number;
-  period: Period;
 }
 
 /**
  * Headline "safe to spend" — what's left in flexible envelopes this period,
- * clamped at zero. In the monthly view it also paces that as a per-day figure
- * over the days remaining in the month.
+ * clamped at zero, paced as a per-day figure over the days remaining in the
+ * month.
  */
 export default function SafeToSpendCard({
   flexRemaining,
   currency,
   factor,
-  period,
 }: Props) {
   const remaining = Math.max(0, flexRemaining);
 
@@ -31,10 +28,7 @@ export default function SafeToSpendCard({
   ).getDate();
   const daysLeft = Math.max(1, daysInMonth - today.getDate() + 1);
 
-  const pace =
-    period === "monthly"
-      ? ` · about ${fmt(remaining / daysLeft, currency, { decimals: 0 })}/day for ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`
-      : "";
+  const pace = ` · about ${fmt(remaining / daysLeft, currency, { decimals: 0 })}/day for ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`;
 
   return (
     <section className={styles.card}>

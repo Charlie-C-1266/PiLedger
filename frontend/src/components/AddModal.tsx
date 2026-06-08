@@ -46,6 +46,9 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
     queryClient.invalidateQueries({ queryKey: ["transactions"] });
     queryClient.invalidateQueries({ queryKey: ["summary"] });
     queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    // A transaction in an enveloped category changes its `spent` figure, which
+    // ripples into the budget's group totals and safe-to-spend headline.
+    queryClient.invalidateQueries({ queryKey: ["budget"] });
   };
 
   const saveMutation = useMutation({
