@@ -68,6 +68,7 @@ export default function Accounts() {
   const debtTotal = (accounts ?? [])
     .filter((a) => isDebt(a))
     .reduce((s, a) => s + Math.abs(a.current_balance ?? 0), 0);
+  const netWorth = assetTotal - debtTotal;
 
   const allAccounts = accounts ?? [];
 
@@ -109,7 +110,12 @@ export default function Accounts() {
               ))}
             </div>
             {balanceFilter === "all" && (
-              <span className={styles.sectionHint}>Click to update balance</span>
+              <span
+                className={styles.totalValue}
+                style={{ color: netWorth >= 0 ? theme.up : theme.down }}
+              >
+                {fmt(netWorth, currency)}
+              </span>
             )}
             {balanceFilter === "assets" && (
               <span className={styles.totalValue} style={{ color: theme.up }}>
