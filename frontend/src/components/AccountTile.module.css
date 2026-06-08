@@ -33,12 +33,25 @@
 .top {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .institution {
   font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: 1.2px;
   opacity: 0.75;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font: 600 9px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .cardNum {

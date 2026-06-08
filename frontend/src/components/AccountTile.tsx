@@ -6,6 +6,8 @@ import styles from "./AccountTile.module.css";
 interface Props {
   account: Account;
   compact?: boolean;
+  /** Show a "Set aside" badge when the account is excluded from net worth. */
+  badge?: boolean;
   style?: React.CSSProperties;
   className?: string;
   onMouseEnter?: () => void;
@@ -19,6 +21,7 @@ function initials(id: number): string {
 export default function AccountTile({
   account,
   compact,
+  badge,
   style,
   className,
   onMouseEnter,
@@ -41,6 +44,9 @@ export default function AccountTile({
       </svg>
       <div className={styles.top}>
         <span className={styles.institution}>{account.type.toUpperCase()}</span>
+        {badge && !account.counts_to_net_worth && (
+          <span className={styles.badge}>Set aside</span>
+        )}
       </div>
       {!compact && (
         <div className={styles.cardNum}>•••• {initials(account.id)}</div>

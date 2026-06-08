@@ -22,7 +22,7 @@ def test_register_then_auto_login_lands_on_dashboard(page: Page, unique_user) ->
     page.locator("#reg-btn").click()
 
     page.wait_for_url(re.compile(r".*/overview"))
-    expect(page.get_by_text("NET WORTH", exact=True)).to_be_visible()
+    expect(page.get_by_text("ACCESSIBLE NET WORTH", exact=True)).to_be_visible()
 
 
 def test_register_with_mismatched_passwords_blocks_submit(

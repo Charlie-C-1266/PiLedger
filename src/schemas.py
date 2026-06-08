@@ -75,6 +75,7 @@ class AccountIn(_In):
     currency: Currency = "GBP"
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
+    counts_to_net_worth: bool = True
 
     @model_validator(mode="after")
     def _subtype_matches_type(self) -> "AccountIn":
@@ -95,6 +96,7 @@ class AccountPatch(_In):
         default=None, ge=0, le=MAX_RATE, allow_inf_nan=False
     )
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
+    counts_to_net_worth: Optional[bool] = None
 
 
 class BalanceIn(_In):
@@ -377,6 +379,7 @@ class AccountOut(BaseModel):
     currency: Currency = "GBP"
     interest_rate: float
     color: str
+    counts_to_net_worth: bool = True
     created_at: str
     current_balance: Optional[float] = None
     last_updated: Optional[str] = None
@@ -389,6 +392,10 @@ class BalanceEntryOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
+    # All figures below cover only Accounts flagged to count toward net worth
+    # ("Accessible net worth", ADR-0003), except `set_aside` and
+    # `total_net_worth`, which describe the excluded Accounts and the full
+    # picture. `total` is the Accessible net-worth headline.
     total: float
     total_current: float
     total_savings: float
@@ -398,6 +405,8 @@ class SummaryOut(BaseModel):
     assets: float = 0.0
     debts: float = 0.0
     savings_rate: float = 0.0
+    set_aside: float = 0.0
+    total_net_worth: float = 0.0
     account_count: int
     base_currency: Currency = "GBP"
     missing_rates: list[Currency] = Field(default_factory=list)

@@ -7,7 +7,7 @@ import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
 import PressableTile from "../components/PressableTile";
-import UpdateBalanceModal from "../components/UpdateBalanceModal";
+import EditAccountModal from "../components/EditAccountModal";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType } from "../types";
 import styles from "./Accounts.module.css";
@@ -110,28 +110,37 @@ export default function Accounts() {
               ))}
             </div>
             {balanceFilter === "all" && (
-              <span
-                className={styles.totalValue}
-                style={{ color: netWorth >= 0 ? theme.up : theme.down }}
-              >
-                {fmt(netWorth, currency)}
+              <span className={styles.totalWrap}>
+                <span className={styles.totalCaption}>Total net worth</span>
+                <span
+                  className={styles.totalValue}
+                  style={{ color: netWorth >= 0 ? theme.up : theme.down }}
+                >
+                  {fmt(netWorth, currency)}
+                </span>
               </span>
             )}
             {balanceFilter === "assets" && (
-              <span className={styles.totalValue} style={{ color: theme.up }}>
-                {fmt(assetTotal, currency)}
+              <span className={styles.totalWrap}>
+                <span className={styles.totalCaption}>Total assets</span>
+                <span className={styles.totalValue} style={{ color: theme.up }}>
+                  {fmt(assetTotal, currency)}
+                </span>
               </span>
             )}
             {balanceFilter === "debts" && (
-              <span className={styles.totalValue} style={{ color: theme.down }}>
-                {fmt(debtTotal, currency)}
+              <span className={styles.totalWrap}>
+                <span className={styles.totalCaption}>Total debts</span>
+                <span className={styles.totalValue} style={{ color: theme.down }}>
+                  {fmt(debtTotal, currency)}
+                </span>
               </span>
             )}
           </div>
           <div className={styles.accountGrid}>
             {listedAccounts.map((a) => (
               <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
-                <AccountTile account={a} style={{ width: "100%", height: 150 }} />
+                <AccountTile account={a} badge style={{ width: "100%", height: 150 }} />
               </PressableTile>
             ))}
             {listedAccounts.length === 0 && (
@@ -150,7 +159,7 @@ export default function Accounts() {
       )}
 
       {editAccount && (
-        <UpdateBalanceModal
+        <EditAccountModal
           account={editAccount}
           onClose={() => setEditAccount(null)}
         />

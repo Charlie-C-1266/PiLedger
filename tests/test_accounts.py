@@ -118,6 +118,47 @@ def test_update_nonexistent_account_returns_404(alice):
     assert alice.put("/api/accounts/99999", json={"name": "Ghost"}).status_code == 404
 
 
+# ── Count-toward-net-worth flag (ADR-0003) ─────────────────────────────────────
+
+
+def test_create_account_counts_to_net_worth_by_default(alice):
+    body = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()
+    assert body["counts_to_net_worth"] is True
+
+
+def test_create_account_can_be_set_aside(alice):
+    body = alice.post(
+        "/api/accounts",
+        json={"name": "Pension", "type": "invest", "counts_to_net_worth": False},
+    ).json()
+    assert body["counts_to_net_worth"] is False
+    # And it round-trips through the list endpoint, not just the create response.
+    listed = next(a for a in alice.get("/api/accounts").json() if a["id"] == body["id"])
+    assert listed["counts_to_net_worth"] is False
+
+
+def test_update_counts_to_net_worth_toggles_off_and_on(alice):
+    aid = alice.post("/api/accounts", json={"name": "ISA", "type": "savings"}).json()[
+        "id"
+    ]
+    off = alice.put(f"/api/accounts/{aid}", json={"counts_to_net_worth": False})
+    assert off.status_code == 200
+    assert off.json()["counts_to_net_worth"] is False
+    on = alice.put(f"/api/accounts/{aid}", json={"counts_to_net_worth": True})
+    assert on.json()["counts_to_net_worth"] is True
+
+
+def test_partial_update_leaves_counts_to_net_worth_unchanged(alice):
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Keep", "type": "invest", "counts_to_net_worth": False},
+    ).json()["id"]
+    # A patch that omits the flag must not reset it back to the default.
+    alice.put(f"/api/accounts/{aid}", json={"color": "#aabbcc"})
+    body = next(a for a in alice.get("/api/accounts").json() if a["id"] == aid)
+    assert body["counts_to_net_worth"] is False
+
+
 def test_update_requires_auth(client, alice):
     aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
         "id"
