@@ -48,8 +48,12 @@ export default function Overview() {
 
   const currency = summary?.base_currency ?? "GBP";
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
+  // Asset accounts with a positive balance — the donut is an "ASSETS"
+  // distribution, so loan/credit (debt) accounts are excluded regardless of how
+  // their balance is stored. Mirrors /api/summary's type-based classification.
   const positiveAccounts = (accounts ?? []).filter(
-    (a) => (a.current_balance ?? 0) >= 0
+    (a) =>
+      a.type !== "loan" && a.type !== "credit" && (a.current_balance ?? 0) >= 0
   );
 
   const stackAccounts = useMemo(() => {

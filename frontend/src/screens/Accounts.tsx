@@ -28,6 +28,11 @@ const BALANCE_FILTER_LABELS: Record<BalanceFilter, string> = {
   debts: "Debts",
 };
 
+// A debt is classified by account type, not balance sign — mirrors the backend
+// summary, where loan/credit accounts are debts whether their balance is stored
+// as a positive magnitude (e.g. 2000 owed) or a negative number (-2000).
+const isDebt = (a: Account) => a.type === "loan" || a.type === "credit";
+
 export default function Accounts() {
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
@@ -52,17 +57,18 @@ export default function Accounts() {
 
   const listedAccounts = useMemo(() => {
     const all = accounts ?? [];
-    if (balanceFilter === "assets") return all.filter((a) => (a.current_balance ?? 0) >= 0);
-    if (balanceFilter === "debts") return all.filter((a) => (a.current_balance ?? 0) < 0);
+    if (balanceFilter === "assets") return all.filter((a) => !isDebt(a));
+    if (balanceFilter === "debts") return all.filter((a) => isDebt(a));
     return all;
   }, [accounts, balanceFilter]);
 
   const assetTotal = (accounts ?? [])
-    .filter((a) => (a.current_balance ?? 0) >= 0)
+    .filter((a) => !isDebt(a))
     .reduce((s, a) => s + (a.current_balance ?? 0), 0);
   const debtTotal = (accounts ?? [])
-    .filter((a) => (a.current_balance ?? 0) < 0)
+    .filter((a) => isDebt(a))
     .reduce((s, a) => s + Math.abs(a.current_balance ?? 0), 0);
+  const netWorth = assetTotal - debtTotal;
 
   const allAccounts = accounts ?? [];
 
@@ -104,7 +110,12 @@ export default function Accounts() {
               ))}
             </div>
             {balanceFilter === "all" && (
-              <span className={styles.sectionHint}>Click to update balance</span>
+              <span
+                className={styles.totalValue}
+                style={{ color: netWorth >= 0 ? theme.up : theme.down }}
+              >
+                {fmt(netWorth, currency)}
+              </span>
             )}
             {balanceFilter === "assets" && (
               <span className={styles.totalValue} style={{ color: theme.up }}>
