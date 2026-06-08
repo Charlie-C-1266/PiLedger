@@ -120,6 +120,10 @@
   gap: 14px;
 }
 
+.statRowFour {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 @media (max-width: 719px) {
   .statRow {
     grid-template-columns: 1fr;

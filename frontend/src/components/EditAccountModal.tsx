@@ -14,11 +14,14 @@ interface Props {
   onClose: () => void;
 }
 
-export default function UpdateBalanceModal({ account, onClose }: Props) {
+export default function EditAccountModal({ account, onClose }: Props) {
   const mobile = useIsMobile();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
   const [customColor, setCustomColor] = useState("");
+  const [countsToNetWorth, setCountsToNetWorth] = useState(
+    account.counts_to_net_worth
+  );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const queryClient = useQueryClient();
 
@@ -57,21 +60,32 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
     mutationFn: (newColor: string) => updateAccount(account.id, { color: newColor }),
   });
 
+  const flagMutation = useMutation({
+    mutationFn: (counts: boolean) =>
+      updateAccount(account.id, { counts_to_net_worth: counts }),
+  });
+
   const handleSave = async () => {
     const colorChanged = color !== (account.color || "#6366f1");
+    const flagChanged = countsToNetWorth !== account.counts_to_net_worth;
     const balanceParsed = parseFloat(balance);
     const hasBalance = !isNaN(balanceParsed);
 
-    if (!hasBalance && !colorChanged) return;
+    if (!hasBalance && !colorChanged && !flagChanged) return;
 
     if (hasBalance) await balanceMutation.mutateAsync(balanceParsed);
     if (colorChanged) await colorMutation.mutateAsync(color);
+    if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
 
     invalidate();
     onClose();
   };
 
-  const pending = balanceMutation.isPending || colorMutation.isPending || deleteMutation.isPending;
+  const pending =
+    balanceMutation.isPending ||
+    colorMutation.isPending ||
+    flagMutation.isPending ||
+    deleteMutation.isPending;
 
   return (
     <div
@@ -132,6 +146,25 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
             maxLength={7}
             spellCheck={false}
           />
+        </div>
+
+        <div className={styles.toggleRow}>
+          <span className={styles.toggleText}>
+            <span className={styles.toggleLabel}>Count toward net worth</span>
+            <span className={styles.toggleHint}>
+              Off keeps this account out of your Overview headline and trend.
+            </span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={countsToNetWorth}
+            aria-label="Count toward net worth"
+            className={`${styles.toggleSwitch} ${countsToNetWorth ? styles.toggleSwitchOn : ""}`}
+            onClick={() => setCountsToNetWorth((v) => !v)}
+          >
+            <span className={styles.toggleKnob} />
+          </button>
         </div>
 
         {confirmingDelete ? (

@@ -82,6 +82,7 @@ export const createAccount = (data: {
   currency?: string;
   interest_rate?: number;
   color?: string;
+  counts_to_net_worth?: boolean;
 }) => post<Account>("/api/accounts", data);
 
 export const updateAccount = (id: number, data: Partial<Account>) =>

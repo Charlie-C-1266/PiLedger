@@ -38,7 +38,7 @@ def _seed(page) -> None:
     # real app the Add flows invalidate these caches, but direct API seeding
     # bypasses that.
     page.reload()
-    page.get_by_text("NET WORTH", exact=True).wait_for(state="visible")
+    page.get_by_text("ACCESSIBLE NET WORTH", exact=True).wait_for(state="visible")
 
 
 def test_search_matches_accounts_and_goals(signed_in_page) -> None:

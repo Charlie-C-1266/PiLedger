@@ -39,6 +39,7 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
+        counts_to_net_worth=bool(row["counts_to_net_worth"]),
         created_at=row["created_at"],
         current_balance=from_cents(row["current_balance_cents"])
         if "current_balance_cents" in row.keys()
@@ -76,8 +77,8 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
     returned ``current_balance``/``last_updated`` are None until one is recorded."""
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color)"
-            " VALUES(?,?,?,?,?,?,?)",
+            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color, counts_to_net_worth)"
+            " VALUES(?,?,?,?,?,?,?,?)",
             (
                 uid,
                 data.name,
@@ -86,6 +87,7 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
                 data.currency,
                 data.interest_rate,
                 data.color,
+                int(data.counts_to_net_worth),
             ),
         )
         conn.commit()
@@ -101,6 +103,7 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
         currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
+        counts_to_net_worth=bool(row["counts_to_net_worth"]),
         created_at=row["created_at"],
         current_balance=None,
         last_updated=None,
@@ -154,6 +157,7 @@ def update_account(
         currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
+        counts_to_net_worth=bool(row["counts_to_net_worth"]),
         created_at=row["created_at"],
     )
 

@@ -120,7 +120,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 7
+SCHEMA_VERSION: int = 8
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -403,6 +403,19 @@ def _migrate_to_7(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_8(conn: sqlite3.Connection) -> None:
+    """Add accounts.counts_to_net_worth — the per-account 'count toward Accessible
+    net worth' flag (ADR-0003). Defaults to 1 so every existing account keeps
+    counting; the user opts accounts out individually."""
+    acc_cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    if "counts_to_net_worth" not in acc_cols:
+        conn.execute(
+            "ALTER TABLE accounts ADD COLUMN counts_to_net_worth INTEGER NOT NULL DEFAULT 1"
+        )
+    _set_schema_version(conn, 8)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -437,6 +450,7 @@ def init() -> None:
                 currency      TEXT    NOT NULL DEFAULT 'GBP',
                 interest_rate REAL    DEFAULT 0,
                 color         TEXT    DEFAULT '#6366f1',
+                counts_to_net_worth INTEGER NOT NULL DEFAULT 1,
                 created_at    TEXT    DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS exchange_rates (
@@ -522,6 +536,10 @@ def init() -> None:
         if version < 7:
             _migrate_to_7(conn)
             version = 7
+
+        if version < 8:
+            _migrate_to_8(conn)
+            version = 8
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

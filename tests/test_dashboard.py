@@ -23,6 +23,8 @@ def test_summary_empty(alice):
         "assets": 0.0,
         "debts": 0.0,
         "savings_rate": 0.0,
+        "set_aside": 0.0,
+        "total_net_worth": 0.0,
         "account_count": 0,
         "base_currency": "GBP",
         "missing_rates": [],
@@ -144,6 +146,73 @@ def test_summary_credit_subtracted_from_total(alice):
     assert body["assets"] == 8000.0
     assert body["debts"] == 1500.0
     assert body["total"] == 6500.0
+
+
+# ── Accessible net worth (set-aside flag, ADR-0003) ───────────────────────────
+
+
+def test_summary_account_counts_to_net_worth_by_default(alice):
+    aid = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()[
+        "id"
+    ]
+    assert alice.get("/api/accounts").json()[0]["counts_to_net_worth"] is True
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    body = alice.get("/api/summary").json()
+    assert body["total"] == 1000.0
+    assert body["set_aside"] == 0.0
+    assert body["total_net_worth"] == 1000.0
+
+
+def test_summary_set_aside_asset_excluded_from_headline(alice):
+    cur = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    pension = alice.post(
+        "/api/accounts",
+        json={"name": "Pension", "type": "invest", "counts_to_net_worth": False},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{cur}/balance", json={"balance": 2000.0})
+    alice.post(f"/api/accounts/{pension}/balance", json={"balance": 50_000.0})
+    body = alice.get("/api/summary").json()
+    # Headline (Accessible) excludes the pension; assets reconcile to it.
+    assert body["assets"] == 2000.0
+    assert body["total"] == 2000.0
+    assert body["total_invest"] == 0.0
+    # Set-aside total carries the pension; full picture reconciles.
+    assert body["set_aside"] == 50_000.0
+    assert body["total_net_worth"] == 52_000.0
+
+
+def test_summary_set_aside_liability_raises_accessible(alice):
+    # Setting aside a liability removes it from the headline, which *raises*
+    # Accessible net worth (ADR-0003 consequence) while total_net_worth keeps it.
+    cur = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    mortgage = alice.post(
+        "/api/accounts",
+        json={"name": "Mortgage", "type": "loan", "counts_to_net_worth": False},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{cur}/balance", json={"balance": 10_000.0})
+    alice.post(f"/api/accounts/{mortgage}/balance", json={"balance": 200_000.0})
+    body = alice.get("/api/summary").json()
+    assert body["debts"] == 0.0
+    assert body["total"] == 10_000.0
+    assert body["set_aside"] == -200_000.0
+    assert body["total_net_worth"] == -190_000.0
+
+
+def test_summary_flag_toggle_moves_account_between_buckets(alice):
+    aid = alice.post("/api/accounts", json={"name": "ISA", "type": "savings"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 8000.0})
+    assert alice.get("/api/summary").json()["total"] == 8000.0
+    alice.put(f"/api/accounts/{aid}", json={"counts_to_net_worth": False})
+    body = alice.get("/api/summary").json()
+    assert body["total"] == 0.0
+    assert body["set_aside"] == 8000.0
+    assert body["total_net_worth"] == 8000.0
 
 
 # ── History / all ─────────────────────────────────────────────────────────────
@@ -378,6 +447,24 @@ def test_networth_negative_debt_balance_matches_summary(alice):
     alice.post(f"/api/accounts/{c}/balance", json={"balance": 5000.0})
     alice.post(f"/api/accounts/{loan}/balance", json={"balance": -2000.0})
 
+    points = alice.get("/api/history/networth?range=30D").json()
+    summary = alice.get("/api/summary").json()
+    assert points[-1]["value"] == 3000.0
+    assert points[-1]["value"] == summary["total"]
+
+
+def test_networth_excludes_set_aside_accounts(alice):
+    # The trend is the Accessible net-worth line — set-aside accounts drop out
+    # retroactively, matching the /api/summary headline (ADR-0003).
+    cur = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    pension = alice.post(
+        "/api/accounts",
+        json={"name": "Pension", "type": "invest", "counts_to_net_worth": False},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{cur}/balance", json={"balance": 3000.0})
+    alice.post(f"/api/accounts/{pension}/balance", json={"balance": 40_000.0})
     points = alice.get("/api/history/networth?range=30D").json()
     summary = alice.get("/api/summary").json()
     assert points[-1]["value"] == 3000.0

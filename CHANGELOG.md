@@ -9,6 +9,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Added
+
+- Accounts can be set aside from your net-worth headline, so day-to-day balances aren't swamped by large investment or pension swings. The Overview now shows your "Accessible" net worth (counting accounts only) with a dedicated "Set aside" card, while the Accounts page keeps the full "Total net worth" and badges set-aside accounts. Toggle "Count toward net worth" when adding or editing an account.
+
 ### Fixed
 
 - Accounts page now classifies loan and credit accounts as debts by account type rather than balance sign, so a loan with a positive recorded balance correctly appears under the "Debts" filter and counts toward the debt total — matching how Overview and net worth already treat it.

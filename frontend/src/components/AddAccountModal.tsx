@@ -90,6 +90,7 @@ export default function AddAccountModal({ onClose }: Props) {
   const [currency, setCurrency] = useState("");
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [customColor, setCustomColor] = useState("");
+  const [countsToNetWorth, setCountsToNetWorth] = useState(true);
   const queryClient = useQueryClient();
 
   // Default to the user's base currency; fall back to GBP until summary loads.
@@ -111,6 +112,7 @@ export default function AddAccountModal({ onClose }: Props) {
         color,
         currency: selectedCurrency,
         interest_rate: !isNaN(rate) && rate >= 0 ? rate : 0,
+        counts_to_net_worth: countsToNetWorth,
       });
       const parsed = parseFloat(balance);
       if (!isNaN(parsed)) {
@@ -254,6 +256,25 @@ export default function AddAccountModal({ onClose }: Props) {
             spellCheck={false}
             autoComplete="off"
           />
+        </div>
+
+        <div className={styles.toggleRow}>
+          <span className={styles.toggleText}>
+            <span className={styles.toggleLabel}>Count toward net worth</span>
+            <span className={styles.toggleHint}>
+              Off keeps this account out of your Overview headline and trend.
+            </span>
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={countsToNetWorth}
+            aria-label="Count toward net worth"
+            className={`${styles.toggleSwitch} ${countsToNetWorth ? styles.toggleSwitchOn : ""}`}
+            onClick={() => setCountsToNetWorth((v) => !v)}
+          >
+            <span className={styles.toggleKnob} />
+          </button>
         </div>
 
         <div className={styles.footer}>

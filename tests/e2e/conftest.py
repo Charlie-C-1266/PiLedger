@@ -148,7 +148,7 @@ def signed_in_page(page, live_server, registered_user):
     # After login the React SPA loads at /overview. Wait for the root
     # element to be populated — that signals React has mounted.
     page.wait_for_url("**/overview")
-    page.get_by_text("NET WORTH", exact=True).wait_for(state="visible")
+    page.get_by_text("ACCESSIBLE NET WORTH", exact=True).wait_for(state="visible")
     return page
 
 

@@ -11,6 +11,7 @@ export interface Account {
   currency: Currency;
   interest_rate: number;
   color: string;
+  counts_to_net_worth: boolean;
   created_at: string;
   current_balance: number | null;
   last_updated: string | null;
@@ -64,6 +65,8 @@ export interface Summary {
   assets: number;
   debts: number;
   savings_rate: number;
+  set_aside: number;
+  total_net_worth: number;
   account_count: number;
   base_currency: Currency;
   missing_rates: Currency[];

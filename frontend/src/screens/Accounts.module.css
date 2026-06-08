@@ -61,6 +61,20 @@
   color: var(--pl-text);
 }
 
+.totalWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.totalCaption {
+  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--pl-text-soft);
+}
+
 .totalValue {
   font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
   font-variant-numeric: tabular-nums;

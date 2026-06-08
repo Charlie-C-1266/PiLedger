@@ -47,13 +47,19 @@ export default function Overview() {
   const [showGoalModal, setShowGoalModal] = useState(false);
 
   const currency = summary?.base_currency ?? "GBP";
+  // Headline is Accessible net worth (ADR-0003): summary.total and the trend
+  // series are already restricted to counting accounts server-side.
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
-  // Asset accounts with a positive balance — the donut is an "ASSETS"
-  // distribution, so loan/credit (debt) accounts are excluded regardless of how
-  // their balance is stored. Mirrors /api/summary's type-based classification.
+  const setAside = summary?.set_aside ?? 0;
+  // Asset accounts with a positive balance that count toward net worth — the
+  // donut is the Accessible "ASSETS" distribution, so loan/credit (debt) and
+  // set-aside accounts are excluded. Mirrors /api/summary's classification.
   const positiveAccounts = (accounts ?? []).filter(
     (a) =>
-      a.type !== "loan" && a.type !== "credit" && (a.current_balance ?? 0) >= 0
+      a.counts_to_net_worth &&
+      a.type !== "loan" &&
+      a.type !== "credit" &&
+      (a.current_balance ?? 0) >= 0
   );
 
   const stackAccounts = useMemo(() => {
@@ -100,7 +106,7 @@ export default function Overview() {
         {/* 1. Net-worth hero */}
         <div className={styles.card}>
           <div className={styles.heroHeader}>
-            <span className={styles.microLabel}>NET WORTH</span>
+            <span className={styles.microLabel}>ACCESSIBLE NET WORTH</span>
             <RangePills value={range} onChange={setRange} />
           </div>
           <div className={styles.heroValue}>{fmt(netWorth, currency)}</div>
@@ -130,7 +136,7 @@ export default function Overview() {
         </div>
 
         {/* 2. Stat row */}
-        <div className={styles.statRow}>
+        <div className={`${styles.statRow} ${setAside !== 0 ? styles.statRowFour : ""}`}>
           <StatCard
             label="Assets"
             value={fmt(summary?.assets ?? 0, currency)}
@@ -146,6 +152,9 @@ export default function Overview() {
             value={`${(summary?.savings_rate ?? 0).toFixed(0)}%`}
             color={theme.accent}
           />
+          {setAside !== 0 && (
+            <StatCard label="Set aside" value={fmt(setAside, currency)} />
+          )}
         </div>
 
         {/* 3. Card stack */}
