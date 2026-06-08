@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useBudget, useCreateIncome } from "../hooks/useBudget";
+import { useBudget } from "../hooks/useBudget";
 import Hero from "../components/budget/Hero";
 import IncomeCard from "../components/budget/IncomeCard";
 import GroupCard from "../components/budget/GroupCard";
@@ -9,12 +9,14 @@ import AllocationDonut from "../components/budget/AllocationDonut";
 import SpentSoFarCard from "../components/budget/SpentSoFarCard";
 import AddGroupModal from "../components/budget/AddGroupModal";
 import AddEnvelopeModal from "../components/budget/AddEnvelopeModal";
+import AddIncomeModal from "../components/budget/AddIncomeModal";
 import { PERIODS, type Period } from "../components/budget/period";
-import type { BudgetEnvelope, BudgetGroup } from "../types";
+import type { BudgetEnvelope, BudgetGroup, BudgetIncome } from "../types";
 import styles from "./Budget.module.css";
 
 type GroupModal = { group?: BudgetGroup };
 type EnvModal = { envelope?: BudgetEnvelope; groupId?: number };
+type IncomeModal = { income?: BudgetIncome };
 
 /**
  * Phase 10. Both columns are now built: the left has the hero, income card and
@@ -23,10 +25,10 @@ type EnvModal = { envelope?: BudgetEnvelope; groupId?: number };
  */
 export default function Budget() {
   const { data, isLoading } = useBudget();
-  const createIncome = useCreateIncome();
   const [period, setPeriod] = useState<Period>("monthly");
   const [groupModal, setGroupModal] = useState<GroupModal | null>(null);
   const [envModal, setEnvModal] = useState<EnvModal | null>(null);
+  const [incomeModal, setIncomeModal] = useState<IncomeModal | null>(null);
 
   const currency = data?.base_currency ?? "GBP";
   const factor = PERIODS[period].factor;
@@ -92,10 +94,7 @@ export default function Budget() {
             to budget.
           </p>
           <div className={styles.actions}>
-            <button
-              className={styles.addBtn}
-              onClick={() => createIncome.mutate({ label: "New income", amount: 0 })}
-            >
+            <button className={styles.addBtn} onClick={() => setIncomeModal({})}>
               + Add income
             </button>
             <button className={styles.addBtn} onClick={() => setGroupModal({})}>
@@ -123,7 +122,8 @@ export default function Budget() {
               currency={currency}
               factor={factor}
               period={period}
-              onAdd={() => createIncome.mutate({ label: "New income", amount: 0 })}
+              onAdd={() => setIncomeModal({})}
+              onEdit={(income) => setIncomeModal({ income })}
             />
 
             {data.groups.map((g) => (
@@ -187,6 +187,12 @@ export default function Budget() {
           envelope={envModal.envelope}
           groupId={envModal.groupId}
           onClose={() => setEnvModal(null)}
+        />
+      )}
+      {incomeModal && (
+        <AddIncomeModal
+          income={incomeModal.income}
+          onClose={() => setIncomeModal(null)}
         />
       )}
     </div>

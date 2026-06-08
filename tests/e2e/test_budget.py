@@ -43,8 +43,15 @@ def test_build_a_budget_and_spent_reflects_a_transaction(signed_in_page):
 
     page.goto("/budget")
 
-    # Empty state → add an income line (quick add) and a group (modal).
+    # Empty state → add a labelled income line (modal) and a group (modal).
     page.get_by_role("button", name="Add income").click()
+    page.get_by_placeholder("Income name (e.g. Salary)").fill("Salary")
+    page.get_by_placeholder("Monthly amount (e.g. 2500)").fill("3000")
+    page.get_by_role("button", name="Save income").click()
+    # The label sticks and is shown on the income card (as its edit button).
+    # exact=True so it doesn't also match the stepper's "Decrease/Increase Salary".
+    expect(page.get_by_role("button", name="Salary", exact=True)).to_be_visible()
+
     page.get_by_role("button", name="Add group").click()
     page.get_by_placeholder("Group name (e.g. Bills & Housing)").fill("Everyday")
     page.get_by_role("button", name="Flexible").click()

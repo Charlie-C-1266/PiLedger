@@ -19,6 +19,7 @@ interface Props {
   factor: number;
   period: Period;
   onAdd: () => void;
+  onEdit: (income: BudgetIncome) => void;
 }
 
 /**
@@ -33,6 +34,7 @@ export default function IncomeCard({
   factor,
   period,
   onAdd,
+  onEdit,
 }: Props) {
   const { patch, persist } = useBudgetEdit();
   const total = incomes.reduce((s, i) => s + i.amount, 0);
@@ -61,7 +63,13 @@ export default function IncomeCard({
       <div className={styles.rows}>
         {incomes.map((inc) => (
           <div key={inc.id} className={styles.row}>
-            <div className={styles.label}>{inc.label}</div>
+            <button
+              className={styles.labelBtn}
+              onClick={() => onEdit(inc)}
+              title="Edit income"
+            >
+              {inc.label}
+            </button>
             <div className={styles.amount}>{show(inc.amount)}</div>
             <Stepper
               value={inc.amount}
