@@ -28,9 +28,11 @@ htmlcov/
 # ── Claude Code ────────────────────────────────────────────────────────────────
 # Everything under .claude/ is per-developer session config, not shared project
 # state: settings.local.json holds permission allowlists, commands/ holds custom
-# slash commands (e.g. grill-with-docs, which is also published upstream).
+# slash commands (e.g. grill-with-docs, which is also published upstream), and
+# scheduled_tasks.lock is transient session scheduling state.
 .claude/settings.local.json
 .claude/commands/
+.claude/scheduled_tasks.lock
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 frontend/node_modules/
