@@ -12,6 +12,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Changed
 
 - README updated to reflect the envelope budget, goal projections, and set-aside-from-net-worth features.
+- Frontend now has a Vitest + React Testing Library suite alongside the existing pytest backend suite. CI runs both, and new features must come with new tests on the side they touch (see CLAUDE.md "Testing requirements").
 
 ### Added
 

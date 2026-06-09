@@ -66,16 +66,26 @@ Exceptions: none by default. If a change genuinely needs to go straight to `main
 **Run all CI checks locally before committing and raising a PR.** This avoids round-tripping on CI failures. The full local check sequence:
 
 ```bash
-uv run ruff check .                        # lint
-uv run ruff format --check .               # formatting
-uv run mypy                                # type check (strict on schemas, auth, db, constants)
-uv run pytest                              # unit + API suite
+uv run ruff check .                        # backend lint
+uv run ruff format --check .               # backend formatting
+uv run mypy                                # backend type check (strict on schemas, auth, db, constants)
+uv run pytest                              # backend unit + API suite
 uv run pytest tests/e2e                    # end-to-end browser suite (Playwright + Chromium)
+(cd frontend && npm run lint)              # frontend lint (eslint)
+(cd frontend && npm run build)             # frontend type check + build (tsc -b && vite build)
+(cd frontend && npm test)                  # frontend unit suite (vitest + RTL)
 ```
 
-All five must pass before a change is considered complete. If any check fails, fix the code — do not skip or delete tests, and do not bypass lint/format/type errors.
+All eight must pass before a change is considered complete. If any check fails, fix the code — do not skip or delete tests, and do not bypass lint/format/type errors.
 
 The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. The e2e suite is excluded from CI, so a regression there will not block merge — a broken e2e test has slipped past review in the past for exactly this reason, and that should not happen again. If Playwright's browser is missing, install it once with `uv run playwright install chromium`.
+
+## Testing requirements
+
+**New features get new tests on both sides of the stack.** A change that adds frontend behaviour must come with at least one `*.test.tsx` (or `*.test.ts`) covering it; a backend change must come with `pytest` coverage. A bug fix must come with a regression test that would have failed before the fix. "Visual-only / animation" is not a free pass — at minimum, assert that the wrapping component renders and forwards its props (see `frontend/src/components/PageStagger.test.tsx` for the pattern). If a feature is genuinely impossible to unit-test (e.g. pure CSS), say so explicitly in the PR description instead of silently shipping without coverage.
+
+- **Frontend tests** live next to the code they cover as `Foo.test.tsx` (component) or `useFoo.test.ts` (hook). Run with `npm test` (one-shot), `npm run test:watch` (TDD), or `npm run test:coverage` (with v8 coverage report). The stack is Vitest + React Testing Library + jsdom; shared setup lives in `frontend/src/test/setup.ts`. Mock screens/heavy deps with `vi.mock` (see `frontend/src/App.test.tsx` for the async-factory pattern that lets the mock use `vi.importActual`).
+- **Backend tests** live under `tests/` and follow existing pytest conventions; see `tests/test_route_table.py` for the route-table snapshot guard.
 
 ## Stack
 
@@ -83,5 +93,5 @@ The default `pytest` invocation runs only the unit/API suite because `pytest.ini
 - **Backend layout**: `app.py` is a thin (~100-line) wiring module — it builds the FastAPI app, registers middleware + the 422→400 exception handler, calls `init()`, and mounts every router. Each resource's HTTP handlers live in a per-resource `APIRouter` under `src/routers/` (`auth`, `accounts`, `transactions`, `dashboard`, `budget`, `goals`, `prefs`, `rates`, `categories`, `ops`, `pages`); business logic shared by two or more routers lives in `src/services/` (`currency` FX helpers, `accounts` balance helpers). Routers depend on `db`/`schemas`/`auth`/`constants`/`services`/`limiter` but **never import `app`** (that would cycle); `app.py` imports the routers last and includes them, with `pages` last so a page route can't shadow an API path. The shared `Limiter` lives in `src/limiter.py` so routers can rate-limit without importing `app`. `tests/test_route_table.py` snapshots every `(path, method)` pair as a guard against accidental route changes.
 - **Frontend**: React 19 + TypeScript single-page app under `frontend/`, built with Vite. Data fetching via TanStack Query v5, routing via React Router, charts via Recharts. The Vite production build is served from `static/dist/` (mounted by `app.py`). Standalone non-SPA pages (`login`, `guide`) live as plain HTML/JS under `static/`. See `docs/frontend.md`.
 - **Auth**: PBKDF2-SHA256 passwords, 30-day `HttpOnly` session cookies
-- **Tests**: pytest 9, httpx, `starlette.testclient.TestClient`, Playwright
-- **CI**: GitHub Actions — ruff check, ruff format, mypy, pytest + coverage, lockfile drift, pip-audit
+- **Tests**: Backend — pytest 9, httpx, `starlette.testclient.TestClient`, Playwright. Frontend — Vitest 4 + React Testing Library + jsdom (config in `frontend/vitest.config.ts`, shared setup in `frontend/src/test/setup.ts`).
+- **CI**: GitHub Actions — ruff check, ruff format, mypy, pytest + coverage, frontend (eslint + build + vitest with coverage), lockfile drift, pip-audit
