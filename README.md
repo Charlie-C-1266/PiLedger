@@ -4,17 +4,18 @@
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB.svg)](https://python.org)
 
-A self-hosted personal finance dashboard for tracking current, savings, and loan/debt accounts — including historical balance trends, compound-interest projections, monthly budget planning, and net-worth tracking across multiple currencies.
+A self-hosted personal finance dashboard for tracking current, savings, and loan/debt accounts — including historical balance trends, compound-interest projections, zero-based envelope budgeting, and net-worth tracking across multiple currencies.
 
 ## Features
 
 - **Multi-account tracking** — current, savings, loan, credit, and investment accounts with per-account currencies
 - **Transaction log** — searchable, filterable transaction history with automatic balance adjustments
-- **Savings goals** — named targets with progress tracking, monthly contributions, and ETA
+- **Savings goals** — named targets with progress tracking, monthly contributions, ETA, and compound-interest projections charted per goal
 - **Balance history** — timestamped snapshots with step-line charts over selectable time windows
 - **Savings projections** — compound-interest forecasting at 1, 2, and 5 year horizons
-- **Budget planner** — recurring cash-flow items with month-by-month projected balances and net worth
+- **Envelope budget** — income sources, fixed and flexible spending groups, per-category envelopes with live actual-vs-budgeted tracking, and a safe-to-spend figure for discretionary spend
 - **Multi-currency** — user-selected base currency with manual exchange rates; net-worth totals convert automatically
+- **Net-worth control** — accounts can be set aside from the net-worth headline (e.g. pension, investment) so the overview figure stays actionable
 - **Per-user isolation** — every query is scoped to the authenticated user; multi-tenant by default
 - **Self-contained** — SQLite database, no external services, runs fully offline once loaded
 - **Dark mode + 10 colour themes** — persisted per-user via the Settings page

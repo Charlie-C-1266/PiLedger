@@ -9,6 +9,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Changed
+
+- README updated to reflect the envelope budget, goal projections, and set-aside-from-net-worth features.
+
 ### Added
 
 - Overview net-worth hero now shows the percentage change over the selected chart range as a colour-coded pill (green up / red down) next to the net-position figure, and it tracks the hovered point on the trend line.
