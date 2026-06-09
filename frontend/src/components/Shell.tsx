@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { useAccounts } from "../hooks/useAccounts";
 import { useMe } from "../hooks/useMe";
 import Sidebar from "./Sidebar";
@@ -28,6 +29,7 @@ export default function Shell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { data: accounts } = useAccounts();
   const { data: me } = useMe();
+  const location = useLocation();
 
   useEffect(() => {
     const onResize = () => setLayout(getLayout());
@@ -49,7 +51,14 @@ export default function Shell() {
           username={me?.username}
         />
         {mobile && <TabStrip />}
-        <Outlet />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            exit={{ opacity: 0, transition: { duration: 0.12 } }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
       {modal === "account" && (
         <AddAccountModal onClose={() => setModal(null)} />

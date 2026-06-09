@@ -8,6 +8,7 @@ import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
 import PressableTile from "../components/PressableTile";
 import EditAccountModal from "../components/EditAccountModal";
+import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType } from "../types";
 import styles from "./Accounts.module.css";
@@ -73,9 +74,9 @@ export default function Accounts() {
   const allAccounts = accounts ?? [];
 
   return (
-    <div className={styles.page}>
+    <PageStagger className={styles.page}>
       {/* Hero card stack */}
-      <div className={styles.heroCard}>
+      <StaggerItem className={styles.heroCard}>
         <div className={styles.heroHeader}>
           <div>
             <div className={styles.microLabel}>
@@ -92,11 +93,11 @@ export default function Accounts() {
           />
         </div>
         <CardStack accounts={stackAccounts} variant={variant} height={340} />
-      </div>
+      </StaggerItem>
 
       {/* Filterable accounts list */}
       {allAccounts.length > 0 && (
-        <div>
+        <StaggerItem>
           <div className={styles.sectionHeader}>
             <div className={styles.picker}>
               {(Object.keys(BALANCE_FILTER_LABELS) as BalanceFilter[]).map((f) => (
@@ -149,13 +150,13 @@ export default function Accounts() {
               </p>
             )}
           </div>
-        </div>
+        </StaggerItem>
       )}
 
       {allAccounts.length === 0 && (
-        <div className={styles.empty}>
+        <StaggerItem className={styles.empty}>
           No accounts yet. Add one to get started.
-        </div>
+        </StaggerItem>
       )}
 
       {editAccount && (
@@ -164,6 +165,6 @@ export default function Accounts() {
           onClose={() => setEditAccount(null)}
         />
       )}
-    </div>
+    </PageStagger>
   );
 }
