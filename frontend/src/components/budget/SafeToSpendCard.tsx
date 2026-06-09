@@ -4,6 +4,8 @@ import styles from "./SafeToSpendCard.module.css";
 interface Props {
   /** Σ (budgeted − spent) across flexible groups, monthly base (may be < 0). */
   flexRemaining: number;
+  /** True when at least one group is marked Flexible (even if net-overspent). */
+  hasFlexibleGroups: boolean;
   currency: string;
   factor: number;
 }
@@ -11,10 +13,11 @@ interface Props {
 /**
  * Headline "safe to spend" — what's left in flexible envelopes this period,
  * clamped at zero, paced as a per-day figure over the days remaining in the
- * month.
+ * month. Shows a setup hint when no groups are marked Flexible yet.
  */
 export default function SafeToSpendCard({
   flexRemaining,
+  hasFlexibleGroups,
   currency,
   factor,
 }: Props) {
@@ -30,13 +33,19 @@ export default function SafeToSpendCard({
 
   const pace = ` · about ${fmt(remaining / daysLeft, currency, { decimals: 0 })}/day for ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`;
 
+  const caption = !hasFlexibleGroups
+    ? "Mark a group as Flexible to track your discretionary spending"
+    : flexRemaining < 0
+      ? `over budget · about ${fmt(Math.abs(flexRemaining) / daysLeft, currency, { decimals: 0 })}/day over for ${daysLeft} ${daysLeft === 1 ? "day" : "days"}`
+      : `left in flexible envelopes${pace}`;
+
   return (
     <section className={styles.card}>
       <div className={styles.eyebrow}>Safe to spend</div>
       <div className={styles.big}>
         {fmt(remaining * factor, currency, { decimals: 0 })}
       </div>
-      <div className={styles.caption}>left in flexible envelopes{pace}</div>
+      <div className={styles.caption}>{caption}</div>
     </section>
   );
 }

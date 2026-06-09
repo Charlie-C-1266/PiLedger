@@ -19,7 +19,9 @@ export default function AddGroupModal({ group, onClose }: Props) {
   const [name, setName] = useState(group?.name ?? "");
   const [color, setColor] = useState(group?.color ?? PRESET_COLORS[0]);
   const [customColor, setCustomColor] = useState("");
-  const [flexible, setFlexible] = useState(group?.flexible ?? false);
+  // Default new groups to Flexible so safe-to-spend works out of the box;
+  // only explicitly mark Fixed for non-discretionary groups (rent, bills…).
+  const [flexible, setFlexible] = useState(group?.flexible ?? true);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["budget"] });
