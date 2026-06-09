@@ -8,6 +8,7 @@ import { fmt } from "../lib/currency";
 import HBar from "../components/charts/HBar";
 import GoalProjectionModal from "../components/goals/GoalProjectionModal";
 import AddGoalModal from "../components/AddGoalModal";
+import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { Goal } from "../types";
 import styles from "./Goals.module.css";
 
@@ -123,8 +124,8 @@ export default function Goals() {
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
+    <PageStagger className={styles.page}>
+      <StaggerItem className={styles.header}>
         <h1 className={styles.title}>Goals</h1>
         <div className={styles.headerActions}>
           {(goals?.length ?? 0) > 0 && (
@@ -139,8 +140,8 @@ export default function Goals() {
             + Add goal
           </button>
         </div>
-      </div>
-      <div className={styles.grid}>
+      </StaggerItem>
+      <StaggerItem className={styles.grid}>
         {(goals ?? []).map((g) => (
           <GoalCard key={g.id} goal={g} currency={currency} onEdit={setEditGoal} />
         ))}
@@ -149,7 +150,7 @@ export default function Goals() {
             No goals yet. Create one to start tracking your savings.
           </div>
         )}
-      </div>
+      </StaggerItem>
       {showModal && <AddGoalModal onClose={() => setShowModal(false)} />}
       {editGoal && (
         <AddGoalModal goal={editGoal} onClose={() => setEditGoal(null)} />
@@ -161,6 +162,6 @@ export default function Goals() {
           onClose={() => setShowProjections(false)}
         />
       )}
-    </div>
+    </PageStagger>
   );
 }

@@ -11,6 +11,7 @@ import AddGroupModal from "../components/budget/AddGroupModal";
 import AddEnvelopeModal from "../components/budget/AddEnvelopeModal";
 import AddIncomeModal from "../components/budget/AddIncomeModal";
 import { PERIODS, type Period } from "../components/budget/period";
+import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { BudgetEnvelope, BudgetGroup, BudgetIncome } from "../types";
 import styles from "./Budget.module.css";
 
@@ -76,19 +77,19 @@ export default function Budget() {
   );
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
+    <PageStagger className={styles.page}>
+      <StaggerItem className={styles.header}>
         <h1 className={styles.title}>Budget</h1>
-      </div>
+      </StaggerItem>
 
       {isLoading && (
-        <div className={styles.empty} role="status">
+        <StaggerItem className={styles.empty} role="status">
           Loading…
-        </div>
+        </StaggerItem>
       )}
 
       {isEmpty && (
-        <div className={styles.empty}>
+        <StaggerItem className={styles.empty}>
           <p className={styles.emptyText}>
             Build a zero-based budget: add your income, group your spending into
             envelopes, then assign every pound until there&rsquo;s nothing left
@@ -102,11 +103,11 @@ export default function Budget() {
               + Add group
             </button>
           </div>
-        </div>
+        </StaggerItem>
       )}
 
       {data && !isEmpty && (
-        <div className={styles.layout}>
+        <StaggerItem className={styles.layout}>
           <div className={styles.left}>
             <Hero
               incomeTotal={incomeTotal}
@@ -177,7 +178,7 @@ export default function Budget() {
               factor={factor}
             />
           </div>
-        </div>
+        </StaggerItem>
       )}
 
       {groupModal && (
@@ -196,6 +197,6 @@ export default function Budget() {
           onClose={() => setIncomeModal(null)}
         />
       )}
-    </div>
+    </PageStagger>
   );
 }

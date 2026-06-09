@@ -19,6 +19,7 @@ import StackControls from "../components/StackControls";
 import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
 import AddGoalModal from "../components/AddGoalModal";
+import { PageStagger, StaggerItem } from "../components/PageStagger";
 import styles from "./Overview.module.css";
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -117,9 +118,9 @@ export default function Overview() {
       )}
       <div className={styles.grid}>
       {/* ── Left column ──────────────────────────────────── */}
-      <div className={styles.left}>
+      <PageStagger className={styles.left}>
         {/* 1. Net-worth hero */}
-        <div className={styles.card}>
+        <StaggerItem className={styles.card}>
           <div className={styles.heroHeader}>
             <span className={styles.microLabel}>ACCESSIBLE NET WORTH</span>
             <RangePills value={range} onChange={setRange} />
@@ -164,10 +165,10 @@ export default function Overview() {
             onHover={setHoverPoint}
             currency={currency}
           />
-        </div>
+        </StaggerItem>
 
         {/* 2. Stat row */}
-        <div className={`${styles.statRow} ${setAside !== 0 ? styles.statRowFour : ""}`}>
+        <StaggerItem className={`${styles.statRow} ${setAside !== 0 ? styles.statRowFour : ""}`}>
           <StatCard
             label="Assets"
             value={fmt(summary?.assets ?? 0, currency)}
@@ -186,10 +187,10 @@ export default function Overview() {
           {setAside !== 0 && (
             <StatCard label="Set aside" value={fmt(setAside, currency)} />
           )}
-        </div>
+        </StaggerItem>
 
         {/* 3. Card stack */}
-        <div className={styles.card}>
+        <StaggerItem className={styles.card}>
           <div className={styles.sectionHeader}>
             <div>
               <div className={styles.sectionTitle}>Your accounts</div>
@@ -212,10 +213,10 @@ export default function Overview() {
             variant={stackVariant}
             height={290}
           />
-        </div>
+        </StaggerItem>
 
         {/* 4. Recent activity */}
-        <div className={styles.card}>
+        <StaggerItem className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Recent activity</div>
             <button className={styles.addPill} onClick={() => setShowTxnModal(true)}>
@@ -239,13 +240,13 @@ export default function Overview() {
               <div className={styles.empty}>No transactions yet</div>
             )}
           </div>
-        </div>
-      </div>
+        </StaggerItem>
+      </PageStagger>
 
       {/* ── Right column ─────────────────────────────────── */}
-      <div className={styles.right}>
+      <PageStagger className={styles.right}>
         {/* 5. Distribution donut */}
-        <div className={styles.card}>
+        <StaggerItem className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Distribution</div>
             <span className={styles.metaMute}>Hover</span>
@@ -300,10 +301,10 @@ export default function Overview() {
               </div>
             ))}
           </div>
-        </div>
+        </StaggerItem>
 
         {/* 6. Goals progress */}
-        <div className={styles.card}>
+        <StaggerItem className={styles.card}>
           <div className={styles.sectionHeader}>
             <div className={styles.sectionTitle}>Goals progress</div>
             <button className={styles.addPill} onClick={() => setShowGoalModal(true)}>
@@ -342,8 +343,8 @@ export default function Overview() {
               <div className={styles.empty}>No goals yet</div>
             )}
           </div>
-        </div>
-      </div>
+        </StaggerItem>
+      </PageStagger>
 
       {showTxnModal && (
         <AddModal

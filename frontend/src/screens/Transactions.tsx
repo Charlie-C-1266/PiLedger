@@ -9,6 +9,7 @@ import { SearchIcon, FilterIcon } from "../components/icons";
 import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
 import FilterSheet from "../components/FilterSheet";
+import { PageStagger, StaggerItem } from "../components/PageStagger";
 import { useIsMobile } from "../hooks/useIsMobile";
 import type { Transaction, TxnSort } from "../types";
 import styles from "./Transactions.module.css";
@@ -85,9 +86,9 @@ export default function Transactions() {
     (sortKey !== "date" ? 1 : 0);
 
   return (
-    <div className={styles.page}>
+    <PageStagger className={styles.page}>
       {/* Stat strip */}
-      <div className={styles.statStrip}>
+      <StaggerItem className={styles.statStrip}>
         <div className={styles.statCard}>
           <div className={styles.statLabel}>Showing</div>
           <div className={styles.statValue}>{count}</div>
@@ -109,10 +110,10 @@ export default function Transactions() {
           </div>
           <div className={styles.statSub}>filtered total</div>
         </div>
-      </div>
+      </StaggerItem>
 
       {/* Filter card */}
-      <div className={styles.filterCard}>
+      <StaggerItem className={styles.filterCard}>
         {/* Filter bar */}
         <div className={styles.filterBar}>
           <div className={styles.searchPill}>
@@ -228,7 +229,7 @@ export default function Transactions() {
             </div>
           )}
         </div>
-      </div>
+      </StaggerItem>
 
       {mobile && showFilterSheet && (
         <FilterSheet
@@ -260,6 +261,6 @@ export default function Transactions() {
           onClose={() => setEditingTxn(null)}
         />
       )}
-    </div>
+    </PageStagger>
   );
 }
