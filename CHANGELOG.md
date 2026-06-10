@@ -26,6 +26,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Budget income lines can now be named (e.g. "Salary") instead of a fixed "New income" placeholder: "Add income" opens a modal for the name and monthly amount, and clicking an income line lets you rename it, change the amount, or delete it. Add a second line (e.g. "Bonus") for months with extra income.
 - Accounts page now classifies loan and credit accounts as debts by account type rather than balance sign, so a loan with a positive recorded balance correctly appears under the "Debts" filter and counts toward the debt total — matching how Overview and net worth already treat it.
 - Accounts page "All" filter now shows total net worth in the corner, matching the figure on Overview, instead of a static hint.
+- The "Add transaction" amount field no longer needs a leading "-" for expenses, which mobile decimal keypads can't type: an Expense/Income toggle now sets the sign, so the amount itself is always entered as a positive number.
 
 ## [3.1.0] — 2026-06-04
 

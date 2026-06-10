@@ -37,7 +37,12 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   );
   const [merchant, setMerchant] = useState(transaction?.merchant ?? "");
   const [amount, setAmount] = useState(
-    transaction ? String(transaction.amount) : ""
+    transaction ? String(Math.abs(transaction.amount)) : ""
+  );
+  // Sign is chosen via the Expense/Income toggle rather than typed, since
+  // mobile decimal keypads don't offer a "-" key.
+  const [isExpense, setIsExpense] = useState(
+    transaction ? transaction.amount < 0 : true
   );
   const [category, setCategory] = useState(transaction?.category ?? "");
   const queryClient = useQueryClient();
@@ -73,9 +78,10 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   const handleSave = () => {
     const parsed = parseFloat(amount);
     if (!merchant.trim() || isNaN(parsed) || !selectedAccount) return;
+    const signed = isExpense ? -Math.abs(parsed) : Math.abs(parsed);
     saveMutation.mutate({
       account_id: Number(selectedAccount),
-      amount: parsed,
+      amount: signed,
       merchant: merchant.trim(),
       category,
     });
@@ -150,9 +156,26 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
               autoFocus
             />
 
+            <div className={styles.chips}>
+              <button
+                type="button"
+                className={`${styles.chip} ${isExpense ? styles.chipActive : ""}`}
+                onClick={() => setIsExpense(true)}
+              >
+                Expense
+              </button>
+              <button
+                type="button"
+                className={`${styles.chip} ${!isExpense ? styles.chipActive : ""}`}
+                onClick={() => setIsExpense(false)}
+              >
+                Income
+              </button>
+            </div>
+
             <input
               className={styles.input}
-              placeholder="Amount (e.g. -42.50 for expense, 1500 for income)"
+              placeholder="Amount (e.g. 42.50)"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
