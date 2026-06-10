@@ -13,6 +13,7 @@ export function useRates() {
 export function useUpdateRates() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: ["updateRates"],
     mutationFn: updateRates,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rates"] });
