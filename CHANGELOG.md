@@ -22,6 +22,8 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Fixed
 
+- Overview dashboard text now meets WCAG AA contrast in light mode: muted labels, transaction amounts, and the green/red up-down figures were too faint to read, so the colour tokens have been darkened to clear the 4.5:1 readability threshold (dark mode already passed).
+- The Overview "net position" pill now turns red when your assets minus debts is negative, instead of always showing green regardless of sign.
 - Settings → Exchange rates: saving a rate now reliably shows "Exchange rates saved" and keeps the value you entered, even if the page re-renders right after navigating to Settings.
 - "Safe to spend" on the Budget page now updates as soon as you log a transaction in an enveloped category, instead of showing a stale figure until the cache refreshes; its "about £X/day" pacing sentence now shows in the Weekly and Yearly views too, not just Monthly. New budget groups now default to Flexible so safe-to-spend works out of the box; when all groups are Fixed the card shows an explanatory hint instead of a silent £0.
 - Budget income lines can now be named (e.g. "Salary") instead of a fixed "New income" placeholder: "Add income" opens a modal for the name and monthly amount, and clicking an income line lets you rename it, change the amount, or delete it. Add a second line (e.g. "Bonus") for months with extra income.
