@@ -17,6 +17,7 @@ import RangePills from "../components/RangePills";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import TxnRow from "../components/TxnRow";
+import Skeleton from "../components/Skeleton";
 import AddModal from "../components/AddModal";
 import AddGoalModal from "../components/AddGoalModal";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
@@ -32,13 +33,13 @@ const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
 
 export default function Overview() {
   const { theme } = useTheme();
-  const { data: accounts } = useAccounts();
-  const { data: summary } = useSummary();
-  const { data: transactions } = useTransactions({ per_page: 6 });
-  const { data: goals } = useGoals();
+  const { data: accounts, isPending: accountsPending } = useAccounts();
+  const { data: summary, isPending: summaryPending } = useSummary();
+  const { data: transactions, isPending: txnsPending } = useTransactions({ per_page: 6 });
+  const { data: goals, isPending: goalsPending } = useGoals();
 
   const [range, setRange] = useState<RangeKey>("30D");
-  const { data: nwSeries } = useNetWorthSeries(range);
+  const { data: nwSeries, isPending: seriesPending } = useNetWorthSeries(range);
 
   const [hoverPoint, setHoverPoint] = useState<NetWorthPoint | null>(null);
   const [stackVariant, setStackVariant] = useState<StackVariant>("fan");
@@ -130,8 +131,15 @@ export default function Overview() {
             <span className={styles.microLabel}>ACCESSIBLE NET WORTH</span>
             <RangePills value={range} onChange={setRange} />
           </div>
-          <div className={styles.heroValue}>{fmt(netWorth, currency)}</div>
-          {summary && summary.total !== 0 && (
+          {summaryPending ? (
+            <>
+              <Skeleton width={220} height={46} radius={10} style={{ marginBottom: 8 }} />
+              <Skeleton width={180} height={22} radius={999} style={{ marginBottom: 16 }} />
+            </>
+          ) : (
+            <div className={styles.heroValue}>{fmt(netWorth, currency)}</div>
+          )}
+          {!summaryPending && summary && summary.total !== 0 && (
             <div className={styles.heroMeta}>
               <span
                 className={styles.deltaPill}
@@ -162,35 +170,51 @@ export default function Overview() {
             </div>
           )}
           <span className="sr-only">
-            Net worth chart, {range} range, current value {fmt(summary?.total ?? 0, currency)}
+            {summaryPending
+              ? "Net worth chart loading"
+              : `Net worth chart, ${range} range, current value ${fmt(summary?.total ?? 0, currency)}`}
           </span>
-          <LineChart
-            data={nwSeries ?? []}
-            height={240}
-            onHover={setHoverPoint}
-            currency={currency}
-          />
+          {seriesPending ? (
+            <Skeleton height={240} radius={12} />
+          ) : (
+            <LineChart
+              data={nwSeries ?? []}
+              height={240}
+              onHover={setHoverPoint}
+              currency={currency}
+            />
+          )}
         </StaggerItem>
 
         {/* 2. Stat row */}
         <StaggerItem className={`${styles.statRow} ${setAside !== 0 ? styles.statRowFour : ""}`}>
-          <StatCard
-            label="Assets"
-            value={fmt(summary?.assets ?? 0, currency)}
-            color={theme.up}
-          />
-          <StatCard
-            label="Debts"
-            value={fmt(Math.abs(summary?.debts ?? 0), currency)}
-            color={theme.down}
-          />
-          <StatCard
-            label="Savings rate"
-            value={`${(summary?.savings_rate ?? 0).toFixed(0)}%`}
-            color={theme.accent}
-          />
-          {setAside !== 0 && (
-            <StatCard label="Set aside" value={fmt(setAside, currency)} />
+          {summaryPending ? (
+            <>
+              <StatCard label="" value="" loading />
+              <StatCard label="" value="" loading />
+              <StatCard label="" value="" loading />
+            </>
+          ) : (
+            <>
+              <StatCard
+                label="Assets"
+                value={fmt(summary?.assets ?? 0, currency)}
+                color={theme.up}
+              />
+              <StatCard
+                label="Debts"
+                value={fmt(Math.abs(summary?.debts ?? 0), currency)}
+                color={theme.down}
+              />
+              <StatCard
+                label="Savings rate"
+                value={`${(summary?.savings_rate ?? 0).toFixed(0)}%`}
+                color={theme.accent}
+              />
+              {setAside !== 0 && (
+                <StatCard label="Set aside" value={fmt(setAside, currency)} />
+              )}
+            </>
           )}
         </StaggerItem>
 
@@ -213,11 +237,15 @@ export default function Overview() {
               onTypeChange={(v) => setAccountTypeFilter(v as AccountType | "")}
             />
           </div>
-          <CardStack
-            accounts={stackAccounts}
-            variant={stackVariant}
-            height={290}
-          />
+          {accountsPending ? (
+            <Skeleton height={290} radius={14} />
+          ) : (
+            <CardStack
+              accounts={stackAccounts}
+              variant={stackVariant}
+              height={290}
+            />
+          )}
         </StaggerItem>
 
         {/* 4. Recent activity */}
@@ -229,19 +257,25 @@ export default function Overview() {
             </button>
           </div>
           <div className={styles.txnList}>
-            {(transactions ?? []).map((txn) => {
-              const acc = accountMap.get(txn.account_id);
-              return (
-                <div key={txn.id} className={styles.txnDivider}>
-                  <TxnRow
-                    txn={txn}
-                    accountName={acc?.name}
-                    currency={acc?.currency ?? currency}
-                  />
-                </div>
-              );
-            })}
-            {transactions?.length === 0 && (
+            {txnsPending
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className={styles.txnDivider}>
+                    <Skeleton height={40} radius={10} style={{ margin: "12px 0" }} />
+                  </div>
+                ))
+              : (transactions ?? []).map((txn) => {
+                  const acc = accountMap.get(txn.account_id);
+                  return (
+                    <div key={txn.id} className={styles.txnDivider}>
+                      <TxnRow
+                        txn={txn}
+                        accountName={acc?.name}
+                        currency={acc?.currency ?? currency}
+                      />
+                    </div>
+                  );
+                })}
+            {!txnsPending && transactions?.length === 0 && (
               <div className={styles.empty}>No transactions yet</div>
             )}
           </div>
@@ -257,6 +291,9 @@ export default function Overview() {
             <span className={styles.metaMute}>Hover</span>
           </div>
           <div className={styles.donutWrap}>
+            {accountsPending ? (
+              <Skeleton width={200} height={200} radius={999} />
+            ) : (
             <Donut
               slices={donutSlices}
               size={200}
@@ -283,9 +320,20 @@ export default function Overview() {
                 </div>
               }
             />
+            )}
           </div>
           <div className={styles.legend}>
-            {donutSlices.slice(0, 5).map((sl, i) => (
+            {accountsPending
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={styles.legendRow}>
+                    <Skeleton width={10} height={10} radius={3} />
+                    <span className={styles.legendName}>
+                      <Skeleton width="70%" height={13} />
+                    </span>
+                    <Skeleton width={48} height={13} />
+                  </div>
+                ))
+              : donutSlices.slice(0, 5).map((sl, i) => (
               <div
                 key={i}
                 className={styles.legendRow}
@@ -317,7 +365,16 @@ export default function Overview() {
             </button>
           </div>
           <div className={styles.goalsList}>
-            {(goals ?? []).map((g) => {
+            {goalsPending &&
+              Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className={styles.goalRow}>
+                  <Skeleton width="40%" height={13} />
+                  <Skeleton height={6} radius={999} />
+                  <Skeleton width="55%" height={11} />
+                </div>
+              ))}
+            {!goalsPending &&
+              (goals ?? []).map((g) => {
               const pct = g.target > 0 ? (g.saved / g.target) * 100 : 0;
               const months =
                 g.monthly > 0
@@ -344,7 +401,7 @@ export default function Overview() {
                 </div>
               );
             })}
-            {goals?.length === 0 && (
+            {!goalsPending && goals?.length === 0 && (
               <div className={styles.empty}>No goals yet</div>
             )}
           </div>

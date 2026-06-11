@@ -16,6 +16,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- The Overview dashboard now shows loading skeletons while your data is fetched, instead of briefly flashing misleading £0.00 / 0% values and an empty chart frame. Placeholders reserve the real content's space so the layout doesn't jump when data arrives, and the shimmer respects `prefers-reduced-motion`.
 - Switching pages now plays a smooth stagger cascade — the top-level cards on each screen fade and rise in sequence, with `prefers-reduced-motion` honoured for instant transitions.
 - Overview net-worth hero now shows the percentage change over the selected chart range as a colour-coded pill (green up / red down) next to the net-position figure, and it tracks the hovered point on the trend line.
 - Accounts can be set aside from your net-worth headline, so day-to-day balances aren't swamped by large investment or pension swings. The Overview now shows your "Accessible" net worth (counting accounts only) with a dedicated "Set aside" card, while the Accounts page keeps the full "Total net worth" and badges set-aside accounts. Toggle "Count toward net worth" when adding or editing an account.
