@@ -67,6 +67,11 @@ export default function Overview() {
       : null;
   const pctUp = pctChange != null && pctChange >= 0;
   const pctColor = pctUp ? theme.up : theme.down;
+  // Net position = assets − debts; colour the pill by its sign so a net-negative
+  // position shows red, not an unconditionally-green pill (the % pill already
+  // does this). Guarded by the `summary.total !== 0` render condition below.
+  const netPosition = (summary?.assets ?? 0) - Math.abs(summary?.debts ?? 0);
+  const netPositionColor = netPosition >= 0 ? theme.up : theme.down;
   // Asset accounts with a positive balance that count toward net worth — the
   // donut is the Accessible "ASSETS" distribution, so loan/credit (debt) and
   // set-aside accounts are excluded. Mirrors /api/summary's classification.
@@ -131,11 +136,11 @@ export default function Overview() {
               <span
                 className={styles.deltaPill}
                 style={{
-                  background: `color-mix(in oklab, ${theme.up}, transparent 86%)`,
-                  color: theme.up,
+                  background: `color-mix(in oklab, ${netPositionColor}, transparent 90%)`,
+                  color: netPositionColor,
                 }}
               >
-                {fmt(summary.assets - Math.abs(summary.debts), currency)}
+                {fmt(netPosition, currency)}
               </span>
               <span className={styles.metaMute}>net position</span>
               {pctChange != null && (
@@ -143,7 +148,7 @@ export default function Overview() {
                   <span
                     className={styles.deltaPill}
                     style={{
-                      background: `color-mix(in oklab, ${pctColor}, transparent 86%)`,
+                      background: `color-mix(in oklab, ${pctColor}, transparent 90%)`,
                       color: pctColor,
                     }}
                     title={`Net worth change over the ${range} period`}
