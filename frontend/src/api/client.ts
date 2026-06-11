@@ -71,6 +71,29 @@ export const deleteAccount = (password: string) =>
     body: JSON.stringify({ password }),
   });
 
+// Fetch the full data export and save it to a file. The endpoint sends the JSON
+// with a `Content-Disposition: attachment` filename, which we honour; the
+// session cookie authenticates the same-origin request.
+export async function exportData(): Promise<void> {
+  const res = await fetch("/api/export");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^";]+)"?/.exec(disposition);
+  const filename = match?.[1] ?? "piledger-export.json";
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // Accounts
 
 export const getAccounts = () => json<Account[]>("/api/accounts");

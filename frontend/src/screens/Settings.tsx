@@ -4,6 +4,7 @@ import ExchangeRatesCard from "../components/settings/ExchangeRatesCard";
 import ChangePasswordCard from "../components/settings/ChangePasswordCard";
 import HelpCard from "../components/settings/HelpCard";
 import SessionCard from "../components/settings/SessionCard";
+import ExportDataCard from "../components/settings/ExportDataCard";
 import DangerZoneCard from "../components/settings/DangerZoneCard";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import styles from "../components/settings/Settings.module.css";
@@ -18,6 +19,7 @@ export default function Settings() {
       <StaggerItem><ChangePasswordCard /></StaggerItem>
       <StaggerItem><HelpCard /></StaggerItem>
       <StaggerItem><SessionCard /></StaggerItem>
+      <StaggerItem><ExportDataCard /></StaggerItem>
       <StaggerItem><DangerZoneCard /></StaggerItem>
     </PageStagger>
   );
