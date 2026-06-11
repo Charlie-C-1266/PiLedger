@@ -26,32 +26,3 @@
   gap: 14px;
   padding: 20px 24px 28px;
 }
-
-.picker {
-  display: flex;
-  gap: 2px;
-  background: var(--pl-surface-alt);
-  border-radius: 8px;
-  padding: 3px;
-}
-
-.pill {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--pl-text-mute);
-  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
-  cursor: pointer;
-  text-transform: capitalize;
-  transition: background 160ms, color 160ms;
-}
-
-.pill:hover {
-  color: var(--pl-text-soft);
-}
-
-.pillActive {
-  background: var(--pl-text);
-  color: var(--pl-surface);
-}

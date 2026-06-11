@@ -11,8 +11,6 @@ interface Props {
   height?: number;
 }
 
-const VARIANTS: StackVariant[] = ["fan", "cascade", "wave", "grid"];
-
 function tileTransform(
   variant: StackVariant,
   i: number,
@@ -92,58 +90,6 @@ export default function CardStack({ accounts, variant, height = 290 }: Props) {
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-export function VariantPicker({
-  value,
-  onChange,
-}: {
-  value: StackVariant;
-  onChange: (v: StackVariant) => void;
-}) {
-  return (
-    <div className={styles.picker}>
-      {VARIANTS.map((v) => (
-        <button
-          key={v}
-          className={`${styles.pill} ${v === value ? styles.pillActive : ""}`}
-          onClick={() => onChange(v)}
-        >
-          {v}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-export function TypeFilterPicker({
-  options,
-  value,
-  onChange,
-}: {
-  options: { key: string; label: string }[];
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className={styles.picker}>
-      <button
-        className={`${styles.pill} ${!value ? styles.pillActive : ""}`}
-        onClick={() => onChange("")}
-      >
-        All
-      </button>
-      {options.map(({ key, label }) => (
-        <button
-          key={key}
-          className={`${styles.pill} ${key === value ? styles.pillActive : ""}`}
-          onClick={() => onChange(key === value ? "" : key)}
-        >
-          {label}
-        </button>
-      ))}
     </div>
   );
 }
