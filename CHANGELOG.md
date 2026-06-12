@@ -14,6 +14,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - The dashboard's range, account-layout, and account-type pickers are now one shared segmented control: each option grows to a 44px touch target on phones (the net-worth range picker was previously ~21px tall — the only way to change the range on mobile), all expose proper radio-group semantics to screen readers, and every interactive control now shows a consistent keyboard focus ring.
 - README updated to reflect the envelope budget, goal projections, and set-aside-from-net-worth features.
 - Frontend now has a Vitest + React Testing Library suite alongside the existing pytest backend suite. CI runs both, and new features must come with new tests on the side they touch (see CLAUDE.md "Testing requirements").
+- The Playwright end-to-end browser suite now runs in CI (against a freshly built SPA), so a broken e2e test surfaces as a failed check instead of slipping past review.
 
 ### Added
 

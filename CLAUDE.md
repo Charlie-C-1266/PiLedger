@@ -78,7 +78,7 @@ uv run pytest tests/e2e                    # end-to-end browser suite (Playwrigh
 
 All eight must pass before a change is considered complete. If any check fails, fix the code — do not skip or delete tests, and do not bypass lint/format/type errors.
 
-The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. The e2e suite is excluded from CI, so a regression there will not block merge — a broken e2e test has slipped past review in the past for exactly this reason, and that should not happen again. If Playwright's browser is missing, install it once with `uv run playwright install chromium`.
+The default `pytest` invocation runs only the unit/API suite because `pytest.ini` adds `--ignore=tests/e2e`. The e2e suite **is** run in CI (the `E2E (Playwright)` job builds the frontend, installs Chromium, and runs `pytest tests/e2e`), so a regression there now surfaces as a failed check rather than slipping past review. It is still not part of the default local `pytest`, though, so run `uv run pytest tests/e2e` yourself before opening a PR rather than relying on CI to catch it. If Playwright's browser is missing, install it once with `uv run playwright install chromium`.
 
 ## Testing requirements
 
@@ -94,4 +94,4 @@ The default `pytest` invocation runs only the unit/API suite because `pytest.ini
 - **Frontend**: React 19 + TypeScript single-page app under `frontend/`, built with Vite. Data fetching via TanStack Query v5, routing via React Router, charts via Recharts. The Vite production build is served from `static/dist/` (mounted by `app.py`). Standalone non-SPA pages (`login`, `guide`) live as plain HTML/JS under `static/`. See `docs/frontend.md`.
 - **Auth**: PBKDF2-SHA256 passwords, 30-day `HttpOnly` session cookies
 - **Tests**: Backend — pytest 9, httpx, `starlette.testclient.TestClient`, Playwright. Frontend — Vitest 4 + React Testing Library + jsdom (config in `frontend/vitest.config.ts`, shared setup in `frontend/src/test/setup.ts`).
-- **CI**: GitHub Actions — ruff check, ruff format, mypy, pytest + coverage, frontend (eslint + build + vitest with coverage), lockfile drift, pip-audit
+- **CI**: GitHub Actions — ruff check, ruff format, mypy, pytest + coverage, frontend (eslint + build + vitest with coverage), e2e (Playwright + Chromium against a built SPA), lockfile drift, pip-audit
