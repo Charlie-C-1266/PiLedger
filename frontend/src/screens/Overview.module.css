@@ -207,14 +207,34 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
+/* Used both as a presentational skeleton row (div) and as the interactive
+   legend entry (button); the resets below neutralise the button chrome. */
 .legendRow {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   transition: opacity 160ms;
-  cursor: default;
+}
+
+.legendTotal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pl-rule);
 }
 
 .legendSwatch {
@@ -281,5 +301,22 @@
   text-align: center;
   font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);
+}
+
+/* Accent CTA pill rendered inside an empty state (e.g. "Add an account"). */
+.emptyAction {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--pl-accent-soft);
+  color: var(--pl-accent);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  text-decoration: none;
+  transition: opacity 160ms;
+}
+
+.emptyAction:hover {
+  opacity: 0.85;
 }
 

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import styles from "./Donut.module.css";
 
 interface Slice {
@@ -28,10 +27,6 @@ export default function Donut({
   center,
   ariaLabel,
 }: Props) {
-  // Sticky highlight set by a tap/click/keyboard activation. Hover (mouse/pen)
-  // reverts to this when the pointer leaves, so a tapped slice stays lit.
-  const [tappedIdx, setTappedIdx] = useState<number | null>(null);
-
   const total = slices.reduce((s, sl) => s + sl.value, 0);
   if (total === 0) return null;
 
@@ -42,19 +37,12 @@ export default function Donut({
 
   const pct = (v: number) => Math.round((v / total) * 100);
 
-  function toggleTap(i: number) {
-    const next = tappedIdx === i ? null : i;
-    setTappedIdx(next);
-    onHover(next);
-  }
-
-  function clearTap() {
-    if (tappedIdx !== null) {
-      setTappedIdx(null);
-      onHover(null);
-    }
-  }
-
+  // The whole chart is exposed to assistive tech as a single labelled image:
+  // `role="img"` makes the arcs presentational (so they can't be
+  // focusable-but-silent, the bug this replaced), and the keyboard/AT path is
+  // the legend the consumer renders alongside. The arcs keep mouse/pen hover
+  // purely as a visual enhancement — touch and keyboard users drive the
+  // highlight from the legend.
   const chartLabel =
     ariaLabel ??
     `Distribution across ${slices.length} segments: ` +
@@ -81,31 +69,13 @@ export default function Donut({
         strokeDashoffset={dashOffset}
         strokeLinecap="round"
         opacity={dimmed ? 0.25 : 1}
-        role="button"
-        tabIndex={0}
-        aria-label={`${sl.label}, ${pct(sl.value)}%`}
-        aria-pressed={tappedIdx === i}
         onPointerEnter={(e) => {
-          // Touch pointers are handled by the click toggle; otherwise a tap
-          // would highlight then immediately clear on lift (pointerleave).
           if (e.pointerType === "touch") return;
           onHover(i);
         }}
         onPointerLeave={(e) => {
           if (e.pointerType === "touch") return;
-          onHover(tappedIdx);
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleTap(i);
-        }}
-        onFocus={() => onHover(i)}
-        onBlur={() => onHover(tappedIdx)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            toggleTap(i);
-          }
+          onHover(null);
         }}
       />
     );
@@ -119,7 +89,6 @@ export default function Donut({
         viewBox={`0 0 ${size} ${size}`}
         role="img"
         aria-label={chartLabel}
-        onClick={clearTap}
       >
         {arcs}
       </svg>
