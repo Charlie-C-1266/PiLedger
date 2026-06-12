@@ -15,6 +15,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - README updated to reflect the envelope budget, goal projections, and set-aside-from-net-worth features.
 - Frontend now has a Vitest + React Testing Library suite alongside the existing pytest backend suite. CI runs both, and new features must come with new tests on the side they touch (see CLAUDE.md "Testing requirements").
 - The Playwright end-to-end browser suite now runs in CI (against a freshly built SPA), so a broken e2e test surfaces as a failed check instead of slipping past review.
+- Documentation refreshed to match the current code: theming is described as client-side (five accents, remembered in the browser), the database doc gains the `counts_to_net_worth` set-aside column and its v8 migration, and stale references (React Router version, the removed `esc()` helper, the missing frontend test suite) were corrected.
 
 ### Added
 

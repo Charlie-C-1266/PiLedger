@@ -18,7 +18,7 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 - **Net-worth control** — accounts can be set aside from the net-worth headline (e.g. pension, investment) so the overview figure stays actionable
 - **Per-user isolation** — every query is scoped to the authenticated user; multi-tenant by default
 - **Self-contained** — SQLite database, no external services, runs fully offline once loaded
-- **Dark mode + 10 colour themes** — persisted per-user via the Settings page
+- **Dark mode + five accent themes** — chosen in Settings and remembered in your browser
 
 ## Quick Start
 
@@ -37,7 +37,7 @@ For local development with `uv` or `pip`, see the [Getting Started](docs/getting
 | Frontend | React 19, TypeScript, Vite, Recharts |
 | Database | SQLite (single file, integer-cents storage) |
 | Auth | PBKDF2-SHA256 passwords, 30-day HttpOnly session cookies |
-| CI | GitHub Actions — ruff, pytest, pip-audit, lockfile drift check |
+| CI | GitHub Actions — ruff, mypy, pytest, frontend (eslint + build + vitest), Playwright e2e, pip-audit, lockfile drift |
 
 ## Documentation
 

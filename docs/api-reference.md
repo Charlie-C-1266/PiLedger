@@ -138,7 +138,7 @@ The ETA shown in the UI is computed client-side: `ceil((target − saved) / mont
 
 ## User preferences
 
-Per-user UI + currency preferences. Used by the SPA on every page load to drive theme, light/dark, and the base currency that net-worth totals are reported in.
+Per-user UI + currency preferences. This endpoint is the server-side store for a user's `theme`, `dark_mode`, and `base_currency`. Note that the current React SPA persists theme and light/dark client-side (`localStorage`) and reads the active `base_currency` from `/api/summary`, so it does not call `/api/prefs` itself today — the endpoint remains the canonical contract for these preferences (and for non-SPA or future clients).
 
 | Method | Path | Body / Params | Response |
 |---|---|---|---|

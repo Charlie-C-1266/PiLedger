@@ -2,14 +2,17 @@
 
 ## Automated test suite
 
-PiLedger ships with two test suites. Both must pass before any change is considered complete.
+PiLedger ships with three test suites. All must pass before any change is considered complete.
 
 ```bash
-uv run pytest              # unit + API suite (isolated SQLite DB per test, runs in seconds)
-uv run pytest tests/e2e    # end-to-end browser suite (Playwright + Chromium, ~30s)
+uv run pytest                 # backend unit + API suite (isolated SQLite DB per test, runs in seconds)
+uv run pytest tests/e2e       # end-to-end browser suite (Playwright + Chromium, ~30s)
+( cd frontend && npm test )   # frontend unit suite (Vitest + React Testing Library + jsdom)
 ```
 
 If Playwright's browser is missing, install it once with `uv run playwright install chromium`.
+
+The backend unit/API suite and the frontend Vitest suite both run in CI on every PR; the e2e suite runs in CI too (the `E2E (Playwright)` job builds the SPA, installs Chromium, and runs `pytest tests/e2e`). Frontend tests live next to the code they cover as `Foo.test.tsx` / `useFoo.test.ts` — see [Frontend](frontend.md) and the "Testing requirements" section of `CLAUDE.md`.
 
 The unit/API tests run against an isolated SQLite database per test (set up by `tests/conftest.py:app`, which monkeypatches `constants.DB` to a fresh `tmp_path` file and re-runs `init()`). All API access goes through `starlette.testclient.TestClient`, so the tests exercise the real FastAPI app end-to-end without binding a network port.
 
@@ -25,7 +28,7 @@ The two shared fixtures `alice` and `bob` both depend on a single per-test `app`
 The pytest suite is the source of truth; the curl recipes below remain useful for spot-checking a running deployment from another host.
 
 ```bash
-./venv/bin/uvicorn --app-dir src app:app --host 0.0.0.0 --port 8080 &
+uv run uvicorn --app-dir src app:app --host 0.0.0.0 --port 8080 &
 sleep 2
 ```
 
