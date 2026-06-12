@@ -16,6 +16,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- The Overview dashboard now shows loading skeletons while your data is fetched, instead of briefly flashing misleading £0.00 / 0% values and an empty chart frame. Placeholders reserve the real content's space so the layout doesn't jump when data arrives, and the shimmer respects `prefers-reduced-motion`.
 - Settings now has an "Export my data" button that downloads all your accounts, transactions, budgets, and goals as a JSON file (wires up the previously orphaned `/api/export` endpoint).
 - Switching pages now plays a smooth stagger cascade — the top-level cards on each screen fade and rise in sequence, with `prefers-reduced-motion` honoured for instant transitions.
 - Overview net-worth hero now shows the percentage change over the selected chart range as a colour-coded pill (green up / red down) next to the net-position figure, and it tracks the hovered point on the trend line.
