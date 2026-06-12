@@ -11,7 +11,7 @@ The frontend is a React 19 single-page application built with Vite and TypeScrip
 | Bundler | Vite |
 | Data fetching | TanStack Query v5 |
 | Charts | Recharts |
-| Routing | React Router v6 |
+| Routing | React Router v7 |
 
 ## Login page (`login.html`)
 
@@ -99,10 +99,10 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 
 ## Theme system
 
-`ThemeProvider.tsx` wraps the app and exposes a React context consumed by `useTheme()`. It reads initial preferences from `GET /api/prefs` and persists changes via `PUT /api/prefs`.
+`ThemeProvider.tsx` wraps the app and exposes a React context consumed by `useTheme()`. Preferences are stored client-side in `localStorage` (`pl-theme-mode`, `pl-theme-accent`) — per browser, not synced to the server — and applied by writing the `--pl-*` CSS custom properties (from `tokens.ts`) onto `:root`.
 
-- **Accent colour** — 10 named themes (`olive`, `emerald`, `teal`, `sky`, `indigo`, `violet`, `rose`, `crimson`, `amber`, `slate`). Mapped to CSS custom properties via `tokens.ts`.
-- **Light / dark mode** — toggled from the header. A `theme-bootstrap.js` script runs before React mounts to apply the saved theme class, preventing a flash of unstyled content.
+- **Accent colour** — five preset accents (`ACCENT_OPTIONS` in `tokens.ts`), chosen as colour swatches in Settings → Appearance.
+- **Light / dark mode** — toggled from the header; the choice persists in `localStorage`.
 
 ## Build
 

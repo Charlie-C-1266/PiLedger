@@ -31,10 +31,11 @@ Financial accounts. Each row belongs to exactly one user.
 | `user_id` | INTEGER FK → `users.id` | Nullable to support schema migration |
 | `name` | TEXT | Display name, e.g. "Barclays Current" |
 | `type` | TEXT | Constrained to `'current'`, `'savings'`, `'loan'`, `'credit'`, or `'invest'` |
-| `subtype` | TEXT | Sub-classification within a type (e.g. `'isa'`, `'stocks'`); defaults to `'general'` |
+| `subtype` | TEXT | Sub-classification within a type (e.g. `'cash_isa'`, `'stocks_shares_isa'`, `'mortgage'`); defaults to `'general'`. Full list in the `AccountSubtype` literal in `constants.py` |
 | `currency` | TEXT | ISO-4217 currency code; defaults to `'GBP'` |
 | `interest_rate` | REAL | Annual rate as a percentage (e.g. `4.5` for 4.5% AER on savings, or APR on loans) |
 | `color` | TEXT | Hex colour used in chart lines and card borders |
+| `counts_to_net_worth` | INTEGER | `1` = counts toward the Accessible net-worth headline, `0` = set aside (e.g. a pension or SIPP); defaults to `1`. See [ADR-0003](adr/0003-accessible-net-worth-user-flag.md) |
 | `created_at` | TEXT | UTC ISO-8601 |
 
 ## `balance_history`
@@ -168,3 +169,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v1 (0.30.0)** — `accounts.type` constraint widened to include `'credit'` and `'invest'` (table rebuild); `transactions` and `goals` tables created.
 - **v6** — the retired `budget_items` table is dropped (superseded by the envelope budget; the old `/api/budget*` endpoints had no frontend caller).
 - **v7** — the zero-based envelope budget tables are created: `budget_income`, `budget_group`, `budget_envelope`.
+- **v8** — `accounts.counts_to_net_worth` added (the Accessible-net-worth / set-aside flag, [ADR-0003](adr/0003-accessible-net-worth-user-flag.md)), defaulting to `1` so existing accounts keep counting.
