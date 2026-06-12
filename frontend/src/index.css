@@ -86,3 +86,17 @@ select,
 textarea {
   touch-action: manipulation;
 }
+
+/* Shared keyboard focus ring. Interactive controls previously fell back to
+   inconsistent UA defaults (or none); this gives every one a consistent accent
+   ring, shown only for keyboard navigation (:focus-visible), not mouse clicks. */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+[role="radio"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--pl-accent);
+  outline-offset: 2px;
+}

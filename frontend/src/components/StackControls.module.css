@@ -61,7 +61,7 @@
 
 .chip {
   composes: chip from "./AddModal.module.css";
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .chipActive {

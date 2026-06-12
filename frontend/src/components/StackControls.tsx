@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { FilterIcon } from "./icons";
-import { VariantPicker, TypeFilterPicker } from "./CardStack";
+import SegmentedControl from "./SegmentedControl";
 import type { StackVariant } from "./CardStack";
 import styles from "./StackControls.module.css";
 
@@ -36,9 +36,22 @@ export default function StackControls({
     return (
       <div className={styles.inline}>
         {hasTypes && (
-          <TypeFilterPicker options={typeOptions} value={typeValue} onChange={onTypeChange} />
+          <SegmentedControl
+            options={[
+              { value: "", label: "All" },
+              ...typeOptions.map((t) => ({ value: t.key, label: t.label })),
+            ]}
+            value={typeValue}
+            onChange={onTypeChange}
+            ariaLabel="Filter accounts by type"
+          />
         )}
-        <VariantPicker value={variant} onChange={onVariantChange} />
+        <SegmentedControl
+          options={VARIANTS.map((v) => ({ value: v.key, label: v.label }))}
+          value={variant}
+          onChange={onVariantChange}
+          ariaLabel="Account layout"
+        />
       </div>
     );
   }

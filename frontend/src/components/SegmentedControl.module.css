@@ -14,6 +14,7 @@
   color: var(--pl-text-mute);
   font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 160ms, color 160ms;
 }
 
@@ -24,4 +25,14 @@
 .active {
   background: var(--pl-text);
   color: var(--pl-surface);
+}
+
+/* Touch devices: grow each segment to the 44px minimum target. Desktop keeps
+   the compact 11px/5px-padding sizing. */
+@media (pointer: coarse) {
+  .pill {
+    min-height: 44px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 }
