@@ -290,41 +290,13 @@ export default function Overview() {
             <div className={styles.sectionTitle}>Distribution</div>
             <span className={styles.metaMute}>Hover</span>
           </div>
-          <div className={styles.donutWrap}>
-            {accountsPending ? (
-              <Skeleton width={200} height={200} radius={999} />
-            ) : (
-            <Donut
-              slices={donutSlices}
-              size={200}
-              thickness={26}
-              gap={3}
-              hoverIdx={donutHover}
-              onHover={setDonutHover}
-              center={
-                <div className={styles.donutCenter}>
-                  <span className={styles.microLabel}>
-                    {hoveredSlice ? hoveredSlice.label : "ASSETS"}
-                  </span>
-                  <span className={styles.donutValue}>
-                    {fmtShort(
-                      hoveredSlice ? hoveredSlice.value : donutTotal,
-                      currency
-                    )}
-                  </span>
-                  <span className={styles.metaMute}>
-                    {hoveredSlice
-                      ? `${((hoveredSlice.value / donutTotal) * 100).toFixed(0)}%`
-                      : `${positiveAccounts.length} accounts`}
-                  </span>
-                </div>
-              }
-            />
-            )}
-          </div>
-          <div className={styles.legend}>
-            {accountsPending
-              ? Array.from({ length: 3 }).map((_, i) => (
+          {accountsPending ? (
+            <>
+              <div className={styles.donutWrap}>
+                <Skeleton width={200} height={200} radius={999} />
+              </div>
+              <div className={styles.legend}>
+                {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className={styles.legendRow}>
                     <Skeleton width={10} height={10} radius={3} />
                     <span className={styles.legendName}>
@@ -332,28 +304,88 @@ export default function Overview() {
                     </span>
                     <Skeleton width={48} height={13} />
                   </div>
-                ))
-              : donutSlices.slice(0, 5).map((sl, i) => (
-              <div
-                key={i}
-                className={styles.legendRow}
-                style={{
-                  opacity: donutHover !== null && donutHover !== i ? 0.35 : 1,
-                }}
-                onMouseEnter={() => setDonutHover(i)}
-                onMouseLeave={() => setDonutHover(null)}
-              >
-                <span
-                  className={styles.legendSwatch}
-                  style={{ background: sl.color }}
-                />
-                <span className={styles.legendName}>{sl.label}</span>
-                <span className={styles.legendValue}>
-                  {fmt(sl.value, currency)}
-                </span>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : donutTotal === 0 ? (
+            <div className={styles.empty}>
+              No asset accounts to chart yet.
+              <Link to="/accounts" className={styles.emptyAction}>
+                Add an account
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className={styles.donutWrap}>
+                <Donut
+                  slices={donutSlices}
+                  size={200}
+                  thickness={26}
+                  gap={3}
+                  hoverIdx={donutHover}
+                  onHover={setDonutHover}
+                  center={
+                    <div className={styles.donutCenter}>
+                      <span className={styles.microLabel}>
+                        {hoveredSlice ? hoveredSlice.label : "ASSETS"}
+                      </span>
+                      <span className={styles.donutValue}>
+                        {fmtShort(
+                          hoveredSlice ? hoveredSlice.value : donutTotal,
+                          currency
+                        )}
+                      </span>
+                      <span className={styles.metaMute}>
+                        {hoveredSlice
+                          ? `${((hoveredSlice.value / donutTotal) * 100).toFixed(0)}%`
+                          : `${positiveAccounts.length} accounts`}
+                      </span>
+                    </div>
+                  }
+                />
+              </div>
+              {/* Accessible counterpart to the chart: a keyboard- and
+                  touch-reachable list of every segment (focus or hover to
+                  highlight it on the donut), plus a total. */}
+              <ul className={styles.legend} aria-label="Distribution by account">
+                {donutSlices.map((sl, i) => (
+                  <li key={i}>
+                    <button
+                      type="button"
+                      className={styles.legendRow}
+                      style={{
+                        opacity:
+                          donutHover !== null && donutHover !== i ? 0.35 : 1,
+                      }}
+                      onMouseEnter={() => setDonutHover(i)}
+                      onMouseLeave={() => setDonutHover(null)}
+                      onFocus={() => setDonutHover(i)}
+                      onBlur={() => setDonutHover(null)}
+                      aria-label={`${sl.label}, ${fmt(sl.value, currency)}, ${(
+                        (sl.value / donutTotal) *
+                        100
+                      ).toFixed(0)} percent`}
+                    >
+                      <span
+                        className={styles.legendSwatch}
+                        style={{ background: sl.color }}
+                      />
+                      <span className={styles.legendName}>{sl.label}</span>
+                      <span className={styles.legendValue}>
+                        {fmt(sl.value, currency)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                <li className={styles.legendTotal}>
+                  <span className={styles.legendName}>Total</span>
+                  <span className={styles.legendValue}>
+                    {fmt(donutTotal, currency)}
+                  </span>
+                </li>
+              </ul>
+            </>
+          )}
         </StaggerItem>
 
         {/* 6. Goals progress */}
