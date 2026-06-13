@@ -32,7 +32,7 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 
 | Route | Component | Purpose |
 |---|---|---|
-| `/overview` | `Overview` | Net-worth chart, account card stack, recent transactions, goals progress rings, asset distribution donut |
+| `/overview` | `Overview` | Net-worth chart (with a "Savings projections" modal), account card stack, recent transactions, goals progress rings, asset distribution donut |
 | `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter |
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
@@ -62,6 +62,7 @@ All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query h
 | `useBudget()` | `GET /api/budget` | default |
 | `useRates()` | `GET /api/rates` | default |
 | `useSummary()` | `GET /api/summary` | 30 s |
+| `useProjections(months)` | `GET /api/projections` | default |
 | `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
 | `useAllHistory(range)` | `GET /api/history/all` | default |
 | `useMe()` | `GET /api/auth/me` | Infinity |
@@ -82,6 +83,7 @@ Line/area charts use **Recharts**; the donut and the horizontal/trend bars are h
 | Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
 | Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
 | Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |
+| Savings projections | Overview (modal) | Multi-line (`AccountProjectionsModal`) | `GET /api/projections?months=` — compound-interest growth per savings account |
 
 The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart and the Accounts balance-history chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
 

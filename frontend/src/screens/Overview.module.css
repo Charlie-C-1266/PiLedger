@@ -168,6 +168,14 @@
   opacity: 0.85;
 }
 
+/* Right-aligned CTA under the net-worth chart to open the savings-projections
+   modal. Sits below the chart so it never crowds the hero header on mobile. */
+.projectionsRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 /* Transaction list */
 
 .txnList {

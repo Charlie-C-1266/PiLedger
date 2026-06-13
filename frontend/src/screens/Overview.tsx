@@ -20,6 +20,7 @@ import TxnRow from "../components/TxnRow";
 import Skeleton from "../components/Skeleton";
 import AddModal from "../components/AddModal";
 import AddGoalModal from "../components/AddGoalModal";
+import AccountProjectionsModal from "../components/accounts/AccountProjectionsModal";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import styles from "./Overview.module.css";
 
@@ -47,12 +48,16 @@ export default function Overview() {
   const [donutHover, setDonutHover] = useState<number | null>(null);
   const [showTxnModal, setShowTxnModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showProjections, setShowProjections] = useState(false);
 
   const currency = summary?.base_currency ?? "GBP";
   // Headline is Accessible net worth (ADR-0003): summary.total and the trend
   // series are already restricted to counting accounts server-side.
   const netWorth = hoverPoint?.value ?? summary?.total ?? 0;
   const setAside = summary?.set_aside ?? 0;
+  // The projections modal covers savings accounts only, so only offer it when
+  // the user has at least one (matches /api/projections' server-side filter).
+  const hasSavings = (accounts ?? []).some((a) => a.type === "savings");
 
   // Percentage change in net worth across the selected range: from the first
   // point in the trend to the value shown in the headline (which follows the
@@ -183,6 +188,16 @@ export default function Overview() {
               onHover={setHoverPoint}
               currency={currency}
             />
+          )}
+          {hasSavings && (
+            <div className={styles.projectionsRow}>
+              <button
+                className={styles.addPill}
+                onClick={() => setShowProjections(true)}
+              >
+                Savings projections →
+              </button>
+            </div>
           )}
         </StaggerItem>
 
@@ -447,6 +462,12 @@ export default function Overview() {
         />
       )}
       {showGoalModal && <AddGoalModal onClose={() => setShowGoalModal(false)} />}
+      {showProjections && (
+        <AccountProjectionsModal
+          currency={currency}
+          onClose={() => setShowProjections(false)}
+        />
+      )}
       </div>
     </>
   );
