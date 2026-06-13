@@ -1,10 +1,14 @@
-"""User preferences: theme, dark mode, base currency.
+"""User preferences: base currency.
 
 Changing the base currency rescales the stored exchange rates via
 ``services/currency._rescale_rates`` so each rate keeps meaning "1 unit =
 rate units of base". The switch is rejected (400) when the rates can't be
 rescaled — i.e. there are rates but none for the incoming base to pivot on —
 rather than silently discarding the whole table.
+
+Theme and light/dark mode used to live here too, but the React client owns
+those entirely now (persisted in ``localStorage``), so this endpoint carries
+only ``base_currency``.
 """
 
 import sqlite3
@@ -20,21 +24,17 @@ router = APIRouter(tags=["prefs"])
 
 
 def _prefs_out(row: sqlite3.Row) -> PrefsOut:
-    """Map a ``users`` row to ``PrefsOut``, defaulting legacy NULLs and coercing
-    the 0/1 ``dark_mode`` column to a bool."""
-    return PrefsOut(
-        theme=row["theme"] or "olive",
-        dark_mode=bool(row["dark_mode"]),
-        base_currency=row["base_currency"] or "GBP",
-    )
+    """Map a ``users`` row to ``PrefsOut``, defaulting a legacy NULL base
+    currency to GBP."""
+    return PrefsOut(base_currency=row["base_currency"] or "GBP")
 
 
 @router.get("/api/prefs", response_model=PrefsOut)
 def get_prefs(uid: int = Depends(require_auth)) -> PrefsOut:
-    """Return the user's display preferences (theme, dark mode, base currency)."""
+    """Return the user's preferences (base currency)."""
     with db() as conn:
         row = conn.execute(
-            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
     if not row:
         raise HTTPException(404)
@@ -52,9 +52,6 @@ def update_prefs(
     ``_rescale_rates``) so each keeps meaning "1 unit = rate units of base".
     """
     patch = data.model_dump(exclude_none=True)
-    if "dark_mode" in patch:
-        # SQLite has no native bool, store as 0/1
-        patch["dark_mode"] = int(patch["dark_mode"])
     with db() as conn:
         # Changing the base currency invalidates any prior rates (which were
         # expressed against the previous base). Re-scale them so each stored
@@ -91,6 +88,6 @@ def update_prefs(
             conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*patch.values(), uid])
             conn.commit()
         row = conn.execute(
-            "SELECT theme, dark_mode, base_currency FROM users WHERE id=?", (uid,)
+            "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
     return _prefs_out(row)

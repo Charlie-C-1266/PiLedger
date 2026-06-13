@@ -58,7 +58,7 @@ piledger/
 │       ├── dist/          React SPA production build — Vite output (gitignored; built from frontend/)
 │       ├── login.{html,js,css}   Standalone login / register page
 │       ├── guide.{html,js,css}   Standalone documentation page (renders Markdown via vendored marked.js)
-│       ├── theme-bootstrap.js    Applies the saved theme before first paint (avoids a flash)
+│       ├── theme-bootstrap.js    Applies the saved light/dark mode before first paint (avoids a flash)
 │       ├── fonts/         Self-hosted Plus Jakarta Sans + JetBrains Mono (woff2)
 │       └── vendor/        Vendored third-party JS (marked.min.js)
 ├── frontend/              React SPA source (TypeScript + Vite); build outputs to src/static/dist

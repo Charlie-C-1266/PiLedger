@@ -120,7 +120,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 8
+SCHEMA_VERSION: int = 9
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -174,16 +174,12 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.commit()
 
-    # 3. Add users.theme + users.dark_mode.
+    # 3. Drop the retired users.theme / users.dark_mode columns. A 0.8.0-era
+    #    database added them for a server-side colour-theme model; theming now
+    #    lives entirely client-side, so they are removed here. Idempotent — a
+    #    no-op on the genuine pre-0.8.0 schema (and once the columns are gone).
     user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
-    if "theme" not in user_cols:
-        conn.execute("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT 'olive'")
-        conn.execute("UPDATE users SET theme='olive' WHERE theme IS NULL")
-        conn.commit()
-    if "dark_mode" not in user_cols:
-        conn.execute("ALTER TABLE users ADD COLUMN dark_mode INTEGER DEFAULT 0")
-        conn.execute("UPDATE users SET dark_mode=0 WHERE dark_mode IS NULL")
-        conn.commit()
+    _drop_legacy_theme_columns(conn)
 
     # 4. Add accounts.subtype.
     acc_cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
@@ -279,6 +275,20 @@ def _ensure_counts_to_net_worth_column(conn: sqlite3.Connection) -> None:
             "ALTER TABLE accounts ADD COLUMN counts_to_net_worth INTEGER NOT NULL DEFAULT 1"
         )
         conn.commit()
+
+
+def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
+    """Idempotently drop the retired ``users.theme`` / ``users.dark_mode``
+    columns. They backed a server-side colour-theme model that the React client
+    replaced with client-side ``localStorage`` theming, so nothing reads them.
+    Shared by the legacy path and ``_migrate_to_9`` so a database reaching the
+    current schema by either route ends up without them; a no-op once gone."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "theme" in cols:
+        conn.execute("ALTER TABLE users DROP COLUMN theme")
+    if "dark_mode" in cols:
+        conn.execute("ALTER TABLE users DROP COLUMN dark_mode")
+    conn.commit()
 
 
 def _migrate_to_2(conn: sqlite3.Connection) -> None:
@@ -426,6 +436,15 @@ def _migrate_to_8(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_9(conn: sqlite3.Connection) -> None:
+    """Drop the retired users.theme / users.dark_mode columns — theming moved
+    entirely client-side. Shares the idempotent column-drop with the legacy path
+    so the two can't drift."""
+    _drop_legacy_theme_columns(conn)
+    _set_schema_version(conn, 9)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -441,8 +460,6 @@ def init() -> None:
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
                 password_hash TEXT NOT NULL,
-                theme         TEXT DEFAULT 'olive',
-                dark_mode     INTEGER DEFAULT 0,
                 base_currency TEXT DEFAULT 'GBP',
                 created_at    TEXT DEFAULT (datetime('now'))
             );
@@ -550,6 +567,10 @@ def init() -> None:
         if version < 8:
             _migrate_to_8(conn)
             version = 8
+
+        if version < 9:
+            _migrate_to_9(conn)
+            version = 9
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

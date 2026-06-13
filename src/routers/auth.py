@@ -229,8 +229,7 @@ def export_data(uid: int = Depends(require_auth)) -> JSONResponse:
     now = utcnow_iso()
     with db() as conn:
         user_row = conn.execute(
-            "SELECT id, username, theme, dark_mode, base_currency, created_at"
-            " FROM users WHERE id=?",
+            "SELECT id, username, base_currency, created_at FROM users WHERE id=?",
             (uid,),
         ).fetchone()
         if not user_row:

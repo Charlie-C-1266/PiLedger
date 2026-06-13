@@ -155,7 +155,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 
 1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
 2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
-3. **`users.theme` + `users.dark_mode` (0.8.0)** — added via `ALTER TABLE`.
+3. **`users.theme` + `users.dark_mode`** — the 0.8.0-era colour-theme columns are now **dropped** if present (theming moved entirely client-side); a no-op on the genuine pre-0.8.0 schema.
 4. **`accounts.subtype` (0.6.0)** — added via `ALTER TABLE`, defaults to `'general'`.
 5. **`accounts.currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
 6. **`users.base_currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
@@ -170,3 +170,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v6** — the retired `budget_items` table is dropped (superseded by the envelope budget; the old `/api/budget*` endpoints had no frontend caller).
 - **v7** — the zero-based envelope budget tables are created: `budget_income`, `budget_group`, `budget_envelope`.
 - **v8** — `accounts.counts_to_net_worth` added (the Accessible-net-worth / set-aside flag, [ADR-0003](adr/0003-accessible-net-worth-user-flag.md)), defaulting to `1` so existing accounts keep counting.
+- **v9** — the retired `users.theme` / `users.dark_mode` columns are dropped (theming is client-side now; nothing read them server-side).

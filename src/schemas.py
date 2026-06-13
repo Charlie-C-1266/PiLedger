@@ -16,7 +16,6 @@ from constants import (
     MAX_RATE_FX,
     MIN_RATE_FX,
     SUBTYPES_BY_TYPE,
-    Theme,
 )
 
 
@@ -313,8 +312,6 @@ class BudgetEnvelopePatch(_In):
 class PrefsPatch(_In):
     """Partial update — only fields present are written."""
 
-    theme: Optional[Theme] = None
-    dark_mode: Optional[bool] = None
     base_currency: Optional[Currency] = None
 
 
@@ -340,8 +337,6 @@ class UserOut(BaseModel):
 
 
 class PrefsOut(BaseModel):
-    theme: Theme
-    dark_mode: bool
     base_currency: Currency = "GBP"
 
 

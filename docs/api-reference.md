@@ -138,14 +138,14 @@ The ETA shown in the UI is computed client-side: `ceil((target − saved) / mont
 
 ## User preferences
 
-Per-user UI + currency preferences. This endpoint is the server-side store for a user's `theme`, `dark_mode`, and `base_currency`. Note that the current React SPA persists theme and light/dark client-side (`localStorage`) and reads the active `base_currency` from `/api/summary`, so it does not call `/api/prefs` itself today — the endpoint remains the canonical contract for these preferences (and for non-SPA or future clients).
+Per-user currency preference. This endpoint stores a user's `base_currency` — the currency net-worth totals are reported in. Theme and light/dark mode used to live here too but are now owned entirely by the React client (`localStorage`); the server no longer carries them. The SPA reads the active `base_currency` from `/api/summary`, so it does not call `/api/prefs` itself today — the endpoint remains the canonical contract for the base-currency preference (and for non-SPA or future clients).
 
 | Method | Path | Body / Params | Response |
 |---|---|---|---|
-| `GET` | `/api/prefs` | — | `{theme, dark_mode, base_currency}` |
-| `PUT` | `/api/prefs` | `{theme?, dark_mode?, base_currency?}` | Updated `{theme, dark_mode, base_currency}`. Partial — only fields present are written. Changing `base_currency` rescales any stored exchange rates so each one keeps meaning "1 unit of `currency` = `rate` units of base" against the new base. |
+| `GET` | `/api/prefs` | — | `{base_currency}` |
+| `PUT` | `/api/prefs` | `{base_currency?}` | Updated `{base_currency}`. Partial — only fields present are written. Changing `base_currency` rescales any stored exchange rates so each one keeps meaning "1 unit of `currency` = `rate` units of base" against the new base. |
 
-`theme` must be one of the values in the `Theme` literal in `constants.py` (currently ten options across green/blue/purple/red/orange/neutral spectrum); `base_currency` must be one of the supported `Currency` codes. Unknown values return `400`.
+`base_currency` must be one of the supported `Currency` codes; unknown values (or the retired `theme` / `dark_mode` fields) return `400`.
 
 ## Exchange rates
 
