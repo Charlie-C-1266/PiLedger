@@ -1,0 +1,30 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.empty {
+  color: var(--pl-text-mute);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  text-align: center;
+  padding: 48px 0;
+}

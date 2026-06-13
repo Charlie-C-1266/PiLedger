@@ -1,5 +1,6 @@
 import type {
   Account,
+  AccountHistory,
   Budget,
   BudgetEnvelope,
   BudgetGroup,
@@ -125,6 +126,12 @@ export const getSummary = () => json<Summary>("/api/summary");
 
 export const getNetWorthSeries = (range: RangeKey = "30D") =>
   json<NetWorthPoint[]>(`/api/history/networth?range=${range}`);
+
+// Per-account balance history over the last `days` (accounts with no points in
+// the window are omitted server-side). Balances stay in each account's own
+// currency — see `AccountHistory`.
+export const getAllHistory = (days = 90) =>
+  json<AccountHistory[]>(`/api/history/all?days=${days}`);
 
 // Exchange rates
 

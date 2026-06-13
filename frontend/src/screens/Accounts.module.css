@@ -44,6 +44,27 @@
   margin-bottom: 14px;
 }
 
+.historyCard {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  box-shadow: var(--pl-shadow);
+  padding: 20px 24px 22px;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.historySub {
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  margin-top: 4px;
+}
+
 .sectionHint {
   font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);

@@ -77,6 +77,23 @@ export interface NetWorthPoint {
   value: number;
 }
 
+/** One balance reading in an account's history series (own currency, uncovered). */
+export interface AccountHistoryPoint {
+  balance: number;
+  date: string;
+}
+
+/** One account's balance history over a window, from `GET /api/history/all`.
+ * Balances are in the account's own `currency` — they are not converted to base. */
+export interface AccountHistory {
+  id: number;
+  name: string;
+  color: string;
+  type: AccountType;
+  currency: Currency;
+  history: AccountHistoryPoint[];
+}
+
 /** One manual FX rate: 1 unit of `currency` = `rate` units of the base currency. */
 export interface Rate {
   currency: Currency;

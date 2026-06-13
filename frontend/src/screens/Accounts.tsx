@@ -2,15 +2,19 @@ import { useMemo, useState } from "react";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
+import { useAllHistory } from "../hooks/useAllHistory";
 import { fmt } from "../lib/currency";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
 import PressableTile from "../components/PressableTile";
 import EditAccountModal from "../components/EditAccountModal";
+import RangePills from "../components/RangePills";
+import Skeleton from "../components/Skeleton";
+import AccountHistoryChart from "../components/charts/AccountHistoryChart";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
-import type { Account, AccountType } from "../types";
+import type { Account, AccountType, RangeKey } from "../types";
 import styles from "./Accounts.module.css";
 
 const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
@@ -42,6 +46,8 @@ export default function Accounts() {
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
   const [editAccount, setEditAccount] = useState<Account | null>(null);
+  const [historyRange, setHistoryRange] = useState<RangeKey>("90D");
+  const { data: history, isPending: historyPending } = useAllHistory(historyRange);
 
   const currency = summary?.base_currency ?? "GBP";
 
@@ -94,6 +100,26 @@ export default function Accounts() {
         </div>
         <CardStack accounts={stackAccounts} variant={variant} height={340} />
       </StaggerItem>
+
+      {/* Balance history over time */}
+      {allAccounts.length > 0 && (
+        <StaggerItem className={styles.historyCard}>
+          <div className={styles.historyHeader}>
+            <div>
+              <div className={styles.sectionTitle}>Balance history</div>
+              <div className={styles.historySub}>
+                Each account&apos;s balance over the selected range
+              </div>
+            </div>
+            <RangePills value={historyRange} onChange={setHistoryRange} />
+          </div>
+          {historyPending ? (
+            <Skeleton height={260} radius={12} />
+          ) : (
+            <AccountHistoryChart accounts={history ?? []} currency={currency} />
+          )}
+        </StaggerItem>
+      )}
 
       {/* Filterable accounts list */}
       {allAccounts.length > 0 && (
