@@ -9,7 +9,7 @@ The migrations under test (in execution order inside ``init()``):
 
 1. Add ``accounts.user_id`` if missing.
 2. Widen ``accounts.type`` CHECK to allow 'loan' (recreates the table).
-3. Add ``users.theme`` / ``users.dark_mode``.
+3. Drop the retired ``users.theme`` / ``users.dark_mode`` columns (theming is client-side now).
 4. Add ``accounts.subtype``.
 5. Add ``accounts.currency``.
 6. Add ``users.base_currency``.
@@ -200,19 +200,68 @@ def test_preserves_existing_accounts_through_check_widen(migrated_db):
     ]
 
 
-def test_adds_users_theme_and_dark_mode(migrated_db):
+def test_legacy_migration_does_not_add_theme_or_dark_mode(migrated_db):
+    """The genuine pre-0.8.0 schema never had these columns; the theme cleanup
+    means the legacy path must not resurrect them."""
     cols = _table_columns(migrated_db, "users")
-    assert "theme" in cols
-    assert "dark_mode" in cols
+    assert "theme" not in cols
+    assert "dark_mode" not in cols
 
 
-def test_existing_users_default_to_olive_light_theme(migrated_db):
-    conn = sqlite3.connect(str(migrated_db))
+# A 0.8.0–0.24-era database carries users.theme / users.dark_mode (added by the
+# old ALTER TABLE) but predates the schema_version stamp, so init() takes the
+# legacy path. Only `users` is materialised here; init()'s CREATE-IF-NOT-EXISTS
+# pass builds the remaining current-schema tables before the legacy migrations
+# run, and the legacy path then drops the retired theme columns.
+@pytest.fixture
+def legacy_theme_db(tmp_path, monkeypatch):
+    db_path = tmp_path / "legacy-theme.db"
+    conn = sqlite3.connect(str(db_path))
     try:
-        row = conn.execute("SELECT theme, dark_mode FROM users WHERE id=1").fetchone()
+        conn.executescript(
+            """
+            CREATE TABLE users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                password_hash TEXT NOT NULL,
+                theme         TEXT DEFAULT 'olive',
+                dark_mode     INTEGER DEFAULT 0,
+                base_currency TEXT DEFAULT 'GBP',
+                created_at    TEXT DEFAULT (datetime('now'))
+            );
+            """
+        )
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash, theme, dark_mode)"
+            " VALUES(1, 'alice', 'x', 'rose', 1)"
+        )
+        conn.commit()
     finally:
         conn.close()
-    assert row == ("olive", 0)
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init
+
+    init()
+    return db_path
+
+
+def test_legacy_path_drops_theme_and_dark_mode(legacy_theme_db):
+    """A legacy DB still carrying the retired theme columns has them dropped when
+    init() runs the (now-cleanup) legacy step; the rest of the row survives."""
+    cols = _table_columns(legacy_theme_db, "users")
+    assert "theme" not in cols
+    assert "dark_mode" not in cols
+    conn = sqlite3.connect(str(legacy_theme_db))
+    try:
+        row = conn.execute(
+            "SELECT username, base_currency FROM users WHERE id=1"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row == ("alice", "GBP")
 
 
 def test_adds_accounts_subtype(migrated_db):
@@ -357,15 +406,17 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
 
     init()
 
-    assert _table_columns(db_path, "users") >= {
+    user_cols = _table_columns(db_path, "users")
+    assert user_cols >= {
         "id",
         "username",
         "password_hash",
-        "theme",
-        "dark_mode",
         "base_currency",
         "created_at",
     }
+    # The retired theme model must not return on fresh installs.
+    assert "theme" not in user_cols
+    assert "dark_mode" not in user_cols
     assert _table_columns(db_path, "accounts") >= {
         "id",
         "user_id",
@@ -769,6 +820,14 @@ def test_gated_path_adds_counts_to_net_worth(stamped_v1_db):
     finally:
         conn.close()
     assert all(r[0] == 1 for r in rows)
+
+
+def test_gated_path_drops_theme_and_dark_mode(stamped_v1_db):
+    """_migrate_to_9 drops the retired theme columns on the version-gated ladder
+    (the v1 schema still carried users.theme / users.dark_mode)."""
+    cols = _table_columns(stamped_v1_db, "users")
+    assert "theme" not in cols
+    assert "dark_mode" not in cols
 
 
 @pytest.mark.parametrize("start_version", [2, 3, 4, 5, 6, 7])

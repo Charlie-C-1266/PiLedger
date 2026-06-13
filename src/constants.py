@@ -115,25 +115,6 @@ AccountSubtype = Literal[
     "crypto",
 ]
 
-# Which sub-types each parent type accepts. Used by the API to reject
-# nonsense combos like type=current, subtype=mortgage.
-# Per-user UI preferences. Olive is the default colour palette; users can pick
-# an alternative from the Settings modal. Adding a new theme = adding a value
-# here plus matching CSS variables in static/style.css.
-Theme = Literal[
-    "olive",
-    "indigo",
-    "slate",
-    "rose",
-    "emerald",
-    "teal",
-    "sky",
-    "amber",
-    "crimson",
-    "violet",
-]
-DEFAULT_THEME: Theme = "olive"
-
 # Supported currencies. Curated shortlist — adding a new one means appending
 # here plus listing the symbol in CURRENCY_INFO below and the label in the
 # frontend CURRENCIES table.
@@ -188,6 +169,8 @@ MIN_RATE_FX = 0.000_001
 MAX_RATE_FX = 1_000_000.0
 
 
+# Which sub-types each parent type accepts. Used by the API to reject
+# nonsense combos like type=current, subtype=mortgage.
 SUBTYPES_BY_TYPE: dict[str, frozenset[str]] = {
     "current": frozenset(
         {

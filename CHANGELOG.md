@@ -25,6 +25,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Overview net-worth hero now shows the percentage change over the selected chart range as a colour-coded pill (green up / red down) next to the net-position figure, and it tracks the hovered point on the trend line.
 - Accounts can be set aside from your net-worth headline, so day-to-day balances aren't swamped by large investment or pension swings. The Overview now shows your "Accessible" net worth (counting accounts only) with a dedicated "Set aside" card, while the Accounts page keeps the full "Total net worth" and badges set-aside accounts. Toggle "Count toward net worth" when adding or editing an account.
 
+### Removed
+
+- Removed the unused server-side colour-theme model: `/api/prefs` no longer stores or returns `theme` / `dark_mode` (the app already remembers your accent and light/dark choice in your browser), and the vestigial `users.theme` / `users.dark_mode` columns are dropped on upgrade.
+
 ### Fixed
 
 - Overview "Distribution" donut is now accessible to keyboard and screen-reader users: the chart itself is announced as a single labelled image, and an interactive legend (with a total) lets you focus or hover each account to highlight its slice. A no-assets empty state with an "Add an account" link replaces the blank chart frame.

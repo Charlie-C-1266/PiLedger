@@ -1,10 +1,10 @@
-// Apply cached theme/mode before paint to avoid a flash of the default.
-// The server-stored prefs at /api/prefs are fetched after boot and override
-// these if they differ. Run synchronously in <head> so the root element
-// already has data-theme/data-mode by the time the first paint happens.
+// Apply the cached light/dark mode before first paint to avoid a flash of the
+// default. Used by the standalone login and guide pages (the React SPA owns its
+// own theming): guide.js writes the `piledger:dark` flag when you toggle dark
+// mode, and login.css / guide.css style `[data-mode="dark"]`. Run synchronously
+// in <head> so the root element already has data-mode by the first paint.
 try {
-  const t = localStorage.getItem('piledger:theme');
-  const d = localStorage.getItem('piledger:dark') === '1';
-  if (t) document.documentElement.setAttribute('data-theme', t);
-  if (d) document.documentElement.setAttribute('data-mode', 'dark');
+  if (localStorage.getItem('piledger:dark') === '1') {
+    document.documentElement.setAttribute('data-mode', 'dark');
+  }
 } catch {}
