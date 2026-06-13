@@ -33,7 +33,7 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 | Route | Component | Purpose |
 |---|---|---|
 | `/overview` | `Overview` | Net-worth chart, account card stack, recent transactions, goals progress rings, asset distribution donut |
-| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), assets-vs-debts sections, account type filter |
+| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter |
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
@@ -63,6 +63,7 @@ All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query h
 | `useRates()` | `GET /api/rates` | default |
 | `useSummary()` | `GET /api/summary` | 30 s |
 | `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
+| `useAllHistory(range)` | `GET /api/history/all` | default |
 | `useMe()` | `GET /api/auth/me` | Infinity |
 
 Any hook receiving a `401` response redirects to `/login` immediately.
@@ -76,12 +77,13 @@ Line/area charts use **Recharts**; the donut and the horizontal/trend bars are h
 | Chart | Screen | Type | Data source |
 |---|---|---|---|
 | Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
+| Account balances | Accounts | Multi-line step (`AccountHistoryChart`) | `GET /api/history/all?days=` — one line per account, not currency-converted |
 | Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
 | Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
 | Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
 | Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |
 
-The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
+The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart and the Accounts balance-history chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
 
 ## Modals
 
