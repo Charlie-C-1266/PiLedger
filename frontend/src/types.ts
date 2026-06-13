@@ -94,6 +94,29 @@ export interface AccountHistory {
   history: AccountHistoryPoint[];
 }
 
+/** One month of a savings-account compound-interest projection. */
+export interface ProjectionPoint {
+  date: string;
+  balance: number;
+}
+
+/** A single savings account's server-computed projection, from
+ * `GET /api/projections`. Figures stay in the account's own `currency` (no base
+ * conversion). The `1yr`/`2yr`/`5yr` milestones are pre-computed at 12/24/60
+ * months regardless of the requested `points` horizon. */
+export interface AccountProjection {
+  id: number;
+  name: string;
+  color: string;
+  currency: Currency;
+  initial_balance: number;
+  interest_rate: number;
+  "1yr": number;
+  "2yr": number;
+  "5yr": number;
+  points: ProjectionPoint[];
+}
+
 /** One manual FX rate: 1 unit of `currency` = `rate` units of the base currency. */
 export interface Rate {
   currency: Currency;

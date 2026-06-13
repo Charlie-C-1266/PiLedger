@@ -1,6 +1,7 @@
 import type {
   Account,
   AccountHistory,
+  AccountProjection,
   Budget,
   BudgetEnvelope,
   BudgetGroup,
@@ -132,6 +133,12 @@ export const getNetWorthSeries = (range: RangeKey = "30D") =>
 // currency — see `AccountHistory`.
 export const getAllHistory = (days = 90) =>
   json<AccountHistory[]>(`/api/history/all?days=${days}`);
+
+// Per savings account: a compound-interest projection `months` ahead, with
+// pre-computed 1/2/5-year milestones. Figures stay in each account's own
+// currency (no base conversion).
+export const getProjections = (months = 24) =>
+  json<AccountProjection[]>(`/api/projections?months=${months}`);
 
 // Exchange rates
 
