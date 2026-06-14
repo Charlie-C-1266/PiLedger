@@ -364,6 +364,47 @@ def test_transaction_on_zero_balance_account(alice):
     assert bal == 250.0
 
 
+# ── Debt accounts (credit/loan) ─────────────────────────────────────────────
+
+
+def test_credit_card_expense_increases_balance(alice):
+    aid = _acct(alice, type="credit", subtype="credit_card")
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 100.0})
+    _txn(alice, aid, amount=-50.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 150.0
+
+
+def test_credit_card_payment_decreases_balance(alice):
+    aid = _acct(alice, type="credit", subtype="credit_card")
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 100.0})
+    _txn(alice, aid, amount=40.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 60.0
+
+
+def test_delete_credit_card_transaction_reverses_balance(alice):
+    aid = _acct(alice, type="credit", subtype="credit_card")
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 100.0})
+    txn = _txn(alice, aid, amount=-50.0)
+    accts = alice.get("/api/accounts").json()
+    assert next(a["current_balance"] for a in accts if a["id"] == aid) == 150.0
+    alice.delete(f"/api/transactions/{txn['id']}")
+    accts = alice.get("/api/accounts").json()
+    assert next(a["current_balance"] for a in accts if a["id"] == aid) == 100.0
+
+
+def test_loan_expense_increases_balance(alice):
+    aid = _acct(alice, type="loan")
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    _txn(alice, aid, amount=-200.0)
+    accts = alice.get("/api/accounts").json()
+    bal = next(a["current_balance"] for a in accts if a["id"] == aid)
+    assert bal == 1200.0
+
+
 # ── Balance adjustment on update ────────────────────────────────────────────
 
 
