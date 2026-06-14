@@ -33,6 +33,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Fixed
 
+- Transactions on credit card and loan accounts now move the balance in the correct direction: an expense increases what's owed and a payment/refund reduces it, matching how those balances are shown elsewhere (e.g. the net-worth summary).
 - Overview "Distribution" donut is now accessible to keyboard and screen-reader users: the chart itself is announced as a single labelled image, and an interactive legend (with a total) lets you focus or hover each account to highlight its slice. A no-assets empty state with an "Add an account" link replaces the blank chart frame.
 - Overview dashboard text now meets WCAG AA contrast in light mode: muted labels, transaction amounts, and the green/red up-down figures were too faint to read, so the colour tokens have been darkened to clear the 4.5:1 readability threshold (dark mode already passed).
 - The Overview "net position" pill now turns red when your assets minus debts is negative, instead of always showing green regardless of sign.
