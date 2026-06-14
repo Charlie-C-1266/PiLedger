@@ -19,6 +19,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- A "Budgeting" guide in the documentation explains zero-based / envelope budgeting and how to set it up, with a quick link to it from the Budget page header for anyone new to the method.
 - The Accounts page now charts every account's balance over time, with a 7D/30D/90D/1Y range picker, so you can see how each balance has moved (wires up the previously orphaned `/api/history/all` endpoint).
 - The Overview dashboard now shows loading skeletons while your data is fetched, instead of briefly flashing misleading £0.00 / 0% values and an empty chart frame. Placeholders reserve the real content's space so the layout doesn't jump when data arrives, and the shimmer respects `prefers-reduced-motion`.
 - Settings now has an "Export my data" button that downloads all your accounts, transactions, budgets, and goals as a JSON file (wires up the previously orphaned `/api/export` endpoint).

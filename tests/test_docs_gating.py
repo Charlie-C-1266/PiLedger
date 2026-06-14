@@ -102,6 +102,14 @@ def test_api_docs_404_for_unknown_slug(client):
     assert r.status_code == 404
 
 
+def test_api_docs_serves_budgeting_guide(client):
+    """The user-facing envelope-budgeting guide is on the allowlist and
+    publicly served — the Budget page links new users straight to it."""
+    r = client.get("/api/docs/budgeting")
+    assert r.status_code == 200
+    assert "# Budgeting with Envelopes" in r.text
+
+
 def test_api_docs_rejects_path_traversal(client):
     r = client.get("/api/docs/..%2F..%2Fetc%2Fpasswd")
     assert r.status_code == 404
