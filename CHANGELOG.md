@@ -9,6 +9,8 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+## [3.2.0] — 2026-06-14
+
 ### Changed
 
 - The dashboard's range, account-layout, and account-type pickers are now one shared segmented control: each option grows to a 44px touch target on phones (the net-worth range picker was previously ~21px tall — the only way to change the range on mobile), all expose proper radio-group semantics to screen readers, and every interactive control now shows a consistent keyboard focus ring.
@@ -44,27 +46,3 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Accounts page now classifies loan and credit accounts as debts by account type rather than balance sign, so a loan with a positive recorded balance correctly appears under the "Debts" filter and counts toward the debt total — matching how Overview and net worth already treat it.
 - Accounts page "All" filter now shows total net worth in the corner, matching the figure on Overview, instead of a static hint.
 - The "Add transaction" amount field no longer needs a leading "-" for expenses, which mobile decimal keypads can't type: an Expense/Income toggle now sets the sign, so the amount itself is always entered as a positive number.
-
-## [3.1.0] — 2026-06-04
-
-### Added
-
-- Goal projections: a "Projections" view on the Goals screen charts each savings goal's balance forward from its monthly contribution and any linked-account interest, with colour-coded chips to filter to specific goals.
-- Account subtype and interest rate fields when creating an account — the type selector is now a dropdown, a contextual subtype dropdown follows it (e.g. Cash ISA, Regular Saver, Fixed Term Bond for savings; Mortgage, Overdraft for loans), and an optional interest rate field records the account's % p.a.
-- Documentation link in Settings — signed-in users can reopen the built docs (`/guide`) without logging out.
-- Multi-currency end to end: account currency picker, manual FX-rate editor, and a missing-rate warning on Overview. Wires up the previously orphaned `/api/rates` endpoints so net worth no longer treats unconvertible foreign balances as 1:1.
-
-### Changed
-
-- Changelog handling slimmed down: entries are now concise one-liners (no affected-file lists or root-cause essays), released history moved to `CHANGELOG-ARCHIVE.md`, and the `CLAUDE.md` guidance updated to match so the bulky history is no longer loaded into context on every change.
-- Split the 453-line `Settings` screen into per-section card components under `components/settings/` (Appearance, Categories, Exchange rates, Change password, Help, Session, Danger zone) behind a shared `SettingsCard` wrapper. No behaviour change; the screen is now a ~20-line shell.
-- Documented every Python function in `src/` (docstring coverage 36% → 100%), explaining intent and edge cases in the existing prose style, and added a ruff rule (D102/D103, tests exempt) so new public functions and methods must carry a docstring.
-
-### Fixed
-
-- Mobile no longer zooms in when opening the add/edit transaction, goal, account, and transfer modals. The form fields render below iOS Safari's 16px focus-zoom threshold, and the existing guard couldn't override their CSS-module class size; it now forces 16px on touch widths.
-- Removed two phantom chart rows (savings projection, account balance) from the frontend docs — neither chart exists in the React frontend.
-- Transaction search now treats `%` and `_` as literal characters instead of wildcards, so searches like "50%" only match what you typed.
-- Switching your base currency to one you have no rate for is now rejected with a clear message instead of silently wiping your whole exchange-rate table.
-- Amounts ending in a half-cent (e.g. 2.675) no longer lose a penny on save — money is now rounded on the value entered rather than its binary-float approximation.
-- Concurrent requests no longer fail with "database is locked": connections now wait on a lock (5s busy timeout) and use WAL journaling so reads stay responsive during a write.
