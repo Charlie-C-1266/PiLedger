@@ -16,6 +16,26 @@
   color: var(--pl-text);
 }
 
+.guideLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  background: var(--pl-surface);
+  color: var(--pl-text-soft);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 160ms, border-color 160ms;
+}
+
+.guideLink:hover {
+  color: var(--pl-accent);
+  border-color: var(--pl-accent);
+}
+
 .addBtn {
   align-self: flex-start;
   padding: 10px 18px;

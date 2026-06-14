@@ -37,6 +37,7 @@ STATIC_DIR: str = os.path.join(os.path.dirname(__file__), "static")
 DOC_SLUGS: frozenset[str] = frozenset(
     {
         "getting-started",
+        "budgeting",
         "architecture",
         "authentication",
         "backups",
