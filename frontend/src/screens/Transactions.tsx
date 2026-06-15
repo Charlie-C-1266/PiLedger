@@ -9,6 +9,7 @@ import { SearchIcon, FilterIcon } from "../components/icons";
 import TxnRow from "../components/TxnRow";
 import AddModal from "../components/AddModal";
 import FilterSheet from "../components/FilterSheet";
+import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import { useIsMobile } from "../hooks/useIsMobile";
 import type { Transaction, TxnSort } from "../types";
@@ -247,20 +248,23 @@ export default function Transactions() {
         />
       )}
 
-      {showModal && (
-        <AddModal
-          accountId={defaultAccountId}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-
-      {editingTxn && (
-        <AddModal
-          accountId={editingTxn.account_id}
-          transaction={editingTxn}
-          onClose={() => setEditingTxn(null)}
-        />
-      )}
+      <AnimatePresence>
+        {showModal && (
+          <AddModal
+            key="add"
+            accountId={defaultAccountId}
+            onClose={() => setShowModal(false)}
+          />
+        )}
+        {editingTxn && (
+          <AddModal
+            key="edit"
+            accountId={editingTxn.account_id}
+            transaction={editingTxn}
+            onClose={() => setEditingTxn(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageStagger>
   );
 }

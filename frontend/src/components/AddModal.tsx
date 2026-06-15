@@ -7,7 +7,7 @@ import {
 } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
-import { useIsMobile } from "../hooks/useIsMobile";
+import Modal from "./Modal";
 import { fmt } from "../lib/currency";
 import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
@@ -23,7 +23,6 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   // A transfer leg can't be edited (the two sides must stay in sync); the
   // backend rejects PUTs on it. Offer delete-both instead.
   const isTransfer = !!transaction?.transfer_id;
-  const mobile = useIsMobile();
   const { data: accounts } = useAccounts();
   const currency =
     accounts?.find((a) => a.id === transaction?.account_id)?.currency ?? "GBP";
@@ -90,15 +89,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose}>
         <h2 className={styles.title}>
           {isTransfer
             ? "Transfer"
@@ -221,7 +212,6 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

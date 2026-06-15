@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createIncome, updateIncome, deleteIncome } from "../../api/client";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import Modal from "../Modal";
 import type { BudgetIncome } from "../../types";
 import styles from "../AddModal.module.css";
 
@@ -18,7 +18,6 @@ interface Props {
  */
 export default function AddIncomeModal({ income, onClose }: Props) {
   const editing = !!income;
-  const mobile = useIsMobile();
   const queryClient = useQueryClient();
 
   const [label, setLabel] = useState(income?.label ?? "");
@@ -55,15 +54,7 @@ export default function AddIncomeModal({ income, onClose }: Props) {
   const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose}>
         <h2 className={styles.title}>{editing ? "Edit income" : "Add income"}</h2>
 
         <input
@@ -112,7 +103,6 @@ export default function AddIncomeModal({ income, onClose }: Props) {
                 : "Save income"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

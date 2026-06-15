@@ -9,6 +9,11 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Changed
+
+- Page transitions now slide each top-level card in from the right in sequence, replacing the fade-and-rise cascade.
+- Add/edit dialogs now appear with a centred fade-and-scale and fade back out on close, replacing the instant desktop pop-in and the mobile bottom sheet; the entrance collapses to a plain fade under `prefers-reduced-motion`, and every dialog now closes on Escape.
+
 ## [3.2.0] — 2026-06-14
 
 ### Changed

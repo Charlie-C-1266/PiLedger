@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { ThemeProvider } from "../../theme/ThemeProvider";
 import type { AccountProjection } from "../../types";
 
-vi.mock("../../hooks/useIsMobile", () => ({ useIsMobile: () => false }));
 vi.mock("../../hooks/useProjections", () => ({ useProjections: vi.fn() }));
 
 // Recharts needs real layout (ResizeObserver) jsdom lacks; stub it so we can

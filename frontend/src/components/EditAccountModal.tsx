@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
-import { useIsMobile } from "../hooks/useIsMobile";
+import Modal from "./Modal";
 import type { Account } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -15,7 +15,6 @@ interface Props {
 }
 
 export default function EditAccountModal({ account, onClose }: Props) {
-  const mobile = useIsMobile();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
   const [customColor, setCustomColor] = useState("");
@@ -88,15 +87,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
     deleteMutation.isPending;
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose}>
         <h2 className={styles.title}>Update account</h2>
         <p className={styles.subtitle}>
           {account.name}
@@ -209,7 +200,6 @@ export default function EditAccountModal({ account, onClose }: Props) {
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

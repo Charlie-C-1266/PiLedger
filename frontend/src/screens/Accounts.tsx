@@ -12,6 +12,7 @@ import EditAccountModal from "../components/EditAccountModal";
 import RangePills from "../components/RangePills";
 import Skeleton from "../components/Skeleton";
 import AccountHistoryChart from "../components/charts/AccountHistoryChart";
+import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType, RangeKey } from "../types";
@@ -185,12 +186,14 @@ export default function Accounts() {
         </StaggerItem>
       )}
 
-      {editAccount && (
-        <EditAccountModal
-          account={editAccount}
-          onClose={() => setEditAccount(null)}
-        />
-      )}
+      <AnimatePresence>
+        {editAccount && (
+          <EditAccountModal
+            account={editAccount}
+            onClose={() => setEditAccount(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageStagger>
   );
 }

@@ -12,7 +12,7 @@ import {
 import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
 import { useTheme } from "../../theme/useTheme";
 import type { ThemeTokens } from "../../theme/tokens";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import Modal from "../Modal";
 import { useProjections } from "../../hooks/useProjections";
 import { fmt, fmtShort } from "../../lib/currency";
 import {
@@ -109,7 +109,6 @@ function ChartTooltip({
  */
 export default function AccountProjectionsModal({ currency, onClose }: Props) {
   const { theme } = useTheme();
-  const mobile = useIsMobile();
   const { data: projections, isPending } = useProjections();
 
   // null = "all shown"; a Set once the user has toggled a chip.
@@ -129,15 +128,7 @@ export default function AccountProjectionsModal({ currency, onClose }: Props) {
   const { rows, series } = useMemo(() => buildProjectionRows(shown), [shown]);
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose} size="wide">
         <div className={styles.head}>
           <div>
             <h2 className={styles.title}>Savings projections</h2>
@@ -258,7 +249,6 @@ export default function AccountProjectionsModal({ currency, onClose }: Props) {
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

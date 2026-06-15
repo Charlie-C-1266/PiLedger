@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createGoal, updateGoal, deleteGoal } from "../api/client";
 import { ACCENT_OPTIONS } from "../theme/tokens";
 import { useAccounts } from "../hooks/useAccounts";
-import { useIsMobile } from "../hooks/useIsMobile";
+import Modal from "./Modal";
 import type { Goal } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -14,7 +14,6 @@ interface Props {
 
 export default function AddGoalModal({ goal, onClose }: Props) {
   const editing = !!goal;
-  const mobile = useIsMobile();
   const { data: accounts } = useAccounts();
   const queryClient = useQueryClient();
 
@@ -64,15 +63,7 @@ export default function AddGoalModal({ goal, onClose }: Props) {
   const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose}>
         <h2 className={styles.title}>{editing ? "Edit goal" : "Add goal"}</h2>
 
         <input
@@ -168,7 +159,6 @@ export default function AddGoalModal({ goal, onClose }: Props) {
                 : "Save goal"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

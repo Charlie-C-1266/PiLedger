@@ -8,6 +8,7 @@ import { fmt } from "../lib/currency";
 import HBar from "../components/charts/HBar";
 import GoalProjectionModal from "../components/goals/GoalProjectionModal";
 import AddGoalModal from "../components/AddGoalModal";
+import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { Goal } from "../types";
 import styles from "./Goals.module.css";
@@ -151,17 +152,26 @@ export default function Goals() {
           </div>
         )}
       </StaggerItem>
-      {showModal && <AddGoalModal onClose={() => setShowModal(false)} />}
-      {editGoal && (
-        <AddGoalModal goal={editGoal} onClose={() => setEditGoal(null)} />
-      )}
-      {showProjections && (
-        <GoalProjectionModal
-          goals={goals ?? []}
-          currency={currency}
-          onClose={() => setShowProjections(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showModal && (
+          <AddGoalModal key="add" onClose={() => setShowModal(false)} />
+        )}
+        {editGoal && (
+          <AddGoalModal
+            key="edit"
+            goal={editGoal}
+            onClose={() => setEditGoal(null)}
+          />
+        )}
+        {showProjections && (
+          <GoalProjectionModal
+            key="projections"
+            goals={goals ?? []}
+            currency={currency}
+            onClose={() => setShowProjections(false)}
+          />
+        )}
+      </AnimatePresence>
     </PageStagger>
   );
 }
