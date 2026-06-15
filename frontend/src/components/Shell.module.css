@@ -11,6 +11,10 @@
   flex: 1;
   min-width: 0;
   padding: 32px 36px 48px;
+  /* Page cards animate in from the right (PageStagger); clip horizontally so
+     the entrance can't spawn a transient horizontal scrollbar. Fixed-position
+     modals are unaffected (their containing block is the viewport). */
+  overflow-x: clip;
 }
 
 .mainMobile {

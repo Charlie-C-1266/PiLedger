@@ -7,7 +7,7 @@ import {
 } from "../../api/client";
 import { useBudget } from "../../hooks/useBudget";
 import { useCategories } from "../../hooks/useCategories";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import Modal from "../Modal";
 import type { BudgetEnvelope } from "../../types";
 import styles from "../AddModal.module.css";
 
@@ -20,7 +20,6 @@ interface Props {
 
 export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) {
   const editing = !!envelope;
-  const mobile = useIsMobile();
   const queryClient = useQueryClient();
   const { data: budget } = useBudget();
   const { data: cats } = useCategories();
@@ -84,15 +83,7 @@ export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) 
   const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose}>
         <h2 className={styles.title}>
           {editing ? "Edit envelope" : "Add envelope"}
         </h2>
@@ -168,7 +159,6 @@ export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) 
                 : "Save envelope"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

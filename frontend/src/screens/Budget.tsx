@@ -11,6 +11,7 @@ import AddGroupModal from "../components/budget/AddGroupModal";
 import AddEnvelopeModal from "../components/budget/AddEnvelopeModal";
 import AddIncomeModal from "../components/budget/AddIncomeModal";
 import { PERIODS, type Period } from "../components/budget/period";
+import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { BudgetEnvelope, BudgetGroup, BudgetIncome } from "../types";
 import styles from "./Budget.module.css";
@@ -197,22 +198,30 @@ export default function Budget() {
         </StaggerItem>
       )}
 
-      {groupModal && (
-        <AddGroupModal group={groupModal.group} onClose={() => setGroupModal(null)} />
-      )}
-      {envModal && (
-        <AddEnvelopeModal
-          envelope={envModal.envelope}
-          groupId={envModal.groupId}
-          onClose={() => setEnvModal(null)}
-        />
-      )}
-      {incomeModal && (
-        <AddIncomeModal
-          income={incomeModal.income}
-          onClose={() => setIncomeModal(null)}
-        />
-      )}
+      <AnimatePresence>
+        {groupModal && (
+          <AddGroupModal
+            key="group"
+            group={groupModal.group}
+            onClose={() => setGroupModal(null)}
+          />
+        )}
+        {envModal && (
+          <AddEnvelopeModal
+            key="env"
+            envelope={envModal.envelope}
+            groupId={envModal.groupId}
+            onClose={() => setEnvModal(null)}
+          />
+        )}
+        {incomeModal && (
+          <AddIncomeModal
+            key="income"
+            income={incomeModal.income}
+            onClose={() => setIncomeModal(null)}
+          />
+        )}
+      </AnimatePresence>
     </PageStagger>
   );
 }

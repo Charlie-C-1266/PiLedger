@@ -60,16 +60,24 @@ export default function Shell() {
           </motion.div>
         </AnimatePresence>
       </main>
-      {modal === "account" && (
-        <AddAccountModal onClose={() => setModal(null)} />
-      )}
-      {modal === "transaction" && (
-        <AddModal accountId={defaultAccountId} onClose={() => setModal(null)} />
-      )}
-      {modal === "transfer" && <TransferModal onClose={() => setModal(null)} />}
-      {modal === "goal" && (
-        <AddGoalModal onClose={() => setModal(null)} />
-      )}
+      <AnimatePresence>
+        {modal === "account" && (
+          <AddAccountModal key="account" onClose={() => setModal(null)} />
+        )}
+        {modal === "transaction" && (
+          <AddModal
+            key="transaction"
+            accountId={defaultAccountId}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {modal === "transfer" && (
+          <TransferModal key="transfer" onClose={() => setModal(null)} />
+        )}
+        {modal === "goal" && (
+          <AddGoalModal key="goal" onClose={() => setModal(null)} />
+        )}
+      </AnimatePresence>
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
     </div>
   );

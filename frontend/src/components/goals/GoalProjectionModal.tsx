@@ -9,7 +9,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useTheme } from "../../theme/useTheme";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import Modal from "../Modal";
 import { fmt, fmtShort } from "../../lib/currency";
 import type { Goal } from "../../types";
 import styles from "./GoalProjectionModal.module.css";
@@ -68,7 +68,6 @@ function monthsToReach(goal: Goal): number | null {
  */
 export default function GoalProjectionModal({ goals, currency, onClose }: Props) {
   const { theme } = useTheme();
-  const mobile = useIsMobile();
 
   // Only goals with a real target are projectable; default to showing them all.
   const projectable = useMemo(() => goals.filter((g) => g.target > 0), [goals]);
@@ -116,15 +115,7 @@ export default function GoalProjectionModal({ goals, currency, onClose }: Props)
     });
 
   return (
-    <div
-      className={`${styles.backdrop} ${mobile ? styles.backdropMobile : ""}`}
-      onClick={onClose}
-    >
-      <div
-        className={`${styles.modal} ${mobile ? styles.sheet : ""}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {mobile && <div className={styles.handle} />}
+    <Modal onClose={onClose} size="wide">
         <div className={styles.head}>
           <div>
             <h2 className={styles.title}>Goal projections</h2>
@@ -225,7 +216,6 @@ export default function GoalProjectionModal({ goals, currency, onClose }: Props)
             </div>
           </>
         )}
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -21,6 +21,7 @@ import Skeleton from "../components/Skeleton";
 import AddModal from "../components/AddModal";
 import AddGoalModal from "../components/AddGoalModal";
 import AccountProjectionsModal from "../components/accounts/AccountProjectionsModal";
+import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import styles from "./Overview.module.css";
 
@@ -455,19 +456,25 @@ export default function Overview() {
         </StaggerItem>
       </PageStagger>
 
-      {showTxnModal && (
-        <AddModal
-          accountId={accounts?.[0]?.id ?? null}
-          onClose={() => setShowTxnModal(false)}
-        />
-      )}
-      {showGoalModal && <AddGoalModal onClose={() => setShowGoalModal(false)} />}
-      {showProjections && (
-        <AccountProjectionsModal
-          currency={currency}
-          onClose={() => setShowProjections(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showTxnModal && (
+          <AddModal
+            key="txn"
+            accountId={accounts?.[0]?.id ?? null}
+            onClose={() => setShowTxnModal(false)}
+          />
+        )}
+        {showGoalModal && (
+          <AddGoalModal key="goal" onClose={() => setShowGoalModal(false)} />
+        )}
+        {showProjections && (
+          <AccountProjectionsModal
+            key="projections"
+            currency={currency}
+            onClose={() => setShowProjections(false)}
+          />
+        )}
+      </AnimatePresence>
       </div>
     </>
   );
