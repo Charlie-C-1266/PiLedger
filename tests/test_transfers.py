@@ -41,6 +41,30 @@ def test_transfer_moves_balance_between_accounts(alice):
     assert bal[b] == 700.0
 
 
+def test_transfer_normalises_occurred_at_offset_to_utc(alice):
+    """TransferIn.occurred_at runs through the shared ISO normaliser, so both
+    legs are stamped in canonical UTC."""
+    a = _make_account(alice, "Current")
+    b = _make_account(alice, "Savings", "savings")
+    alice.post(f"/api/accounts/{a}/balance", json={"balance": 1000.0})
+
+    r = alice.post(
+        "/api/transfers",
+        json={
+            "from_account_id": a,
+            "to_account_id": b,
+            "amount": 100.0,
+            "occurred_at": "2025-01-15T12:00:00+05:00",
+        },
+    )
+    assert r.status_code == 201
+    legs = r.json()
+    assert [leg["occurred_at"] for leg in legs] == [
+        "2025-01-15T07:00:00Z",
+        "2025-01-15T07:00:00Z",
+    ]
+
+
 def test_transfer_leaves_net_worth_unchanged(alice):
     a = _make_account(alice, "Current")
     b = _make_account(alice, "Savings", "savings")
