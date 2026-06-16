@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createIncome, updateIncome, deleteIncome } from "../../api/client";
+import { useInvalidate } from "../../hooks/useInvalidate";
 import Modal from "../Modal";
 import type { BudgetIncome } from "../../types";
 import styles from "../AddModal.module.css";
@@ -18,7 +19,7 @@ interface Props {
  */
 export default function AddIncomeModal({ income, onClose }: Props) {
   const editing = !!income;
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   const [label, setLabel] = useState(income?.label ?? "");
   const [amount, setAmount] = useState(
@@ -26,7 +27,7 @@ export default function AddIncomeModal({ income, onClose }: Props) {
   );
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["budget"] });
+    inv.budgetChanged();
     onClose();
   };
 

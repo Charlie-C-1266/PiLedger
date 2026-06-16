@@ -13,6 +13,7 @@ import {
   updateIncome,
 } from "../api/client";
 import type { Budget } from "../types";
+import { useInvalidate } from "./useInvalidate";
 
 export function useBudget() {
   return useQuery({ queryKey: ["budget"], queryFn: getBudget });
@@ -28,6 +29,7 @@ export function useBudget() {
  */
 export function useBudgetEdit() {
   const queryClient = useQueryClient();
+  const inv = useInvalidate();
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const patch = useCallback(
@@ -44,12 +46,10 @@ export function useBudgetEdit() {
       const existing = timers.current[key];
       if (existing) clearTimeout(existing);
       timers.current[key] = setTimeout(() => {
-        void write().then(() =>
-          queryClient.invalidateQueries({ queryKey: ["budget"] })
-        );
+        void write().then(() => inv.budgetChanged());
       }, 400);
     },
-    [queryClient]
+    [inv]
   );
 
   return { patch, persist };
@@ -59,10 +59,10 @@ export function useBudgetEdit() {
  *  mutation touches derived totals (allocated, spent, safe-to-spend…), so the
  *  whole `["budget"]` payload is invalidated rather than patched in place. */
 function useBudgetMutation<TVars, TData>(mutationFn: (vars: TVars) => Promise<TData>) {
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
   return useMutation({
     mutationFn,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["budget"] }),
+    onSuccess: () => inv.budgetChanged(),
   });
 }
 

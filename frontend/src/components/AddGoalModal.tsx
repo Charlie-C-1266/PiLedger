@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createGoal, updateGoal, deleteGoal } from "../api/client";
 import { ACCENT_OPTIONS } from "../theme/tokens";
 import { useAccounts } from "../hooks/useAccounts";
+import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
 import type { Goal } from "../types";
 import styles from "./AddModal.module.css";
@@ -15,7 +16,7 @@ interface Props {
 export default function AddGoalModal({ goal, onClose }: Props) {
   const editing = !!goal;
   const { data: accounts } = useAccounts();
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   const [name, setName] = useState(goal?.name ?? "");
   const [target, setTarget] = useState(goal ? String(goal.target) : "");
@@ -31,7 +32,7 @@ export default function AddGoalModal({ goal, onClose }: Props) {
   const linked = accountId !== "";
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["goals"] });
+    inv.goalChanged();
     onClose();
   };
 

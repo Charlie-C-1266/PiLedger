@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createTransfer } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
+import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
 import { fmt } from "../lib/currency";
 import styles from "./AddModal.module.css";
@@ -12,7 +13,7 @@ interface Props {
 
 export default function TransferModal({ onClose }: Props) {
   const { data: accounts } = useAccounts();
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   const [fromId, setFromId] = useState<number | "">("");
   const [toId, setToId] = useState<number | "">("");
@@ -31,17 +32,10 @@ export default function TransferModal({ onClose }: Props) {
     );
   }, [accountList, fromAccount]);
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    queryClient.invalidateQueries({ queryKey: ["summary"] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["networth"] });
-  };
-
   const mutation = useMutation({
     mutationFn: createTransfer,
     onSuccess: () => {
-      invalidate();
+      inv.transactionChanged();
       onClose();
     },
     onError: () => setError("Couldn't complete the transfer. Please try again."),
