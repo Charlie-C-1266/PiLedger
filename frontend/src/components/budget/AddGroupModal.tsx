@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createGroup, updateGroup, deleteGroup } from "../../api/client";
+import { useInvalidate } from "../../hooks/useInvalidate";
 import { PRESET_COLORS } from "../../theme/swatches";
 import Modal from "../Modal";
 import type { BudgetGroup } from "../../types";
@@ -13,7 +14,7 @@ interface Props {
 
 export default function AddGroupModal({ group, onClose }: Props) {
   const editing = !!group;
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   const [name, setName] = useState(group?.name ?? "");
   const [color, setColor] = useState(group?.color ?? PRESET_COLORS[0]);
@@ -23,7 +24,7 @@ export default function AddGroupModal({ group, onClose }: Props) {
   const [flexible, setFlexible] = useState(group?.flexible ?? true);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["budget"] });
+    inv.budgetChanged();
     onClose();
   };
 

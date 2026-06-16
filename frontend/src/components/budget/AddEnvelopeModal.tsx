@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   createEnvelope,
   updateEnvelope,
@@ -7,6 +7,7 @@ import {
 } from "../../api/client";
 import { useBudget } from "../../hooks/useBudget";
 import { useCategories } from "../../hooks/useCategories";
+import { useInvalidate } from "../../hooks/useInvalidate";
 import Modal from "../Modal";
 import type { BudgetEnvelope } from "../../types";
 import styles from "../AddModal.module.css";
@@ -20,7 +21,7 @@ interface Props {
 
 export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) {
   const editing = !!envelope;
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
   const { data: budget } = useBudget();
   const { data: cats } = useCategories();
 
@@ -51,7 +52,7 @@ export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) 
   }, [groups, cats, envelope]);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["budget"] });
+    inv.budgetChanged();
     onClose();
   };
 

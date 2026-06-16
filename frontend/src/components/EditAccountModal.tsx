@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import Modal from "./Modal";
+import { useInvalidate } from "../hooks/useInvalidate";
 import type { Account } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -22,7 +23,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
     account.counts_to_net_worth
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   const sw = colorToGradient(color);
   const cardPreview = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
@@ -34,19 +35,11 @@ export default function EditAccountModal({ account, onClose }: Props) {
     }
   };
 
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    queryClient.invalidateQueries({ queryKey: ["summary"] });
-    queryClient.invalidateQueries({ queryKey: ["networth"] });
-  };
-
   const deleteMutation = useMutation({
     mutationFn: () => removeAccount(account.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
-      queryClient.invalidateQueries({ queryKey: ["networth"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      // Deleting an account cascades its transactions (and any budget spend).
+      inv.transactionChanged();
       onClose();
     },
   });
@@ -76,7 +69,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
     if (colorChanged) await colorMutation.mutateAsync(color);
     if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
 
-    invalidate();
+    inv.accountChanged();
     onClose();
   };
 

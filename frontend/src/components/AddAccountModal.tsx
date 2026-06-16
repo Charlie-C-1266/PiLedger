@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createAccount, recordBalance } from "../api/client";
 import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import { CURRENCIES } from "../lib/currency";
 import Modal from "./Modal";
 import { useSummary } from "../hooks/useSummary";
+import { useInvalidate } from "../hooks/useInvalidate";
 import styles from "./AddModal.module.css";
 
 const TYPES = [
@@ -90,7 +91,7 @@ export default function AddAccountModal({ onClose }: Props) {
   const [color, setColor] = useState(DEFAULT_COLOR);
   const [customColor, setCustomColor] = useState("");
   const [countsToNetWorth, setCountsToNetWorth] = useState(true);
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
 
   // Default to the user's base currency; fall back to GBP until summary loads.
   const baseCurrency = summary?.base_currency ?? "GBP";
@@ -119,9 +120,7 @@ export default function AddAccountModal({ onClose }: Props) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      queryClient.invalidateQueries({ queryKey: ["summary"] });
-      queryClient.invalidateQueries({ queryKey: ["networth"] });
+      inv.accountChanged();
       onClose();
     },
   });

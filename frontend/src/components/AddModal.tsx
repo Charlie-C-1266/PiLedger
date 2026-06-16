@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   createTransaction,
   updateTransaction,
@@ -7,6 +7,7 @@ import {
 } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
+import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
 import { fmt } from "../lib/currency";
 import type { Transaction } from "../types";
@@ -44,16 +45,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
     transaction ? transaction.amount < 0 : true
   );
   const [category, setCategory] = useState(transaction?.category ?? "");
-  const queryClient = useQueryClient();
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    queryClient.invalidateQueries({ queryKey: ["summary"] });
-    queryClient.invalidateQueries({ queryKey: ["accounts"] });
-    // A transaction in an enveloped category changes its `spent` figure, which
-    // ripples into the budget's group totals and safe-to-spend headline.
-    queryClient.invalidateQueries({ queryKey: ["budget"] });
-  };
+  const inv = useInvalidate();
 
   const saveMutation = useMutation({
     mutationFn: editing
@@ -61,7 +53,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
           updateTransaction(transaction.id, data)
       : createTransaction,
     onSuccess: () => {
-      invalidate();
+      inv.transactionChanged();
       onClose();
     },
   });
@@ -69,7 +61,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   const deleteMutation = useMutation({
     mutationFn: () => deleteTransaction(transaction!.id),
     onSuccess: () => {
-      invalidate();
+      inv.transactionChanged();
       onClose();
     },
   });

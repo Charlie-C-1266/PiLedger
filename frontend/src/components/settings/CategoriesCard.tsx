@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { createCategory, deleteCategory } from "../../api/client";
 import { useCategories } from "../../hooks/useCategories";
+import { useInvalidate } from "../../hooks/useInvalidate";
 import SettingsCard from "./SettingsCard";
 import styles from "./Settings.module.css";
 
 export default function CategoriesCard() {
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
   const { data: categoriesData } = useCategories();
   const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryMsg, setCategoryMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -14,7 +15,7 @@ export default function CategoriesCard() {
   const addCategoryMutation = useMutation({
     mutationFn: createCategory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      inv.categoryChanged();
       setNewCategoryName("");
       setCategoryMsg({ ok: true, text: "Category added" });
     },
@@ -31,7 +32,7 @@ export default function CategoriesCard() {
   const deleteCategoryMutation = useMutation({
     mutationFn: deleteCategory,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      inv.categoryChanged();
     },
   });
 

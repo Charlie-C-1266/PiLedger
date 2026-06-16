@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useTheme } from "../theme/useTheme";
 import { useGoals } from "../hooks/useGoals";
+import { useInvalidate } from "../hooks/useInvalidate";
 import { useSummary } from "../hooks/useSummary";
 import { updateGoal } from "../api/client";
 import { fmt } from "../lib/currency";
@@ -32,12 +33,12 @@ function GoalCard({
 }) {
   const { mode } = useTheme();
   const [monthly, setMonthly] = useState(goal.monthly);
-  const queryClient = useQueryClient();
+  const inv = useInvalidate();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const mutation = useMutation({
     mutationFn: (val: number) => updateGoal(goal.id, { monthly: val }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["goals"] }),
+    onSuccess: () => inv.goalChanged(),
   });
 
   const handleSlider = useCallback(
