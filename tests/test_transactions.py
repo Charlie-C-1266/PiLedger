@@ -84,6 +84,36 @@ def test_create_respects_custom_occurred_at(alice):
     assert txn["occurred_at"] == ts
 
 
+def test_create_normalises_occurred_at_offset_to_utc(alice):
+    """A non-UTC ISO offset is converted to canonical UTC on create — proves
+    TransactionIn.occurred_at routes through the shared ISO normaliser (the same
+    one BalanceIn.recorded_at uses, branch-covered in test_recorded_at_parser)."""
+    aid = _acct(alice)
+    txn = _txn(alice, aid, occurred_at="2025-01-15T12:00:00+05:00")
+    assert txn["occurred_at"] == "2025-01-15T07:00:00Z"
+
+
+def test_create_rejects_garbage_occurred_at(alice):
+    aid = _acct(alice)
+    r = alice.post(
+        "/api/transactions",
+        json={"account_id": aid, "amount": -1, "merchant": "X", "occurred_at": "nope"},
+    )
+    assert r.status_code == 400
+
+
+def test_update_normalises_occurred_at_offset_to_utc(alice):
+    """TransactionPatch.occurred_at is normalised on update too."""
+    aid = _acct(alice)
+    txn = _txn(alice, aid)
+    r = alice.put(
+        f"/api/transactions/{txn['id']}",
+        json={"occurred_at": "2025-01-15T12:00:00-08:00"},
+    )
+    assert r.status_code == 200
+    assert r.json()["occurred_at"] == "2025-01-15T20:00:00Z"
+
+
 def test_create_unknown_account_returns_404(alice):
     r = alice.post(
         "/api/transactions",

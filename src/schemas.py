@@ -3,7 +3,14 @@
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from constants import (
     AccountSubtype,
@@ -26,6 +33,35 @@ class _In(BaseModel):
     """Inbound payload base — rejects unknown fields rather than silently dropping them."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+def _to_canonical_utc(v: str) -> str:
+    """Normalise an ISO-8601 datetime string to the canonical UTC ``ISO_FMT``.
+
+    The canonical form is tried first as a cheap fast path (it matches our own
+    emitted timestamps); other ISO-8601 inputs (a trailing ``Z``, a naive
+    timestamp assumed UTC, or any offset) are parsed and re-emitted in canonical
+    UTC, and anything unparseable raises.
+    """
+    try:
+        datetime.strptime(v, ISO_FMT)
+        return v
+    except ValueError:
+        pass
+    try:
+        dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+    except ValueError as e:
+        raise ValueError("must be an ISO-8601 datetime") from e
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime(ISO_FMT)
+
+
+# A string field that is normalised to canonical UTC ``ISO_FMT`` on input. Wrap
+# in ``Optional[...]`` for a field that may be omitted (the validator only runs
+# on a present string, so None passes through untouched). Shared by every
+# inbound timestamp so the four used to each carry a copy of this logic.
+IsoDateTimeStr = Annotated[str, AfterValidator(_to_canonical_utc)]
 
 
 class LoginIn(_In):
@@ -101,68 +137,16 @@ class AccountPatch(_In):
 class BalanceIn(_In):
     balance: Annotated[float, Field(ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)]
     notes: Optional[str] = Field(default=None, max_length=500)
-    recorded_at: Optional[str] = None
-
-    @field_validator("recorded_at")
-    @classmethod
-    def _normalise_recorded_at(cls, v: Optional[str]) -> Optional[str]:
-        """Accept None or any ISO-8601 datetime, returning it in the canonical
-        UTC ``ISO_FMT``.
-
-        The canonical form is tried first as a cheap fast path; other ISO-8601
-        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
-        and re-emitted canonically, and anything unparseable raises.
-        """
-        if v is None:
-            return None
-        # Canonical form first (cheap, matches our own emitted timestamps).
-        try:
-            datetime.strptime(v, ISO_FMT)
-            return v
-        except ValueError:
-            pass
-        # Fall back to a lenient ISO-8601 parse, then re-emit in canonical form.
-        try:
-            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except ValueError as e:
-            raise ValueError("recorded_at must be an ISO-8601 datetime") from e
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
+    recorded_at: Optional[IsoDateTimeStr] = None
 
 
 class TransactionIn(_In):
     account_id: Annotated[int, Field(ge=1)]
     amount: Annotated[float, Field(ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False)]
-    occurred_at: Optional[str] = None
+    occurred_at: Optional[IsoDateTimeStr] = None
     merchant: Annotated[str, Field(min_length=1, max_length=200)]
     category: Annotated[str, Field(max_length=100)] = ""
     note: Annotated[str, Field(max_length=500)] = ""
-
-    @field_validator("occurred_at")
-    @classmethod
-    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
-        """Accept None or any ISO-8601 datetime, returning it in the canonical
-        UTC ``ISO_FMT``.
-
-        The canonical form is tried first as a cheap fast path; other ISO-8601
-        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
-        and re-emitted canonically, and anything unparseable raises.
-        """
-        if v is None:
-            return None
-        try:
-            datetime.strptime(v, ISO_FMT)
-            return v
-        except ValueError:
-            pass
-        try:
-            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except ValueError as e:
-            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
 
 
 class TransactionPatch(_In):
@@ -170,35 +154,10 @@ class TransactionPatch(_In):
     amount: Optional[float] = Field(
         default=None, ge=-MAX_MONEY, le=MAX_MONEY, allow_inf_nan=False
     )
-    occurred_at: Optional[str] = None
+    occurred_at: Optional[IsoDateTimeStr] = None
     merchant: Optional[str] = Field(default=None, min_length=1, max_length=200)
     category: Optional[str] = Field(default=None, max_length=100)
     note: Optional[str] = Field(default=None, max_length=500)
-
-    @field_validator("occurred_at")
-    @classmethod
-    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
-        """Accept None or any ISO-8601 datetime, returning it in the canonical
-        UTC ``ISO_FMT``.
-
-        The canonical form is tried first as a cheap fast path; other ISO-8601
-        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
-        and re-emitted canonically, and anything unparseable raises.
-        """
-        if v is None:
-            return None
-        try:
-            datetime.strptime(v, ISO_FMT)
-            return v
-        except ValueError:
-            pass
-        try:
-            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except ValueError as e:
-            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
 
 
 class TransferIn(_In):
@@ -208,33 +167,8 @@ class TransferIn(_In):
     from_account_id: Annotated[int, Field(ge=1)]
     to_account_id: Annotated[int, Field(ge=1)]
     amount: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
-    occurred_at: Optional[str] = None
+    occurred_at: Optional[IsoDateTimeStr] = None
     note: Annotated[str, Field(max_length=500)] = ""
-
-    @field_validator("occurred_at")
-    @classmethod
-    def _normalise_occurred_at(cls, v: Optional[str]) -> Optional[str]:
-        """Accept None or any ISO-8601 datetime, returning it in the canonical
-        UTC ``ISO_FMT``.
-
-        The canonical form is tried first as a cheap fast path; other ISO-8601
-        inputs (a trailing ``Z`` or a naive timestamp, assumed UTC) are parsed
-        and re-emitted canonically, and anything unparseable raises.
-        """
-        if v is None:
-            return None
-        try:
-            datetime.strptime(v, ISO_FMT)
-            return v
-        except ValueError:
-            pass
-        try:
-            dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
-        except ValueError as e:
-            raise ValueError("occurred_at must be an ISO-8601 datetime") from e
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).strftime(ISO_FMT)
 
 
 class GoalIn(_In):
