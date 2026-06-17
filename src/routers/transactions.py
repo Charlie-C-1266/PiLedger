@@ -2,7 +2,7 @@
 
 A transfer is recorded as two linked transactions sharing a ``transfer_id``;
 both legs are created, edited (guarded) and deleted together. Balance side
-effects go through ``services/accounts._adjust_account_balance`` so accounts
+effects go through ``services/accounts.adjust_account_balance`` so accounts
 can't drift.
 """
 
@@ -21,7 +21,7 @@ from schemas import (
     TransactionPatch,
     TransferIn,
 )
-from services.accounts import _adjust_account_balance
+from services.accounts import adjust_account_balance
 
 router = APIRouter(tags=["transactions"])
 
@@ -128,7 +128,7 @@ def create_transaction(
                 data.note,
             ),
         )
-        _adjust_account_balance(conn, data.account_id, amount_cents)
+        adjust_account_balance(conn, data.account_id, amount_cents)
         conn.commit()
         row = conn.execute(
             "SELECT * FROM transactions WHERE id=?", (cur.lastrowid,)
@@ -187,7 +187,7 @@ def create_transfer(
                 ),
             )
             ids.append(cur.lastrowid)
-            _adjust_account_balance(conn, account_id, signed)
+            adjust_account_balance(conn, account_id, signed)
         conn.commit()
         placeholders = ",".join("?" * len(ids))
         rows = conn.execute(
@@ -236,8 +236,8 @@ def update_transaction(
                 f"UPDATE transactions SET {sets} WHERE id=?", [*patch.values(), tid]
             )
             if "amount_cents" in patch or "account_id" in patch:
-                _adjust_account_balance(conn, old["account_id"], -old["amount_cents"])
-                _adjust_account_balance(
+                adjust_account_balance(conn, old["account_id"], -old["amount_cents"])
+                adjust_account_balance(
                     conn,
                     patch.get("account_id", old["account_id"]),
                     patch.get("amount_cents", old["amount_cents"]),
@@ -271,7 +271,7 @@ def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
         else:
             legs = [txn]
         for leg in legs:
-            _adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
+            adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
             conn.execute("DELETE FROM transactions WHERE id=?", (leg["id"],))
         conn.commit()
     return OkOut(ok=True)

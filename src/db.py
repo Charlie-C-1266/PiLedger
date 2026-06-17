@@ -178,7 +178,6 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     #    database added them for a server-side colour-theme model; theming now
     #    lives entirely client-side, so they are removed here. Idempotent — a
     #    no-op on the genuine pre-0.8.0 schema (and once the columns are gone).
-    user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
     _drop_legacy_theme_columns(conn)
 
     # 4. Add accounts.subtype.
@@ -198,7 +197,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
         )
         conn.commit()
 
-    # 6. Add users.base_currency.
+    # 6. Add users.base_currency. Read the columns here (after the theme-drop
+    #    above) so the check sees the current schema, not a stale snapshot.
+    user_cols = {r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
     if "base_currency" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN base_currency TEXT DEFAULT 'GBP'")
         conn.execute("UPDATE users SET base_currency='GBP' WHERE base_currency IS NULL")

@@ -2,7 +2,7 @@
 
 A goal linked to an account derives its ``saved`` amount from that account's
 latest balance; an unlinked goal stores its own value. Account ownership is
-validated via ``services/accounts._require_account``.
+validated via ``services/accounts.require_account``.
 """
 
 import sqlite3
@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import GoalIn, GoalOut, GoalPatch, OkOut
-from services.accounts import _latest_balance_cents, _require_account
+from services.accounts import latest_balance_cents, require_account
 
 router = APIRouter(tags=["goals"])
 
@@ -36,7 +36,7 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
         else:
             account_name = acc["name"]
             interest_rate = acc["interest_rate"]
-            cents = _latest_balance_cents(conn, account_id)
+            cents = latest_balance_cents(conn, account_id)
             saved = from_cents(cents) or 0.0
     return GoalOut(
         id=row["id"],
@@ -70,7 +70,7 @@ def create_goal(data: GoalIn, uid: int = Depends(require_auth)) -> GoalOut:
     of the user's accounts (else 404) and the goal then tracks its balance."""
     with db() as conn:
         if data.account_id is not None:
-            _require_account(conn, data.account_id, uid)
+            require_account(conn, data.account_id, uid)
         cur = conn.execute(
             "INSERT INTO goals(user_id, name, target_cents, saved_cents,"
             " monthly_cents, color, account_id) VALUES(?,?,?,?,?,?,?)",
@@ -112,7 +112,7 @@ def update_goal(
         # unlinks the goal, while an omitted field is left unchanged.
         patch = data.model_dump(exclude_unset=True)
         if patch.get("account_id") is not None:
-            _require_account(conn, patch["account_id"], uid)
+            require_account(conn, patch["account_id"], uid)
         if "target" in patch:
             patch["target_cents"] = to_cents(patch.pop("target"))
         if "saved" in patch:
