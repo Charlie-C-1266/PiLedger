@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { fmt } from "../lib/currency";
-import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import Modal from "./Modal";
+import ColorPicker from "./ColorPicker";
+import ToggleSwitch from "./ToggleSwitch";
+import ModalActions from "./ModalActions";
 import { useInvalidate } from "../hooks/useInvalidate";
 import type { Account } from "../types";
 import styles from "./AddModal.module.css";
-
-const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 interface Props {
   account: Account;
@@ -18,22 +18,11 @@ interface Props {
 export default function EditAccountModal({ account, onClose }: Props) {
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
-  const [customColor, setCustomColor] = useState("");
   const [countsToNetWorth, setCountsToNetWorth] = useState(
     account.counts_to_net_worth
   );
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const inv = useInvalidate();
-
-  const sw = colorToGradient(color);
-  const cardPreview = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
-
-  const handleCustomColorChange = (val: string) => {
-    setCustomColor(val);
-    if (HEX_RE.test(val)) {
-      setColor(val);
-    }
-  };
 
   const deleteMutation = useMutation({
     mutationFn: () => removeAccount(account.id),
@@ -98,58 +87,14 @@ export default function EditAccountModal({ account, onClose }: Props) {
           autoFocus
         />
 
-        <div className={styles.colorSection}>
-          <span className={styles.colorLabel}>Card colour</span>
-          <div className={styles.colorRow}>
-            <div
-              className={styles.colorPreview}
-              style={{ background: cardPreview }}
-              aria-label="Card colour preview"
-            />
-            <div className={styles.colorSwatches}>
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  className={`${styles.colorSwatch} ${c === color ? styles.colorSwatchActive : ""}`}
-                  style={{ background: c }}
-                  onClick={() => {
-                    setColor(c);
-                    setCustomColor("");
-                  }}
-                  aria-label={`Select colour ${c}`}
-                  title={c}
-                />
-              ))}
-            </div>
-          </div>
-          <input
-            className={`${styles.input} ${styles.colorHexInput}`}
-            placeholder="Custom hex  e.g. #a78bfa"
-            value={customColor}
-            onChange={(e) => handleCustomColorChange(e.target.value)}
-            maxLength={7}
-            spellCheck={false}
-          />
-        </div>
+        <ColorPicker value={color} onChange={setColor} />
 
-        <div className={styles.toggleRow}>
-          <span className={styles.toggleText}>
-            <span className={styles.toggleLabel}>Count toward net worth</span>
-            <span className={styles.toggleHint}>
-              Off keeps this account out of your Overview headline and trend.
-            </span>
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={countsToNetWorth}
-            aria-label="Count toward net worth"
-            className={`${styles.toggleSwitch} ${countsToNetWorth ? styles.toggleSwitchOn : ""}`}
-            onClick={() => setCountsToNetWorth((v) => !v)}
-          >
-            <span className={styles.toggleKnob} />
-          </button>
-        </div>
+        <ToggleSwitch
+          label="Count toward net worth"
+          hint="Off keeps this account out of your Overview headline and trend."
+          checked={countsToNetWorth}
+          onChange={setCountsToNetWorth}
+        />
 
         {confirmingDelete ? (
           <div className={styles.footer}>
@@ -172,26 +117,15 @@ export default function EditAccountModal({ account, onClose }: Props) {
             </button>
           </div>
         ) : (
-          <div className={styles.footer}>
-            <button
-              className={styles.deleteBtn}
-              onClick={() => setConfirmingDelete(true)}
-              disabled={pending}
-            >
-              Delete account
-            </button>
-            <div className={styles.spacer} />
-            <button className={styles.cancel} onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              className={styles.save}
-              onClick={handleSave}
-              disabled={pending}
-            >
-              {pending ? "Saving…" : "Update account"}
-            </button>
-          </div>
+          <ModalActions
+            onCancel={onClose}
+            onSave={handleSave}
+            saveLabel="Update account"
+            saving={pending}
+            busy={pending}
+            onDelete={() => setConfirmingDelete(true)}
+            deleteLabel="Delete account"
+          />
         )}
     </Modal>
   );

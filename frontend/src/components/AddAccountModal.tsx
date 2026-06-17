@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createAccount, recordBalance } from "../api/client";
-import { PRESET_COLORS, colorToGradient } from "../theme/swatches";
 import { CURRENCIES } from "../lib/currency";
 import Modal from "./Modal";
+import ColorPicker from "./ColorPicker";
+import ToggleSwitch from "./ToggleSwitch";
+import ModalActions from "./ModalActions";
 import { useSummary } from "../hooks/useSummary";
 import { useInvalidate } from "../hooks/useInvalidate";
 import styles from "./AddModal.module.css";
@@ -89,7 +91,6 @@ export default function AddAccountModal({ onClose }: Props) {
   const [interestRate, setInterestRate] = useState("");
   const [currency, setCurrency] = useState("");
   const [color, setColor] = useState(DEFAULT_COLOR);
-  const [customColor, setCustomColor] = useState("");
   const [countsToNetWorth, setCountsToNetWorth] = useState(true);
   const inv = useInvalidate();
 
@@ -125,20 +126,10 @@ export default function AddAccountModal({ onClose }: Props) {
     },
   });
 
-  const handleCustomColorChange = (val: string) => {
-    setCustomColor(val);
-    if (/^#[0-9a-fA-F]{6}$/.test(val)) {
-      setColor(val.toLowerCase());
-    }
-  };
-
   const handleSave = () => {
     if (!name.trim()) return;
     mutation.mutate();
   };
-
-  const sw = colorToGradient(color);
-  const cardPreview = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
 
   return (
     <Modal onClose={onClose}>
@@ -209,76 +200,22 @@ export default function AddAccountModal({ onClose }: Props) {
           inputMode="decimal"
         />
 
-        {/* Colour picker */}
-        <div className={styles.colorSection}>
-          <span className={styles.colorLabel}>Card colour</span>
-          <div className={styles.colorRow}>
-            {/* Live card preview swatch */}
-            <div
-              className={styles.colorPreview}
-              style={{ background: cardPreview }}
-              aria-label="Card colour preview"
-            />
-            {/* Preset colour chips */}
-            <div className={styles.colorSwatches}>
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  className={`${styles.colorSwatch} ${c === color ? styles.colorSwatchActive : ""}`}
-                  style={{ background: c }}
-                  onClick={() => {
-                    setColor(c);
-                    setCustomColor("");
-                  }}
-                  aria-label={`Select colour ${c}`}
-                  title={c}
-                />
-              ))}
-            </div>
-          </div>
-          {/* Custom hex input */}
-          <input
-            className={`${styles.input} ${styles.colorHexInput}`}
-            placeholder="Custom hex  e.g. #a78bfa"
-            value={customColor}
-            onChange={(e) => handleCustomColorChange(e.target.value)}
-            maxLength={7}
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
+        <ColorPicker value={color} onChange={setColor} />
 
-        <div className={styles.toggleRow}>
-          <span className={styles.toggleText}>
-            <span className={styles.toggleLabel}>Count toward net worth</span>
-            <span className={styles.toggleHint}>
-              Off keeps this account out of your Overview headline and trend.
-            </span>
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={countsToNetWorth}
-            aria-label="Count toward net worth"
-            className={`${styles.toggleSwitch} ${countsToNetWorth ? styles.toggleSwitchOn : ""}`}
-            onClick={() => setCountsToNetWorth((v) => !v)}
-          >
-            <span className={styles.toggleKnob} />
-          </button>
-        </div>
+        <ToggleSwitch
+          label="Count toward net worth"
+          hint="Off keeps this account out of your Overview headline and trend."
+          checked={countsToNetWorth}
+          onChange={setCountsToNetWorth}
+        />
 
-        <div className={styles.footer}>
-          <button className={styles.cancel} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className={styles.save}
-            onClick={handleSave}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? "Saving…" : "Save account"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={onClose}
+          onSave={handleSave}
+          saveLabel="Save account"
+          saving={mutation.isPending}
+          busy={mutation.isPending}
+        />
     </Modal>
   );
 }

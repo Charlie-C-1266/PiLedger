@@ -5,6 +5,7 @@ import { ACCENT_OPTIONS } from "../theme/tokens";
 import { useAccounts } from "../hooks/useAccounts";
 import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
+import ModalActions from "./ModalActions";
 import type { Goal } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -138,28 +139,15 @@ export default function AddGoalModal({ goal, onClose }: Props) {
           ))}
         </div>
 
-        <div className={styles.footer}>
-          {editing && (
-            <button
-              className={styles.deleteBtn}
-              onClick={() => deleteMutation.mutate()}
-              disabled={pending}
-            >
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
-            </button>
-          )}
-          <div className={styles.spacer} />
-          <button className={styles.cancel} onClick={onClose}>
-            Cancel
-          </button>
-          <button className={styles.save} onClick={handleSave} disabled={pending}>
-            {saveMutation.isPending
-              ? "Saving…"
-              : editing
-                ? "Update goal"
-                : "Save goal"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={onClose}
+          onSave={handleSave}
+          saveLabel={editing ? "Update goal" : "Save goal"}
+          saving={saveMutation.isPending}
+          busy={pending}
+          onDelete={editing ? () => deleteMutation.mutate() : undefined}
+          deleting={deleteMutation.isPending}
+        />
     </Modal>
   );
 }

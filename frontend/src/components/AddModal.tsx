@@ -9,6 +9,7 @@ import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
 import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
+import ModalActions from "./ModalActions";
 import { fmt } from "../lib/currency";
 import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
@@ -99,19 +100,13 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
               Transfers can't be edited. Deleting removes both sides and restores
               the balances on both accounts.
             </p>
-            <div className={styles.footer}>
-              <button
-                className={styles.deleteBtn}
-                onClick={() => deleteMutation.mutate()}
-                disabled={pending}
-              >
-                {deleteMutation.isPending ? "Deleting…" : "Delete transfer"}
-              </button>
-              <div className={styles.spacer} />
-              <button className={styles.cancel} onClick={onClose}>
-                Cancel
-              </button>
-            </div>
+            <ModalActions
+              onCancel={onClose}
+              onDelete={() => deleteMutation.mutate()}
+              deleteLabel="Delete transfer"
+              deleting={deleteMutation.isPending}
+              busy={pending}
+            />
           </>
         ) : (
           <>
@@ -176,32 +171,15 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
               ))}
             </div>
 
-            <div className={styles.footer}>
-              {editing && (
-                <button
-                  className={styles.deleteBtn}
-                  onClick={() => deleteMutation.mutate()}
-                  disabled={pending}
-                >
-                  {deleteMutation.isPending ? "Deleting…" : "Delete"}
-                </button>
-              )}
-              <div className={styles.spacer} />
-              <button className={styles.cancel} onClick={onClose}>
-                Cancel
-              </button>
-              <button
-                className={styles.save}
-                onClick={handleSave}
-                disabled={pending}
-              >
-                {saveMutation.isPending
-                  ? "Saving…"
-                  : editing
-                    ? "Update transaction"
-                    : "Save transaction"}
-              </button>
-            </div>
+            <ModalActions
+              onCancel={onClose}
+              onSave={handleSave}
+              saveLabel={editing ? "Update transaction" : "Save transaction"}
+              saving={saveMutation.isPending}
+              busy={pending}
+              onDelete={editing ? () => deleteMutation.mutate() : undefined}
+              deleting={deleteMutation.isPending}
+            />
           </>
         )}
     </Modal>

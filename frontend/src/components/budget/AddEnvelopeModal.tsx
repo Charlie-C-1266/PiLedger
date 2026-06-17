@@ -9,6 +9,7 @@ import { useBudget } from "../../hooks/useBudget";
 import { useCategories } from "../../hooks/useCategories";
 import { useInvalidate } from "../../hooks/useInvalidate";
 import Modal from "../Modal";
+import ModalActions from "../ModalActions";
 import type { BudgetEnvelope } from "../../types";
 import styles from "../AddModal.module.css";
 
@@ -138,28 +139,15 @@ export default function AddEnvelopeModal({ envelope, groupId, onClose }: Props) 
           </p>
         )}
 
-        <div className={styles.footer}>
-          {editing && (
-            <button
-              className={styles.deleteBtn}
-              onClick={() => deleteMutation.mutate()}
-              disabled={pending}
-            >
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
-            </button>
-          )}
-          <div className={styles.spacer} />
-          <button className={styles.cancel} onClick={onClose}>
-            Cancel
-          </button>
-          <button className={styles.save} onClick={handleSave} disabled={pending}>
-            {saveMutation.isPending
-              ? "Saving…"
-              : editing
-                ? "Update envelope"
-                : "Save envelope"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={onClose}
+          onSave={handleSave}
+          saveLabel={editing ? "Update envelope" : "Save envelope"}
+          saving={saveMutation.isPending}
+          busy={pending}
+          onDelete={editing ? () => deleteMutation.mutate() : undefined}
+          deleting={deleteMutation.isPending}
+        />
     </Modal>
   );
 }
