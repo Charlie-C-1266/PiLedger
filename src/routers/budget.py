@@ -35,7 +35,7 @@ from schemas import (
     BudgetOut,
     OkOut,
 )
-from services.currency import _convert_to_base, _load_rates
+from services.currency import convert_to_base, load_rates
 
 router = APIRouter(tags=["budget"])
 
@@ -141,7 +141,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
             "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
         base = (user["base_currency"] if user else None) or "GBP"
-        rates = _load_rates(conn, uid)
+        rates = load_rates(conn, uid)
 
         income_rows = conn.execute(
             "SELECT id, label, amount_cents, sort_order FROM budget_income"
@@ -179,7 +179,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
         cur = t["currency"] or "GBP"
         if cur != base and cur not in rates:
             missing.add(cur)
-        amount = _convert_to_base(abs(t["amount_cents"]) / 100, cur, base, rates)
+        amount = convert_to_base(abs(t["amount_cents"]) / 100, cur, base, rates)
         month_key = t["occurred_at"][:7]
         if month_key == current_key:
             spent_by_category[t["category"]] = (

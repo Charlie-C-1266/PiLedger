@@ -23,7 +23,7 @@ from schemas import (
     BalanceIn,
     OkOut,
 )
-from services.accounts import _LATEST_BALANCE_JOIN
+from services.accounts import LATEST_BALANCE_JOIN
 
 router = APIRouter(tags=["accounts"])
 
@@ -60,7 +60,7 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
                    b.balance_cents AS current_balance_cents,
                    b.recorded_at   AS last_updated
             FROM accounts a
-            {_LATEST_BALANCE_JOIN}
+            {LATEST_BALANCE_JOIN}
             WHERE a.user_id = ?
             ORDER BY a.created_at
         """,

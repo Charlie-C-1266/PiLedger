@@ -1,7 +1,7 @@
 """User preferences: base currency.
 
 Changing the base currency rescales the stored exchange rates via
-``services/currency._rescale_rates`` so each rate keeps meaning "1 unit =
+``services/currency.rescale_rates`` so each rate keeps meaning "1 unit =
 rate units of base". The switch is rejected (400) when the rates can't be
 rescaled — i.e. there are rates but none for the incoming base to pivot on —
 rather than silently discarding the whole table.
@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from db import db
 from auth import require_auth
 from schemas import PrefsOut, PrefsPatch
-from services.currency import _rescale_rates
+from services.currency import rescale_rates
 
 router = APIRouter(tags=["prefs"])
 
@@ -49,7 +49,7 @@ def update_prefs(
     """Patch the supplied preference fields and return the updated set.
 
     Changing ``base_currency`` re-scales the stored exchange rates (via
-    ``_rescale_rates``) so each keeps meaning "1 unit = rate units of base".
+    ``rescale_rates``) so each keeps meaning "1 unit = rate units of base".
     """
     patch = data.model_dump(exclude_none=True)
     with db() as conn:
@@ -82,7 +82,7 @@ def update_prefs(
                         "base currency, or clear your rates first — switching now "
                         "would discard the rates that can't be rescaled.",
                     )
-                _rescale_rates(conn, uid, old_base, new_base)
+                rescale_rates(conn, uid, old_base, new_base)
         if patch:
             sets = ", ".join(f"{k}=?" for k in patch)
             conn.execute(f"UPDATE users SET {sets} WHERE id=?", [*patch.values(), uid])

@@ -9,7 +9,7 @@ import sqlite3
 from db import utcnow_iso
 
 
-def _load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
+def load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
     """Return {currency: rate_to_base} for a user. The base currency is omitted
     (it is implicitly 1.0)."""
     rows = conn.execute(
@@ -18,13 +18,13 @@ def _load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:
     return {r["currency"]: float(r["rate"]) for r in rows}
 
 
-def _rescale_rates(
+def rescale_rates(
     conn: sqlite3.Connection, uid: int, old_base: str, new_base: str
 ) -> None:
     """Recompute the rates table so every stored rate is now expressed
     against ``new_base`` instead of ``old_base``. Rates missing the pivot
     are dropped — we can't infer them safely."""
-    existing = _load_rates(conn, uid)
+    existing = load_rates(conn, uid)
     pivot = existing.get(new_base)  # 1 new_base = pivot old_base
     conn.execute("DELETE FROM exchange_rates WHERE user_id=?", (uid,))
     if not pivot:
@@ -45,7 +45,7 @@ def _rescale_rates(
         )
 
 
-def _convert_to_base(
+def convert_to_base(
     amount: float, currency: str, base: str, rates: dict[str, float]
 ) -> float:
     """Convert ``amount`` of ``currency`` into ``base`` using the user's rates.

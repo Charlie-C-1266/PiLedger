@@ -19,8 +19,8 @@ from schemas import (
     NetWorthPointOut,
     SummaryOut,
 )
-from services.accounts import _LATEST_BALANCE_JOIN
-from services.currency import _convert_to_base, _load_rates
+from services.accounts import LATEST_BALANCE_JOIN
+from services.currency import convert_to_base, load_rates
 
 router = APIRouter(tags=["dashboard"])
 
@@ -48,12 +48,12 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
             f"""
             SELECT a.type, a.currency, a.counts_to_net_worth, b.balance_cents
             FROM accounts a
-            {_LATEST_BALANCE_JOIN}
+            {LATEST_BALANCE_JOIN}
             WHERE a.user_id = ?
         """,
             (uid,),
         ).fetchall()
-        rates = _load_rates(conn, uid)
+        rates = load_rates(conn, uid)
     base = (user["base_currency"] if user else None) or "GBP"
     current_t = savings_t = loans_t = credit_t = invest_t = 0.0
     set_aside = 0.0
@@ -63,7 +63,7 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
         amt = (r["balance_cents"] or 0) / 100
         if cur != base and cur not in rates:
             missing.add(cur)
-        converted = _convert_to_base(amt, cur, base, rates)
+        converted = convert_to_base(amt, cur, base, rates)
         is_debt = r["type"] in ("loan", "credit")
         if not r["counts_to_net_worth"]:
             # Set-aside Account: contributes to the excluded total only, as a
@@ -168,7 +168,7 @@ def networth_history(
             "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
         base = (user["base_currency"] if user else None) or "GBP"
-        rates = _load_rates(conn, uid)
+        rates = load_rates(conn, uid)
         accounts = {
             r["id"]: r
             for r in conn.execute(
@@ -216,7 +216,7 @@ def networth_history(
                 continue
             amt = cents / 100
             cur = acc["currency"] or "GBP"
-            converted = _convert_to_base(amt, cur, base, rates)
+            converted = convert_to_base(amt, cur, base, rates)
             if acc["type"] in ("loan", "credit"):
                 # Mirror /api/summary: a debt is a positive magnitude subtracted
                 # from net worth, whether its balance was recorded as a positive
@@ -246,7 +246,7 @@ def get_projections(
             f"""
             SELECT a.id, a.name, a.interest_rate, a.color, a.currency, b.balance_cents
             FROM accounts a
-            {_LATEST_BALANCE_JOIN}
+            {LATEST_BALANCE_JOIN}
             WHERE a.type = 'savings' AND a.user_id = ?
         """,
             (uid,),
