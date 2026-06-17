@@ -4,6 +4,7 @@ import { createGroup, updateGroup, deleteGroup } from "../../api/client";
 import { useInvalidate } from "../../hooks/useInvalidate";
 import { PRESET_COLORS } from "../../theme/swatches";
 import Modal from "../Modal";
+import ModalActions from "../ModalActions";
 import type { BudgetGroup } from "../../types";
 import styles from "../AddModal.module.css";
 
@@ -124,28 +125,15 @@ export default function AddGroupModal({ group, onClose }: Props) {
           <p className={styles.errorMsg}>Couldn&rsquo;t save the group. Check the name and colour.</p>
         )}
 
-        <div className={styles.footer}>
-          {editing && (
-            <button
-              className={styles.deleteBtn}
-              onClick={() => deleteMutation.mutate()}
-              disabled={pending}
-            >
-              {deleteMutation.isPending ? "Deleting…" : "Delete"}
-            </button>
-          )}
-          <div className={styles.spacer} />
-          <button className={styles.cancel} onClick={onClose}>
-            Cancel
-          </button>
-          <button className={styles.save} onClick={handleSave} disabled={pending}>
-            {saveMutation.isPending
-              ? "Saving…"
-              : editing
-                ? "Update group"
-                : "Save group"}
-          </button>
-        </div>
+        <ModalActions
+          onCancel={onClose}
+          onSave={handleSave}
+          saveLabel={editing ? "Update group" : "Save group"}
+          saving={saveMutation.isPending}
+          busy={pending}
+          onDelete={editing ? () => deleteMutation.mutate() : undefined}
+          deleting={deleteMutation.isPending}
+        />
     </Modal>
   );
 }

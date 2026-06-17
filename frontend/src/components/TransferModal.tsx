@@ -4,6 +4,7 @@ import { createTransfer } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
+import ModalActions from "./ModalActions";
 import { fmt } from "../lib/currency";
 import styles from "./AddModal.module.css";
 
@@ -132,15 +133,14 @@ export default function TransferModal({ onClose }: Props) {
 
             {error && <div className={styles.errorMsg}>{error}</div>}
 
-            <div className={styles.footer}>
-              <div className={styles.spacer} />
-              <button className={styles.cancel} onClick={onClose}>
-                Cancel
-              </button>
-              <button className={styles.save} onClick={handleSave} disabled={!canSave}>
-                {mutation.isPending ? "Transferring…" : "Transfer"}
-              </button>
-            </div>
+            <ModalActions
+              onCancel={onClose}
+              onSave={handleSave}
+              saveLabel="Transfer"
+              savingLabel="Transferring…"
+              saving={mutation.isPending}
+              saveDisabled={!canSave}
+            />
           </>
         )}
     </Modal>
