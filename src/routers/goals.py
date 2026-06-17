@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import GoalIn, GoalOut, GoalPatch, OkOut
-from services.accounts import _require_account
+from services.accounts import _latest_balance_cents, _require_account
 
 router = APIRouter(tags=["goals"])
 
@@ -36,12 +36,8 @@ def _goal_row_to_out(conn: sqlite3.Connection, row: sqlite3.Row) -> GoalOut:
         else:
             account_name = acc["name"]
             interest_rate = acc["interest_rate"]
-            bal = conn.execute(
-                "SELECT balance_cents FROM balance_history WHERE account_id=?"
-                " ORDER BY recorded_at DESC, id DESC LIMIT 1",
-                (account_id,),
-            ).fetchone()
-            saved = (from_cents(bal["balance_cents"]) or 0.0) if bal else 0.0
+            cents = _latest_balance_cents(conn, account_id)
+            saved = from_cents(cents) or 0.0
     return GoalOut(
         id=row["id"],
         user_id=row["user_id"],

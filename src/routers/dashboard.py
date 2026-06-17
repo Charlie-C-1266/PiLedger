@@ -19,6 +19,7 @@ from schemas import (
     NetWorthPointOut,
     SummaryOut,
 )
+from services.accounts import _LATEST_BALANCE_JOIN
 from services.currency import _convert_to_base, _load_rates
 
 router = APIRouter(tags=["dashboard"])
@@ -44,13 +45,10 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
             "SELECT base_currency FROM users WHERE id=?", (uid,)
         ).fetchone()
         rows = conn.execute(
-            """
+            f"""
             SELECT a.type, a.currency, a.counts_to_net_worth, b.balance_cents
             FROM accounts a
-            LEFT JOIN balance_history b ON b.id = (
-                SELECT id FROM balance_history WHERE account_id=a.id
-                ORDER BY recorded_at DESC, id DESC LIMIT 1
-            )
+            {_LATEST_BALANCE_JOIN}
             WHERE a.user_id = ?
         """,
             (uid,),
@@ -245,13 +243,10 @@ def get_projections(
     """
     with db() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT a.id, a.name, a.interest_rate, a.color, a.currency, b.balance_cents
             FROM accounts a
-            LEFT JOIN balance_history b ON b.id = (
-                SELECT id FROM balance_history WHERE account_id=a.id
-                ORDER BY recorded_at DESC, id DESC LIMIT 1
-            )
+            {_LATEST_BALANCE_JOIN}
             WHERE a.type = 'savings' AND a.user_id = ?
         """,
             (uid,),

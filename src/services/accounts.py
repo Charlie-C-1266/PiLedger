@@ -11,6 +11,31 @@ from fastapi import HTTPException
 from db import utcnow_iso
 
 
+def _latest_balance_cents(conn: sqlite3.Connection, account_id: int) -> int | None:
+    """Return an account's most-recent balance in integer cents, or None if it
+    has no balance history. 'Most recent' is by ``recorded_at``, ties broken by
+    the insertion ``id`` so two entries sharing a timestamp stay deterministic."""
+    row = conn.execute(
+        "SELECT balance_cents FROM balance_history WHERE account_id=?"
+        " ORDER BY recorded_at DESC, id DESC LIMIT 1",
+        (account_id,),
+    ).fetchone()
+    return row["balance_cents"] if row else None
+
+
+# A LEFT JOIN that attaches each account's most-recent balance_history row as
+# ``b`` (so callers can read ``b.balance_cents`` / ``b.recorded_at``). Assumes
+# the outer query aliases ``accounts`` as ``a``; mirrors the ordering of
+# ``_latest_balance_cents``. Interpolated into the dashboard/account aggregates
+# rather than re-typing the correlated subquery in each.
+_LATEST_BALANCE_JOIN = (
+    "LEFT JOIN balance_history b ON b.id = ("
+    " SELECT id FROM balance_history WHERE account_id = a.id"
+    " ORDER BY recorded_at DESC, id DESC LIMIT 1"
+    ")"
+)
+
+
 def _adjust_account_balance(
     conn: sqlite3.Connection, account_id: int, delta_cents: int
 ) -> None:
@@ -26,12 +51,7 @@ def _adjust_account_balance(
     ).fetchone()
     if account and account["type"] in ("credit", "loan"):
         delta_cents = -delta_cents
-    latest = conn.execute(
-        "SELECT balance_cents FROM balance_history WHERE account_id=?"
-        " ORDER BY recorded_at DESC, id DESC LIMIT 1",
-        (account_id,),
-    ).fetchone()
-    current = latest["balance_cents"] if latest else 0
+    current = _latest_balance_cents(conn, account_id) or 0
     conn.execute(
         "INSERT INTO balance_history(account_id, balance_cents, recorded_at)"
         " VALUES(?,?,?)",

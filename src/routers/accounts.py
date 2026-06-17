@@ -23,6 +23,7 @@ from schemas import (
     BalanceIn,
     OkOut,
 )
+from services.accounts import _LATEST_BALANCE_JOIN
 
 router = APIRouter(tags=["accounts"])
 
@@ -54,15 +55,12 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
     entry (current balance + when it was last updated), oldest first."""
     with db() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT a.*,
                    b.balance_cents AS current_balance_cents,
                    b.recorded_at   AS last_updated
             FROM accounts a
-            LEFT JOIN balance_history b ON b.id = (
-                SELECT id FROM balance_history WHERE account_id = a.id
-                ORDER BY recorded_at DESC, id DESC LIMIT 1
-            )
+            {_LATEST_BALANCE_JOIN}
             WHERE a.user_id = ?
             ORDER BY a.created_at
         """,
