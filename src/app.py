@@ -44,6 +44,7 @@ from routers import (
     pages,
     prefs,
     rates,
+    subscriptions,
     transactions,
 )
 
@@ -97,6 +98,7 @@ app.include_router(transactions.router)
 app.include_router(dashboard.router)
 app.include_router(budget.router)
 app.include_router(goals.router)
+app.include_router(subscriptions.router)
 app.include_router(prefs.router)
 app.include_router(rates.router)
 app.include_router(categories.router)

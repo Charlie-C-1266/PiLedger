@@ -1,0 +1,289 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font: 700 28px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.6px;
+  color: var(--pl-text);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.addBtn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--pl-accent);
+  color: #fff;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addBtn:hover {
+  opacity: 0.9;
+}
+
+/* List view */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--pl-surface);
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: var(--pl-shadow);
+  cursor: pointer;
+  border-left: 4px solid transparent;
+  transition: box-shadow 160ms;
+}
+
+.card:hover {
+  box-shadow: var(--pl-shadow-lg);
+}
+
+.cardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.name {
+  font: 700 16px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.freqBadge {
+  text-transform: capitalize;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+}
+
+.cardRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.amount {
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.duePill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 600 11px/1.3 "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.duePillSoon {
+  background: color-mix(in oklab, var(--pl-warn), transparent 82%);
+  color: var(--pl-warn);
+}
+
+.duePillOk {
+  background: color-mix(in oklab, var(--pl-up), transparent 85%);
+  color: var(--pl-up);
+}
+
+.duePillNone {
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-mute);
+}
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  background: var(--pl-surface);
+  border-radius: 14px;
+}
+
+/* Calendar view */
+
+.calWrap {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--pl-shadow);
+}
+
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.calTitle {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.calNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calBtn {
+  padding: 7px 12px;
+  border: 1.5px solid var(--pl-rule);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pl-text);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  cursor: pointer;
+  transition: border-color 160ms;
+}
+
+.calBtn:hover {
+  border-color: var(--pl-accent);
+}
+
+.weekHead {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.weekday {
+  text-align: center;
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  padding: 4px 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.cell {
+  position: relative;
+  min-height: 64px;
+  border-radius: 10px;
+  background: var(--pl-surface-alt);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: default;
+  border: 2px solid transparent;
+}
+
+.cellClickable {
+  cursor: pointer;
+}
+
+.cellOther {
+  opacity: 0.4;
+}
+
+.cellToday {
+  border-color: var(--pl-accent);
+}
+
+.dayNum {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pl-accent);
+}
+
+.moreBadge {
+  font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+/* Day popover (reuses the shared Modal shell) */
+
+.popoverTitle {
+  font: 700 16px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  margin-bottom: 12px;
+}
+
+.popoverRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--pl-rule);
+}
+
+.popoverName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.popoverDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.popoverAmount {
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}

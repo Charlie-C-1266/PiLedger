@@ -45,6 +45,10 @@ export function useInvalidate() {
       /** A goal was created/edited/deleted. */
       goalChanged: () => bust("goals"),
 
+      /** A subscription was created/edited/deleted: the list and any expanded
+       *  calendar occurrences both go stale. */
+      subscriptionChanged: () => bust("subscriptions", "occurrences"),
+
       /** A budget income/group/envelope changed (structure or allocation). */
       budgetChanged: () => bust("budget"),
 

@@ -57,6 +57,11 @@ EXPECTED_ROUTES = {
     ("/api/projections", "GET"),
     ("/api/rates", "GET"),
     ("/api/rates", "PUT"),
+    ("/api/subscriptions", "GET"),
+    ("/api/subscriptions", "POST"),
+    ("/api/subscriptions/occurrences", "GET"),
+    ("/api/subscriptions/{sid}", "DELETE"),
+    ("/api/subscriptions/{sid}", "PUT"),
     ("/api/summary", "GET"),
     ("/api/transactions", "GET"),
     ("/api/transactions", "POST"),
@@ -73,6 +78,7 @@ EXPECTED_ROUTES = {
     ("/overview", "GET"),
     ("/redoc", "GET"),
     ("/settings", "GET"),
+    ("/subscriptions", "GET"),
     ("/transactions", "GET"),
 }
 

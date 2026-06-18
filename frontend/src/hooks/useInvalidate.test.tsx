@@ -66,4 +66,10 @@ describe("useInvalidate ripple sets", () => {
     result.current.categoryChanged();
     expect(bustedKeys(spy)).toEqual(new Set(["goals", "budget", "categories"]));
   });
+
+  it("subscriptionChanged busts the list and the calendar occurrences", () => {
+    const { result, spy } = setup();
+    result.current.subscriptionChanged();
+    expect(bustedKeys(spy)).toEqual(new Set(["subscriptions", "occurrences"]));
+  });
 });

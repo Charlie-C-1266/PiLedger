@@ -33,6 +33,7 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "budget_income",
     "budget_group",
     "budget_envelope",
+    "subscriptions",
 )
 
 
@@ -120,7 +121,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 9
+SCHEMA_VERSION: int = 10
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -446,6 +447,41 @@ def _migrate_to_9(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# Recurring subscriptions / standing orders. Reminder-only in v1 — a row never
+# posts a transaction; `account_id` is just an optional label (and the hook a
+# future auto-posting feature would build on). Money is integer cents like every
+# other table; `next_due_date` is computed on read, never stored, so an elapsed
+# date can't go stale. The CHECK list is built from `constants.FREQUENCIES` so it
+# can't drift from the `schemas.Frequency` literal. Defined once and shared
+# between init() (fresh installs) and _migrate_to_10 (existing DBs).
+_FREQUENCY_CHECK = ", ".join(f"'{f}'" for f in constants.FREQUENCIES)
+_SUBSCRIPTIONS_DDL = f"""
+    CREATE TABLE IF NOT EXISTS subscriptions (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name         TEXT    NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        category     TEXT    NOT NULL DEFAULT '',
+        account_id   INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+        frequency    TEXT    NOT NULL CHECK(frequency IN ({_FREQUENCY_CHECK})),
+        start_date   TEXT    NOT NULL,
+        end_date     TEXT,
+        color        TEXT    DEFAULT '',
+        notes        TEXT    DEFAULT '',
+        active       INTEGER NOT NULL DEFAULT 1,
+        created_at   TEXT    DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+"""
+
+
+def _migrate_to_10(conn: sqlite3.Connection) -> None:
+    """Add the subscriptions table (recurring payments / standing orders)."""
+    conn.executescript(_SUBSCRIPTIONS_DDL)
+    _set_schema_version(conn, 10)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -527,6 +563,7 @@ def init() -> None:
             );
         """)
         conn.executescript(_BUDGET_TABLES_DDL)
+        conn.executescript(_SUBSCRIPTIONS_DDL)
         conn.commit()
 
         version = _get_schema_version(conn)
@@ -572,6 +609,10 @@ def init() -> None:
         if version < 9:
             _migrate_to_9(conn)
             version = 9
+
+        if version < 10:
+            _migrate_to_10(conn)
+            version = 10
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

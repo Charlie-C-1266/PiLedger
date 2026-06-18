@@ -16,6 +16,7 @@ from constants import (
     AccountSubtype,
     AccountType,
     Currency,
+    Frequency,
     HEX_COLOR_PATTERN,
     ISO_FMT,
     MAX_MONEY,
@@ -62,6 +63,21 @@ def _to_canonical_utc(v: str) -> str:
 # on a present string, so None passes through untouched). Shared by every
 # inbound timestamp so the four used to each carry a copy of this logic.
 IsoDateTimeStr = Annotated[str, AfterValidator(_to_canonical_utc)]
+
+
+def _to_iso_date(v: str) -> str:
+    """Validate/normalise a date-only ``YYYY-MM-DD`` string. The date-only
+    sibling of ``_to_canonical_utc`` — subscriptions track calendar days with no
+    time-of-day, so they need this rather than the timestamp normaliser."""
+    try:
+        return datetime.strptime(v, "%Y-%m-%d").strftime("%Y-%m-%d")
+    except ValueError as e:
+        raise ValueError("must be an ISO-8601 date (YYYY-MM-DD)") from e
+
+
+# A string field validated/normalised to a calendar date ``YYYY-MM-DD`` on input.
+# Wrap in ``Optional[...]`` for a field that may be omitted or explicitly nulled.
+IsoDateStr = Annotated[str, AfterValidator(_to_iso_date)]
 
 
 class LoginIn(_In):
@@ -198,6 +214,41 @@ class GoalPatch(_In):
     # on update so an explicit null is honoured (unlink) while an absent field
     # is left unchanged.
     account_id: Optional[int] = Field(default=None, ge=1)
+
+
+class SubscriptionIn(_In):
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+    amount: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
+    category: Annotated[str, Field(max_length=100)] = ""
+    # Optional account this payment is associated with — reminder-only in v1, so
+    # it is purely a label (and the hook a future auto-posting feature builds on).
+    account_id: Optional[int] = Field(default=None, ge=1)
+    frequency: Frequency
+    start_date: IsoDateStr  # the anchor occurrence
+    end_date: Optional[IsoDateStr] = None  # null = ongoing
+    # One of the frontend ACCENT_OPTIONS, or "" for the default accent. Plain
+    # bounded string (the picker constrains the real choices, like Goals).
+    color: Annotated[str, Field(max_length=32)] = ""
+    notes: Annotated[str, Field(max_length=500)] = ""
+    active: bool = True
+
+
+class SubscriptionPatch(_In):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    amount: Optional[float] = Field(
+        default=None, gt=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+    category: Optional[str] = Field(default=None, max_length=100)
+    # Set to an account id to link, or null to unlink. exclude_unset on update
+    # honours an explicit null (unlink) while an omitted field is left unchanged.
+    account_id: Optional[int] = Field(default=None, ge=1)
+    frequency: Optional[Frequency] = None
+    start_date: Optional[IsoDateStr] = None
+    # null clears the end date (back to ongoing); omitted leaves it unchanged.
+    end_date: Optional[IsoDateStr] = None
+    color: Optional[str] = Field(default=None, max_length=32)
+    notes: Optional[str] = Field(default=None, max_length=500)
+    active: Optional[bool] = None
 
 
 class BudgetIncomeIn(_In):
@@ -380,6 +431,36 @@ class GoalOut(BaseModel):
     account_name: Optional[str] = None
     interest_rate: Optional[float] = None
     created_at: str
+
+
+class SubscriptionOut(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    amount: float
+    category: str
+    account_id: Optional[int] = None
+    account_name: Optional[str] = None
+    frequency: Frequency
+    start_date: str
+    end_date: Optional[str] = None
+    color: str
+    notes: str
+    active: bool
+    # Computed on read (never stored): the next due date on or after today, or
+    # null when the subscription is inactive or has elapsed past its end_date.
+    next_due_date: Optional[str] = None
+    created_at: str
+
+
+class SubscriptionOccurrenceOut(BaseModel):
+    """One expanded calendar hit, for the month-grid view."""
+
+    date: str
+    subscription_id: int
+    name: str
+    amount: float
+    color: str
 
 
 class NetWorthPointOut(BaseModel):

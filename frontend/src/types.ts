@@ -55,6 +55,36 @@ export interface Goal {
   created_at: string;
 }
 
+export type Frequency = "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
+
+export interface Subscription {
+  id: number;
+  user_id: number;
+  name: string;
+  amount: number;
+  category: string;
+  account_id?: number | null;
+  account_name?: string | null;
+  frequency: Frequency;
+  start_date: string;
+  end_date?: string | null;
+  color: string;
+  notes: string;
+  active: boolean;
+  /** Computed server-side: next due date on/after today, or null if inactive/elapsed. */
+  next_due_date?: string | null;
+  created_at: string;
+}
+
+/** One expanded calendar hit from `GET /api/subscriptions/occurrences`. */
+export interface SubscriptionOccurrence {
+  date: string;
+  subscription_id: number;
+  name: string;
+  amount: number;
+  color: string;
+}
+
 export interface Summary {
   total: number;
   total_current: number;
