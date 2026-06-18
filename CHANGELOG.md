@@ -9,6 +9,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Added
+
+- A Subscriptions page tracks recurring payments and standing orders, showing upcoming renewal dates as a time-ordered list and an interactive, scrollable month calendar; each subscription can be colour-coded and optionally linked to an account.
+
 ### Changed
 
 - Page transitions now slide each top-level card in from the right in sequence, replacing the fade-and-rise cascade.

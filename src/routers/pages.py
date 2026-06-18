@@ -49,6 +49,7 @@ def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 @router.get("/transactions")
 @router.get("/budget")
 @router.get("/goals")
+@router.get("/subscriptions")
 @router.get("/settings")
 def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
     """Serve the same SPA shell for every in-app deep link so a refresh or

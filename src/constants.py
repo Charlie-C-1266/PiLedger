@@ -75,6 +75,18 @@ AccountType = Literal["current", "savings", "loan", "credit", "invest"]
 RangeKey = Literal["7D", "30D", "90D", "1Y"]
 RANGE_TO_DAYS: dict[str, int] = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365}
 
+# How often a subscription / standing order recurs. The fixed set is shared by
+# the schema validator (schemas.Frequency) and the `subscriptions.frequency`
+# CHECK constraint (built from FREQUENCIES in db.py) so the two cannot drift.
+Frequency = Literal["weekly", "biweekly", "monthly", "quarterly", "annual"]
+FREQUENCIES: tuple[str, ...] = (
+    "weekly",
+    "biweekly",
+    "monthly",
+    "quarterly",
+    "annual",
+)
+
 # UK-market account sub-types. "general" is the catch-all for users who don't
 # want to record this level of detail and is valid for every parent type.
 # Storing the enum value (snake_case) keeps the API stable; the frontend owns

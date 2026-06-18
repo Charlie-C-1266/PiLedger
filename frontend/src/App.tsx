@@ -6,6 +6,7 @@ import Accounts from "./screens/Accounts";
 import Transactions from "./screens/Transactions";
 import Budget from "./screens/Budget";
 import Goals from "./screens/Goals";
+import Subscriptions from "./screens/Subscriptions";
 import Settings from "./screens/Settings";
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/goals" element={<Goals />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/" element={<Navigate to="/overview" replace />} />

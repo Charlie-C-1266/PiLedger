@@ -12,7 +12,10 @@ import type {
   NetWorthPoint,
   Prefs,
   RangeKey,
+  Frequency,
   Rates,
+  Subscription,
+  SubscriptionOccurrence,
   Summary,
   Transaction,
   TransactionFilters,
@@ -204,6 +207,34 @@ export const updateGoal = (id: number, data: Partial<Goal>) =>
 
 export const deleteGoal = (id: number) =>
   del<{ ok: boolean }>(`/api/goals/${id}`);
+
+// Subscriptions
+
+export const getSubscriptions = () => json<Subscription[]>("/api/subscriptions");
+
+export const getOccurrences = (from: string, to: string) =>
+  json<SubscriptionOccurrence[]>(
+    `/api/subscriptions/occurrences?from=${from}&to=${to}`
+  );
+
+export const createSubscription = (data: {
+  name: string;
+  amount: number;
+  frequency: Frequency;
+  start_date: string;
+  category?: string;
+  account_id?: number | null;
+  end_date?: string | null;
+  color?: string;
+  notes?: string;
+  active?: boolean;
+}) => post<Subscription>("/api/subscriptions", data);
+
+export const updateSubscription = (id: number, data: Partial<Subscription>) =>
+  put<Subscription>(`/api/subscriptions/${id}`, data);
+
+export const deleteSubscription = (id: number) =>
+  del<{ ok: boolean }>(`/api/subscriptions/${id}`);
 
 // Categories
 

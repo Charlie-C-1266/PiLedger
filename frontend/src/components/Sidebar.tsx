@@ -1,5 +1,5 @@
 import NavItem from "./NavItem";
-import { GridIcon, WalletIcon, ListIcon, BudgetIcon, FlagIcon, SettingsIcon, LogoMark } from "./icons";
+import { GridIcon, WalletIcon, ListIcon, BudgetIcon, FlagIcon, RepeatIcon, SettingsIcon, LogoMark } from "./icons";
 import styles from "./Sidebar.module.css";
 
 interface Props {
@@ -22,6 +22,7 @@ export default function Sidebar({ compact, username }: Props) {
         <NavItem to="/transactions" icon={<ListIcon />} label="Transactions" compact={compact} />
         <NavItem to="/budget" icon={<BudgetIcon />} label="Budget" compact={compact} />
         <NavItem to="/goals" icon={<FlagIcon />} label="Goals" compact={compact} />
+        <NavItem to="/subscriptions" icon={<RepeatIcon />} label="Subscriptions" compact={compact} />
       </nav>
       <div className={styles.spacer} />
       <NavItem to="/settings" icon={<SettingsIcon />} label="Settings" compact={compact} />
