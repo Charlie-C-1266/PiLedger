@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { GridIcon, WalletIcon, ListIcon, BudgetIcon, FlagIcon, RepeatIcon, SettingsIcon } from "./icons";
 import styles from "./TabStrip.module.css";
 
@@ -13,8 +14,18 @@ const tabs = [
 ];
 
 export default function TabStrip() {
+  const navRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+
+  // The strip scrolls horizontally when the tabs overflow, so keep the active
+  // destination in view as the route changes.
+  useEffect(() => {
+    const active = navRef.current?.querySelector('[aria-current="page"]');
+    active?.scrollIntoView?.({ inline: "center", block: "nearest" });
+  }, [pathname]);
+
   return (
-    <nav className={styles.strip}>
+    <nav ref={navRef} className={styles.strip}>
       {tabs.map((t) => (
         <NavLink
           key={t.to}
