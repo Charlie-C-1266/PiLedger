@@ -121,6 +121,22 @@ export default function ImportCsvModal({ onClose }: Props) {
             Upload a CSV export from your bank or card provider. You'll pick which
             column is which on the next step.
           </p>
+          <a
+            className={styles.guideLink}
+            href="/guide#csv-import"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path
+                d="M10 5.5C8.6 4.3 6.6 3.8 4 4v10c2.6-.2 4.6.3 6 1.5 1.4-1.2 3.4-1.7 6-1.5V4c-2.6-.2-4.6.3-6 1.5zM10 5.5v10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Column format and example CSVs
+          </a>
           <select
             className={addModalStyles.select}
             value={accountId}

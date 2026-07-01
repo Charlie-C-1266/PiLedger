@@ -10,6 +10,7 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 
 - **Multi-account tracking** — current, savings, loan, credit, and investment accounts with per-account currencies
 - **Transaction log** — searchable, filterable transaction history with automatic balance adjustments
+- **CSV import** — bulk-import transactions from a bank or card CSV export, with column mapping and automatic duplicate detection on re-import
 - **Savings goals** — named targets with progress tracking, monthly contributions, ETA, and compound-interest projections charted per goal
 - **Balance history** — timestamped snapshots with step-line charts over selectable time windows
 - **Savings projections** — compound-interest forecasting at 1, 2, and 5 year horizons

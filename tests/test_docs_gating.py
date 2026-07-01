@@ -110,6 +110,14 @@ def test_api_docs_serves_budgeting_guide(client):
     assert "# Budgeting with Envelopes" in r.text
 
 
+def test_api_docs_serves_csv_import_guide(client):
+    """The user-facing CSV import guide is on the allowlist and publicly
+    served — the import modal links new users straight to it."""
+    r = client.get("/api/docs/csv-import")
+    assert r.status_code == 200
+    assert "# Importing Transactions from CSV" in r.text
+
+
 def test_api_docs_rejects_path_traversal(client):
     r = client.get("/api/docs/..%2F..%2Fetc%2Fpasswd")
     assert r.status_code == 404

@@ -38,6 +38,7 @@ DOC_SLUGS: frozenset[str] = frozenset(
     {
         "getting-started",
         "budgeting",
+        "csv-import",
         "architecture",
         "authentication",
         "backups",
