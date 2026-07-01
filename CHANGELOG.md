@@ -12,6 +12,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Added
 
 - A Subscriptions page tracks recurring payments and standing orders, showing upcoming renewal dates as a time-ordered list and an interactive, scrollable month calendar; each subscription can be colour-coded and optionally linked to an account.
+- Every response now carries an `X-Request-Id` header, and server logs are structured JSON by default (`PILEDGER_LOG_LEVEL` / `PILEDGER_LOG_FORMAT` env vars), making it possible to correlate a log line back to the request that produced it.
 
 ### Changed
 

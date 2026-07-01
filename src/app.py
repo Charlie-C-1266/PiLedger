@@ -30,7 +30,8 @@ from constants import (
 from db import (
     init,
 )
-from security import SecurityHeadersMiddleware
+from logging_config import configure_logging
+from security import RequestIdMiddleware, SecurityHeadersMiddleware
 from limiter import limiter
 
 from routers import auth as auth_router
@@ -65,6 +66,12 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SecurityHeadersMiddleware)
+# Added after SecurityHeadersMiddleware so it ends up outermost (Starlette
+# wraps middleware in reverse registration order) — the request ID must be
+# set in the contextvar before any downstream layer, including the security
+# headers middleware, has a chance to log anything.
+app.add_middleware(RequestIdMiddleware)
+configure_logging()
 init()
 
 
