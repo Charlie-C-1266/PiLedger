@@ -65,6 +65,8 @@ EXPECTED_ROUTES = {
     ("/api/summary", "GET"),
     ("/api/transactions", "GET"),
     ("/api/transactions", "POST"),
+    ("/api/transactions/import/commit", "POST"),
+    ("/api/transactions/import/preview", "POST"),
     ("/api/transactions/{tid}", "DELETE"),
     ("/api/transactions/{tid}", "PUT"),
     ("/api/transfers", "POST"),

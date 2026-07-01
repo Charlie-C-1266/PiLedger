@@ -1,0 +1,68 @@
+.fileInput {
+  display: block;
+  width: 100%;
+  padding: 10px 0;
+  margin-bottom: 12px;
+  color: var(--pl-text);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.label {
+  display: block;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  letter-spacing: 0.3px;
+  margin-bottom: 6px;
+}
+
+.previewTableWrap {
+  max-height: 160px;
+  overflow: auto;
+  border: 1px solid var(--pl-rule);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.previewTable {
+  width: 100%;
+  border-collapse: collapse;
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+}
+
+.previewTable th,
+.previewTable td {
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--pl-rule);
+}
+
+.previewTable th {
+  color: var(--pl-text-soft);
+  background: var(--pl-surface-alt);
+  position: sticky;
+  top: 0;
+}
+
+.resultLine {
+  font: 600 14px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+  margin-bottom: 16px;
+}
+
+.errorList {
+  margin-bottom: 20px;
+}
+
+.errorList ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font: 500 12px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  max-height: 140px;
+  overflow: auto;
+}

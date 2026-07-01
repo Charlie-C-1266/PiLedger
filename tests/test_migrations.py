@@ -810,6 +810,53 @@ def test_gated_path_adds_transfer_id_and_goal_account_id(stamped_v1_db):
     assert "account_id" in _table_columns(stamped_v1_db, "goals")
 
 
+def test_gated_path_adds_import_hash_column(stamped_v1_db):
+    """_migrate_to_11 adds transactions.import_hash (CSV import dedup)."""
+    assert "import_hash" in _table_columns(stamped_v1_db, "transactions")
+
+
+def test_gated_path_adds_import_hash_unique_index(stamped_v1_db):
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        row = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'"
+            " AND name='idx_transactions_import_hash'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is not None
+
+
+def test_import_hash_uniqueness_is_only_enforced_when_not_null(fresh_db):
+    """Two NULL import_hash rows (manually-entered transactions) may coexist;
+    two equal non-NULL hashes may not — that's the whole dedup mechanism."""
+    conn = _connect(fresh_db)
+    try:
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'a', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES(1, 1, 'Current', 'current')"
+        )
+        conn.execute(
+            "INSERT INTO transactions(user_id, account_id, amount_cents, merchant)"
+            " VALUES(1, 1, -100, 'A'), (1, 1, -200, 'B')"
+        )
+        conn.commit()
+        conn.execute(
+            "INSERT INTO transactions(user_id, account_id, amount_cents, merchant, import_hash)"
+            " VALUES(1, 1, -300, 'C', 'hash-1')"
+        )
+        conn.commit()
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO transactions(user_id, account_id, amount_cents, merchant, import_hash)"
+                " VALUES(1, 1, -400, 'D', 'hash-1')"
+            )
+    finally:
+        conn.close()
+
+
 def test_gated_path_adds_counts_to_net_worth(stamped_v1_db):
     """_migrate_to_8 adds the flag on the version-gated ladder, defaulting every
     pre-existing account to counting."""

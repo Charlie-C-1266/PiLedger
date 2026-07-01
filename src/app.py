@@ -40,6 +40,7 @@ from routers import (
     categories,
     dashboard,
     goals,
+    imports,
     ops,
     pages,
     prefs,
@@ -95,6 +96,7 @@ def _validation_to_400(request: Request, exc: RequestValidationError) -> JSONRes
 app.include_router(auth_router.router)
 app.include_router(accounts.router)
 app.include_router(transactions.router)
+app.include_router(imports.router)
 app.include_router(dashboard.router)
 app.include_router(budget.router)
 app.include_router(goals.router)

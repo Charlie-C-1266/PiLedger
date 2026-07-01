@@ -12,6 +12,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Added
 
 - A Subscriptions page tracks recurring payments and standing orders, showing upcoming renewal dates as a time-ordered list and an interactive, scrollable month calendar; each subscription can be colour-coded and optionally linked to an account.
+- Transactions can now be bulk-imported from a bank/card CSV export: pick the target account, confirm which column is which (with a suggested mapping pre-filled), and import — re-uploading an overlapping export skips rows already imported instead of duplicating them.
 
 ### Changed
 
