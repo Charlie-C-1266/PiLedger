@@ -41,6 +41,36 @@ export interface TransactionFilters {
   per_page?: number;
 }
 
+export type ImportDateFormat = "iso" | "dmy" | "mdy" | "dmy_dash" | "mdy_dash";
+
+export interface ImportMapping {
+  date: string;
+  amount?: string;
+  debit?: string;
+  credit?: string;
+  merchant: string;
+  category?: string;
+  note?: string;
+}
+
+export interface ImportPreview {
+  columns: string[];
+  sample_rows: string[][];
+  row_count: number;
+  suggested_mapping: Partial<Record<keyof ImportMapping, string | null>>;
+}
+
+export interface ImportRowError {
+  row: number;
+  message: string;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped_duplicates: number;
+  errors: ImportRowError[];
+}
+
 export interface Goal {
   id: number;
   user_id: number;
