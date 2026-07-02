@@ -10,6 +10,7 @@ import AddAccountModal from "./AddAccountModal";
 import AddModal from "./AddModal";
 import TransferModal from "./TransferModal";
 import AddGoalModal from "./AddGoalModal";
+import ImportCsvModal from "./ImportCsvModal";
 import SearchModal from "./SearchModal";
 import type { AddTarget } from "./AddMenu";
 import styles from "./Shell.module.css";
@@ -76,6 +77,9 @@ export default function Shell() {
         )}
         {modal === "goal" && (
           <AddGoalModal key="goal" onClose={() => setModal(null)} />
+        )}
+        {modal === "import" && (
+          <ImportCsvModal key="import" onClose={() => setModal(null)} />
         )}
       </AnimatePresence>
       {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}

@@ -38,6 +38,7 @@ DOC_SLUGS: frozenset[str] = frozenset(
     {
         "getting-started",
         "budgeting",
+        "csv-import",
         "architecture",
         "authentication",
         "backups",
@@ -278,3 +279,21 @@ DEFAULT_CATEGORIES: list[str] = [
 
 # Maximum number of custom categories a single user may create.
 MAX_CUSTOM_CATEGORIES = 50
+
+# ─── CSV transaction import ───────────────────────────────────────────────────
+
+# Generous enough for any real bank export, tight enough that an accidental
+# multi-GB paste can't hang the parser.
+MAX_IMPORT_ROWS = 5_000
+MAX_IMPORT_CSV_CHARS = 5_000_000  # ~5MB of CSV text
+
+# Small allowlisted set of date layouts rather than trusting an arbitrary
+# strptime format string from the client.
+ImportDateFormat = Literal["iso", "dmy", "mdy", "dmy_dash", "mdy_dash"]
+IMPORT_DATE_FORMATS: dict[str, str] = {
+    "iso": "%Y-%m-%d",
+    "dmy": "%d/%m/%Y",
+    "mdy": "%m/%d/%Y",
+    "dmy_dash": "%d-%m-%Y",
+    "mdy_dash": "%m-%d-%Y",
+}

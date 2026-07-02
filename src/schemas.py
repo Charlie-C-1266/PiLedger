@@ -18,7 +18,9 @@ from constants import (
     Currency,
     Frequency,
     HEX_COLOR_PATTERN,
+    ImportDateFormat,
     ISO_FMT,
+    MAX_IMPORT_CSV_CHARS,
     MAX_MONEY,
     MAX_RATE,
     MAX_RATE_FX,
@@ -185,6 +187,43 @@ class TransferIn(_In):
     amount: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
     occurred_at: Optional[IsoDateTimeStr] = None
     note: Annotated[str, Field(max_length=500)] = ""
+
+
+class ImportMappingIn(_In):
+    """Maps required transaction fields to CSV column headers. Provide either
+    `amount` (a single signed column) or both `debit` and `credit` (split
+    columns), not neither or both."""
+
+    date: Annotated[str, Field(min_length=1, max_length=200)]
+    amount: Optional[str] = None
+    debit: Optional[str] = None
+    credit: Optional[str] = None
+    merchant: Annotated[str, Field(min_length=1, max_length=200)]
+    category: Optional[str] = None
+    note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _check_amount_columns(self) -> "ImportMappingIn":
+        """Reject a mapping that specifies both an amount scheme and a
+        debit/credit scheme, or neither."""
+        has_amount = self.amount is not None
+        has_split = self.debit is not None and self.credit is not None
+        if has_amount == has_split:
+            raise ValueError(
+                "provide either 'amount' or both 'debit' and 'credit', not neither or both"
+            )
+        return self
+
+
+class ImportPreviewIn(_In):
+    csv_text: Annotated[str, Field(min_length=1, max_length=MAX_IMPORT_CSV_CHARS)]
+
+
+class ImportCommitIn(_In):
+    csv_text: Annotated[str, Field(min_length=1, max_length=MAX_IMPORT_CSV_CHARS)]
+    account_id: Annotated[int, Field(ge=1)]
+    mapping: ImportMappingIn
+    date_format: ImportDateFormat = "iso"
 
 
 class GoalIn(_In):
@@ -417,6 +456,24 @@ class TransactionOut(BaseModel):
     note: str
     transfer_id: Optional[str] = None
     created_at: str
+
+
+class ImportPreviewOut(BaseModel):
+    columns: list[str]
+    sample_rows: list[list[str]]
+    row_count: int
+    suggested_mapping: dict[str, Optional[str]]
+
+
+class ImportRowError(BaseModel):
+    row: int
+    message: str
+
+
+class ImportCommitOut(BaseModel):
+    imported: int
+    skipped_duplicates: int
+    errors: list[ImportRowError]
 
 
 class GoalOut(BaseModel):

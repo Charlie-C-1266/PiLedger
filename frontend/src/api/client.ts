@@ -9,6 +9,10 @@ import type {
   Categories,
   CustomCategory,
   Goal,
+  ImportDateFormat,
+  ImportMapping,
+  ImportPreview,
+  ImportResult,
   NetWorthPoint,
   Prefs,
   RangeKey,
@@ -188,6 +192,16 @@ export const createTransfer = (data: {
   occurred_at?: string;
   note?: string;
 }) => post<Transaction[]>("/api/transfers", data);
+
+export const previewImport = (csv_text: string) =>
+  post<ImportPreview>("/api/transactions/import/preview", { csv_text });
+
+export const commitImport = (data: {
+  csv_text: string;
+  account_id: number;
+  mapping: ImportMapping;
+  date_format?: ImportDateFormat;
+}) => post<ImportResult>("/api/transactions/import/commit", data);
 
 // Goals
 

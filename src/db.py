@@ -121,7 +121,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 10
+SCHEMA_VERSION: int = 11
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -243,6 +243,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 11. Add accounts.counts_to_net_worth (the Accessible-net-worth flag).
     _ensure_counts_to_net_worth_column(conn)
 
+    # 12. Add transactions.import_hash + its unique-if-not-null index (CSV import dedup).
+    _ensure_import_hash_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -277,6 +280,23 @@ def _ensure_counts_to_net_worth_column(conn: sqlite3.Connection) -> None:
             "ALTER TABLE accounts ADD COLUMN counts_to_net_worth INTEGER NOT NULL DEFAULT 1"
         )
         conn.commit()
+
+
+def _ensure_import_hash_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add transactions.import_hash plus its unique-if-not-null
+    index. CSV-imported rows get a hash of (account_id, occurred_at,
+    amount_cents, merchant); a manually-entered transaction leaves it NULL and
+    is unconstrained by the index. Re-importing an overlapping CSV export is
+    then a no-op — the duplicate insert hits the unique index and is skipped
+    — rather than a duplicate row."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+    if "import_hash" not in cols:
+        conn.execute("ALTER TABLE transactions ADD COLUMN import_hash TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_import_hash"
+        " ON transactions(import_hash) WHERE import_hash IS NOT NULL"
+    )
+    conn.commit()
 
 
 def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
@@ -482,6 +502,13 @@ def _migrate_to_10(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_11(conn: sqlite3.Connection) -> None:
+    """Add transactions.import_hash + its unique-if-not-null index (CSV import dedup)."""
+    _ensure_import_hash_column(conn)
+    _set_schema_version(conn, 11)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -541,6 +568,7 @@ def init() -> None:
                 category     TEXT    NOT NULL DEFAULT '',
                 note         TEXT    DEFAULT '',
                 transfer_id  TEXT,
+                import_hash  TEXT,
                 created_at   TEXT    DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS goals (
@@ -613,6 +641,10 @@ def init() -> None:
         if version < 10:
             _migrate_to_10(conn)
             version = 10
+
+        if version < 11:
+            _migrate_to_11(conn)
+            version = 11
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

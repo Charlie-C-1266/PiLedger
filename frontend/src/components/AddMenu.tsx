@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { WalletIcon, ListIcon, FlagIcon, TransferIcon } from "./icons";
+import { WalletIcon, ListIcon, FlagIcon, TransferIcon, UploadIcon } from "./icons";
 import styles from "./AddMenu.module.css";
 
-export type AddTarget = "account" | "transaction" | "transfer" | "goal";
+export type AddTarget = "account" | "transaction" | "transfer" | "goal" | "import";
 
 interface Props {
   onSelect: (target: AddTarget) => void;
@@ -14,6 +14,7 @@ const items: { target: AddTarget; icon: React.ReactNode; label: string }[] = [
   { target: "transaction", icon: <ListIcon />, label: "Transaction" },
   { target: "transfer", icon: <TransferIcon />, label: "Transfer" },
   { target: "goal", icon: <FlagIcon />, label: "Goal" },
+  { target: "import", icon: <UploadIcon />, label: "Import CSV" },
 ];
 
 export default function AddMenu({ onSelect, onClose }: Props) {
