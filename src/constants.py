@@ -63,6 +63,11 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "ye
 # Override via env, slowapi-style string ("N/period").
 LOGIN_RATE_LIMIT = os.environ.get("PILEDGER_LOGIN_RATE_LIMIT", "5/minute")
 
+# Structured logging. LOG_FORMAT="text" is friendlier for local `./start.sh`
+# dev; "json" (the default) is what production log shippers expect.
+LOG_LEVEL = os.environ.get("PILEDGER_LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.environ.get("PILEDGER_LOG_FORMAT", "json").lower()
+
 
 # ─── Formats / patterns ───────────────────────────────────────────────────────
 
