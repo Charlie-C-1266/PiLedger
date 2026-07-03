@@ -44,8 +44,13 @@ export default function AccountTile({
       </svg>
       <div className={styles.top}>
         <span className={styles.institution}>{account.type.toUpperCase()}</span>
-        {badge && !account.counts_to_net_worth && (
-          <span className={styles.badge}>Set aside</span>
+        {account.closed ? (
+          <span className={styles.badge}>Closed</span>
+        ) : (
+          badge &&
+          !account.counts_to_net_worth && (
+            <span className={styles.badge}>Set aside</span>
+          )
         )}
       </div>
       {!compact && (

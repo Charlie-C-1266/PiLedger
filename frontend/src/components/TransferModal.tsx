@@ -21,7 +21,11 @@ export default function TransferModal({ onClose }: Props) {
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");
 
-  const accountList = useMemo(() => accounts ?? [], [accounts]);
+  // Closed accounts don't accept new transfers on either leg.
+  const accountList = useMemo(
+    () => (accounts ?? []).filter((a) => !a.closed),
+    [accounts]
+  );
   const fromAccount = accountList.find((a) => a.id === fromId);
 
   // Transfers are restricted to accounts sharing a currency (v1), so the

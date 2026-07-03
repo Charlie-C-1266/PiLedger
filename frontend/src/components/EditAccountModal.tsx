@@ -21,6 +21,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
   const [countsToNetWorth, setCountsToNetWorth] = useState(
     account.counts_to_net_worth
   );
+  const [closed, setClosed] = useState(account.closed);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const inv = useInvalidate();
 
@@ -46,17 +47,24 @@ export default function EditAccountModal({ account, onClose }: Props) {
       updateAccount(account.id, { counts_to_net_worth: counts }),
   });
 
+  const closedMutation = useMutation({
+    mutationFn: (nextClosed: boolean) =>
+      updateAccount(account.id, { closed: nextClosed }),
+  });
+
   const handleSave = async () => {
     const colorChanged = color !== (account.color || "#6366f1");
     const flagChanged = countsToNetWorth !== account.counts_to_net_worth;
+    const closedChanged = closed !== account.closed;
     const balanceParsed = parseFloat(balance);
     const hasBalance = !isNaN(balanceParsed);
 
-    if (!hasBalance && !colorChanged && !flagChanged) return;
+    if (!hasBalance && !colorChanged && !flagChanged && !closedChanged) return;
 
     if (hasBalance) await balanceMutation.mutateAsync(balanceParsed);
     if (colorChanged) await colorMutation.mutateAsync(color);
     if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
+    if (closedChanged) await closedMutation.mutateAsync(closed);
 
     inv.accountChanged();
     onClose();
@@ -66,6 +74,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
     balanceMutation.isPending ||
     colorMutation.isPending ||
     flagMutation.isPending ||
+    closedMutation.isPending ||
     deleteMutation.isPending;
 
   return (
@@ -94,6 +103,13 @@ export default function EditAccountModal({ account, onClose }: Props) {
           hint="Off keeps this account out of your Overview headline and trend."
           checked={countsToNetWorth}
           onChange={setCountsToNetWorth}
+        />
+
+        <ToggleSwitch
+          label="Closed"
+          hint="Kept for history, but won't accept new transactions, transfers, or imports."
+          checked={closed}
+          onChange={setClosed}
         />
 
         {confirmingDelete ? (

@@ -129,6 +129,7 @@ class AccountIn(_In):
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
     counts_to_net_worth: bool = True
+    closed: bool = False
 
     @model_validator(mode="after")
     def _subtype_matches_type(self) -> "AccountIn":
@@ -150,6 +151,7 @@ class AccountPatch(_In):
     )
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     counts_to_net_worth: Optional[bool] = None
+    closed: Optional[bool] = None
 
 
 class BalanceIn(_In):
@@ -399,6 +401,7 @@ class AccountOut(BaseModel):
     interest_rate: float
     color: str
     counts_to_net_worth: bool = True
+    closed: bool = False
     created_at: str
     current_balance: Optional[float] = None
     last_updated: Optional[str] = None

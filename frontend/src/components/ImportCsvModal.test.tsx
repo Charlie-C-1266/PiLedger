@@ -6,7 +6,8 @@ import type { ReactNode } from "react";
 
 vi.mock("../api/client", () => ({
   getAccounts: vi.fn().mockResolvedValue([
-    { id: 1, name: "Current", currency: "GBP" },
+    { id: 1, name: "Current", currency: "GBP", closed: false },
+    { id: 2, name: "Old Barclays", currency: "GBP", closed: true },
   ]),
   previewImport: vi.fn(),
   commitImport: vi.fn(),
@@ -53,6 +54,16 @@ describe("ImportCsvModal", () => {
     await waitFor(() =>
       expect(screen.getByRole("option", { name: "Current" })).toBeInTheDocument()
     );
+  });
+
+  it("excludes closed accounts from the import target select", async () => {
+    render(<ImportCsvModal onClose={() => {}} />, { wrapper });
+    await waitFor(() =>
+      expect(screen.getByRole("option", { name: "Current" })).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole("option", { name: "Old Barclays" })
+    ).not.toBeInTheDocument();
   });
 
   it("parses the uploaded file and advances to the mapping step", async () => {

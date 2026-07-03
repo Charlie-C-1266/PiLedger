@@ -168,6 +168,47 @@ def test_update_requires_auth(client, alice):
     )
 
 
+# ── Closed accounts (#171) ──────────────────────────────────────────────────────
+
+
+def test_create_account_open_by_default(alice):
+    body = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"}).json()
+    assert body["closed"] is False
+
+
+def test_create_account_can_be_closed(alice):
+    body = alice.post(
+        "/api/accounts",
+        json={"name": "Old Barclays", "type": "current", "closed": True},
+    ).json()
+    assert body["closed"] is True
+    # And it round-trips through the list endpoint, not just the create response.
+    listed = next(a for a in alice.get("/api/accounts").json() if a["id"] == body["id"])
+    assert listed["closed"] is True
+
+
+def test_update_closed_toggles_off_and_on(alice):
+    aid = alice.post(
+        "/api/accounts", json={"name": "Barclays", "type": "current"}
+    ).json()["id"]
+    closed = alice.put(f"/api/accounts/{aid}", json={"closed": True})
+    assert closed.status_code == 200
+    assert closed.json()["closed"] is True
+    reopened = alice.put(f"/api/accounts/{aid}", json={"closed": False})
+    assert reopened.json()["closed"] is False
+
+
+def test_partial_update_leaves_closed_unchanged(alice):
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Keep", "type": "current", "closed": True},
+    ).json()["id"]
+    # A patch that omits the flag must not reopen the account.
+    alice.put(f"/api/accounts/{aid}", json={"color": "#aabbcc"})
+    body = next(a for a in alice.get("/api/accounts").json() if a["id"] == aid)
+    assert body["closed"] is True
+
+
 # ── Deletion ───────────────────────────────────────────────────────────────────
 
 

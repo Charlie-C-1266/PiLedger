@@ -41,6 +41,7 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         interest_rate=row["interest_rate"],
         color=row["color"],
         counts_to_net_worth=bool(row["counts_to_net_worth"]),
+        closed=bool(row["closed"]),
         created_at=row["created_at"],
         current_balance=from_cents(row["current_balance_cents"])
         if "current_balance_cents" in row.keys()
@@ -75,8 +76,8 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
     returned ``current_balance``/``last_updated`` are None until one is recorded."""
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color, counts_to_net_worth)"
-            " VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color, counts_to_net_worth, closed)"
+            " VALUES(?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 data.name,
@@ -86,26 +87,14 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
                 data.interest_rate,
                 data.color,
                 int(data.counts_to_net_worth),
+                int(data.closed),
             ),
         )
         conn.commit()
         row = conn.execute(
             "SELECT * FROM accounts WHERE id=?", (cur.lastrowid,)
         ).fetchone()
-    return AccountOut(
-        id=row["id"],
-        user_id=row["user_id"],
-        name=row["name"],
-        type=row["type"],
-        subtype=row["subtype"] or "general",
-        currency=row["currency"] or "GBP",
-        interest_rate=row["interest_rate"],
-        color=row["color"],
-        counts_to_net_worth=bool(row["counts_to_net_worth"]),
-        created_at=row["created_at"],
-        current_balance=None,
-        last_updated=None,
-    )
+    return _account_row_to_out(row)
 
 
 @router.put("/api/accounts/{aid}", response_model=AccountOut)
@@ -146,18 +135,7 @@ def update_account(
             )
             conn.commit()
         row = conn.execute("SELECT * FROM accounts WHERE id=?", (aid,)).fetchone()
-    return AccountOut(
-        id=row["id"],
-        user_id=row["user_id"],
-        name=row["name"],
-        type=row["type"],
-        subtype=row["subtype"] or "general",
-        currency=row["currency"] or "GBP",
-        interest_rate=row["interest_rate"],
-        color=row["color"],
-        counts_to_net_worth=bool(row["counts_to_net_worth"]),
-        created_at=row["created_at"],
-    )
+    return _account_row_to_out(row)
 
 
 @router.delete("/api/accounts/{aid}", response_model=OkOut)

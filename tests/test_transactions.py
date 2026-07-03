@@ -327,6 +327,61 @@ def test_update_nonexistent_returns_404(alice):
     )
 
 
+# ── Closed accounts (#171) ──────────────────────────────────────────────────
+
+
+def test_create_transaction_rejected_on_closed_account(alice):
+    aid = _acct(alice, closed=True)
+    r = alice.post(
+        "/api/transactions",
+        json={"account_id": aid, "amount": -10, "merchant": "X"},
+    )
+    assert r.status_code == 400
+
+
+def test_create_transaction_allowed_after_reopening_account(alice):
+    aid = _acct(alice, closed=True)
+    alice.put(f"/api/accounts/{aid}", json={"closed": False})
+    r = alice.post(
+        "/api/transactions",
+        json={"account_id": aid, "amount": -10, "merchant": "X"},
+    )
+    assert r.status_code == 201
+
+
+def test_patch_account_id_rejected_onto_closed_account(alice):
+    open_acct = _acct(alice)
+    closed_acct = _acct(alice, closed=True)
+    txn = _txn(alice, open_acct)
+    r = alice.put(f"/api/transactions/{txn['id']}", json={"account_id": closed_acct})
+    assert r.status_code == 400
+
+
+def test_patch_existing_transaction_on_closed_account_still_allowed(alice):
+    """Closing an account blocks *new* activity but existing transactions on
+    it remain editable (e.g. fixing a typo in the merchant name)."""
+    aid = _acct(alice)
+    txn = _txn(alice, aid)
+    alice.put(f"/api/accounts/{aid}", json={"closed": True})
+    r = alice.put(f"/api/transactions/{txn['id']}", json={"merchant": "Fixed"})
+    assert r.status_code == 200
+    assert r.json()["merchant"] == "Fixed"
+
+
+def test_patch_resending_same_closed_account_id_still_allowed(alice):
+    """The edit form always resends account_id alongside other fields; that
+    must not be mistaken for a move onto a closed account."""
+    aid = _acct(alice)
+    txn = _txn(alice, aid)
+    alice.put(f"/api/accounts/{aid}", json={"closed": True})
+    r = alice.put(
+        f"/api/transactions/{txn['id']}",
+        json={"account_id": aid, "merchant": "Fixed"},
+    )
+    assert r.status_code == 200
+    assert r.json()["merchant"] == "Fixed"
+
+
 # ── Delete ───────────────────────────────────────────────────────────────────
 
 

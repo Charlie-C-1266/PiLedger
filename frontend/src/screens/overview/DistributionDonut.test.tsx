@@ -21,6 +21,7 @@ function makeAccount(over: Partial<Account>): Account {
     interest_rate: 0,
     color: "#abcabc",
     counts_to_net_worth: true,
+    closed: false,
     created_at: "2024-01-01T00:00:00Z",
     current_balance: 100,
     last_updated: null,

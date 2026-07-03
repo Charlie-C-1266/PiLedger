@@ -60,7 +60,7 @@ export default function RecentActivity() {
         {showTxnModal && (
           <AddModal
             key="txn"
-            accountId={accounts?.[0]?.id ?? null}
+            accountId={accounts?.find((a) => !a.closed)?.id ?? null}
             onClose={() => setShowTxnModal(false)}
           />
         )}

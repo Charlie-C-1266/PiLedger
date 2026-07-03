@@ -26,6 +26,8 @@ const DATE_FORMATS: { key: ImportDateFormat; label: string }[] = [
 
 export default function ImportCsvModal({ onClose }: Props) {
   const { data: accounts } = useAccounts();
+  // Closed accounts don't accept new imports.
+  const openAccounts = (accounts ?? []).filter((a) => !a.closed);
   const inv = useInvalidate();
 
   const [step, setStep] = useState<Step>("upload");
@@ -35,12 +37,12 @@ export default function ImportCsvModal({ onClose }: Props) {
 
   // `accounts` resolves asynchronously, so a useState initializer would miss
   // it if this modal opens before the query settles — default to the first
-  // account once it's available, but only if the user hasn't picked one yet.
+  // open account once it's available, but only if the user hasn't picked one yet.
   useEffect(() => {
-    if (accountId === "" && accounts && accounts.length > 0) {
-      setAccountId(accounts[0].id);
+    if (accountId === "" && openAccounts.length > 0) {
+      setAccountId(openAccounts[0].id);
     }
-  }, [accounts, accountId]);
+  }, [openAccounts, accountId]);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [amountMode, setAmountMode] = useState<AmountMode>("single");
   const [mapping, setMapping] = useState<Record<string, string>>({});
@@ -143,7 +145,7 @@ export default function ImportCsvModal({ onClose }: Props) {
             onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : "")}
           >
             <option value="">Select account</option>
-            {(accounts ?? []).map((a) => (
+            {openAccounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>

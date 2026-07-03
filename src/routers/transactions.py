@@ -21,7 +21,7 @@ from schemas import (
     TransactionPatch,
     TransferIn,
 )
-from services.accounts import adjust_account_balance
+from services.accounts import adjust_account_balance, require_open_account
 
 router = APIRouter(tags=["transactions"])
 
@@ -106,13 +106,11 @@ def create_transaction(
     data: TransactionIn,
     uid: int = Depends(require_auth),
 ) -> TransactionOut:
-    """Create a transaction on one of the user's accounts (404 if not theirs)
-    and adjust that account's running balance by the signed amount."""
+    """Create a transaction on one of the user's accounts (404 if not theirs,
+    400 if closed) and adjust that account's running balance by the signed
+    amount."""
     with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (data.account_id, uid)
-        ).fetchone():
-            raise HTTPException(404, "Account not found")
+        require_open_account(conn, data.account_id, uid)
         ts = data.occurred_at or utcnow_iso()
         amount_cents = to_cents(data.amount)
         cur = conn.execute(
@@ -149,15 +147,17 @@ def create_transfer(
         raise HTTPException(400, "Cannot transfer to the same account")
     with db() as conn:
         src = conn.execute(
-            "SELECT id, name, currency FROM accounts WHERE id=? AND user_id=?",
+            "SELECT id, name, currency, closed FROM accounts WHERE id=? AND user_id=?",
             (data.from_account_id, uid),
         ).fetchone()
         dst = conn.execute(
-            "SELECT id, name, currency FROM accounts WHERE id=? AND user_id=?",
+            "SELECT id, name, currency, closed FROM accounts WHERE id=? AND user_id=?",
             (data.to_account_id, uid),
         ).fetchone()
         if not src or not dst:
             raise HTTPException(404, "Account not found")
+        if src["closed"] or dst["closed"]:
+            raise HTTPException(400, "Account is closed")
         if (src["currency"] or "GBP") != (dst["currency"] or "GBP"):
             raise HTTPException(
                 400,
@@ -208,7 +208,11 @@ def update_transaction(
 
     When the amount or account changes, the old amount is reversed off the
     original account and the new amount applied to the (possibly new) account so
-    balances stay consistent.
+    balances stay consistent. A patch that names the transaction's *current*
+    account (even a closed one — the frontend always resends it) is not
+    treated as a move, so editing an existing transaction stays possible after
+    its account is closed; only actually moving it onto a closed account is
+    rejected.
     """
     with db() as conn:
         old = conn.execute(
@@ -222,12 +226,8 @@ def update_transaction(
                 "A transfer can't be edited — delete it and create a new one",
             )
         patch = data.model_dump(exclude_none=True)
-        if "account_id" in patch:
-            if not conn.execute(
-                "SELECT 1 FROM accounts WHERE id=? AND user_id=?",
-                (patch["account_id"], uid),
-            ).fetchone():
-                raise HTTPException(404, "Account not found")
+        if "account_id" in patch and patch["account_id"] != old["account_id"]:
+            require_open_account(conn, patch["account_id"], uid)
         if "amount" in patch:
             patch["amount_cents"] = to_cents(patch.pop("amount"))
         if patch:
