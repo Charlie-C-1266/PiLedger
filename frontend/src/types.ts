@@ -12,6 +12,7 @@ export interface Account {
   interest_rate: number;
   color: string;
   counts_to_net_worth: boolean;
+  closed: boolean;
   created_at: string;
   current_balance: number | null;
   last_updated: string | null;

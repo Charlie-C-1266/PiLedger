@@ -251,3 +251,20 @@ def test_commit_respects_date_format_parameter(alice):
     assert body == {"imported": 1, "skipped_duplicates": 0, "errors": []}
     txn = alice.get("/api/transactions").json()[0]
     assert txn["occurred_at"].startswith("2026-01-31")
+
+
+# ── Closed accounts (#171) ──────────────────────────────────────────────────
+
+
+def test_commit_rejects_closed_account(alice):
+    account_id = _make_account(alice)
+    alice.put(f"/api/accounts/{account_id}", json={"closed": True})
+    r = alice.post(
+        "/api/transactions/import/commit",
+        json={
+            "csv_text": _BASIC_CSV,
+            "account_id": account_id,
+            "mapping": {"date": "Date", "amount": "Amount", "merchant": "Description"},
+        },
+    )
+    assert r.status_code == 400

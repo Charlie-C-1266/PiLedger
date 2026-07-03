@@ -77,7 +77,7 @@ export default function Transactions() {
   );
   const net = inflow - outflow;
 
-  const defaultAccountId = accounts?.[0]?.id ?? null;
+  const defaultAccountId = accounts?.find((a) => !a.closed)?.id ?? null;
 
   // Count of active non-default filters, shown as a badge on the mobile
   // filter button (account ≠ All, category ≠ All, sort ≠ Newest).

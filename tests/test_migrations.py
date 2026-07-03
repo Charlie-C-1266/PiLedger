@@ -310,6 +310,23 @@ def test_existing_accounts_default_to_counting(migrated_db):
     assert all(r[0] == 1 for r in rows)
 
 
+def test_adds_accounts_closed(migrated_db):
+    """A pre-stamp (legacy) DB whose accounts table predates the closed flag
+    (#171) must gain the column via _run_legacy_migrations."""
+    assert "closed" in _table_columns(migrated_db, "accounts")
+
+
+def test_existing_accounts_default_to_open(migrated_db):
+    """Every account already in a legacy DB stays open on rollout (no silent
+    lock-out of existing accounts)."""
+    conn = sqlite3.connect(str(migrated_db))
+    try:
+        rows = conn.execute("SELECT closed FROM accounts ORDER BY id").fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] == 0 for r in rows)
+
+
 def test_adds_users_base_currency(migrated_db):
     assert "base_currency" in _table_columns(migrated_db, "users")
 
@@ -427,6 +444,7 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
         "interest_rate",
         "color",
         "counts_to_net_worth",
+        "closed",
         "created_at",
     }
     assert _table_columns(db_path, "balance_history") >= {
@@ -867,6 +885,18 @@ def test_gated_path_adds_counts_to_net_worth(stamped_v1_db):
     finally:
         conn.close()
     assert all(r[0] == 1 for r in rows)
+
+
+def test_gated_path_adds_closed(stamped_v1_db):
+    """_migrate_to_12 adds the closed flag (#171) on the version-gated ladder,
+    defaulting every pre-existing account to open."""
+    assert "closed" in _table_columns(stamped_v1_db, "accounts")
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        rows = conn.execute("SELECT closed FROM accounts").fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] == 0 for r in rows)
 
 
 def test_gated_path_drops_theme_and_dark_mode(stamped_v1_db):

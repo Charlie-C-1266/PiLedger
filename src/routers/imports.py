@@ -33,7 +33,7 @@ from schemas import (
     ImportRowError,
     TransactionIn,
 )
-from services.accounts import adjust_account_balance, require_account
+from services.accounts import adjust_account_balance, require_open_account
 from services.csv_import import (
     import_row_hash,
     parse_amount,
@@ -144,7 +144,7 @@ def commit_import(
     imported = 0
     skipped = 0
     with db() as conn:
-        require_account(conn, data.account_id, uid)
+        require_open_account(conn, data.account_id, uid)
         for (
             amount_cents,
             occurred_at,

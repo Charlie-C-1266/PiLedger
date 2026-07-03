@@ -28,6 +28,11 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   const { data: accounts } = useAccounts();
   const currency =
     accounts?.find((a) => a.id === transaction?.account_id)?.currency ?? "GBP";
+  // Closed accounts don't take new transactions, but editing a transaction
+  // that's already on one must still show it selected in the dropdown.
+  const selectableAccounts = (accounts ?? []).filter(
+    (a) => !a.closed || a.id === transaction?.account_id
+  );
   const { data: categoriesData } = useCategories();
   const allCategories = [
     ...(categoriesData?.defaults ?? []),
@@ -118,9 +123,10 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
               }
             >
               <option value="">Select account</option>
-              {(accounts ?? []).map((a) => (
+              {selectableAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
+                  {a.closed ? " (closed)" : ""}
                 </option>
               ))}
             </select>

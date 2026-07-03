@@ -39,7 +39,7 @@ export default function Shell() {
   }, []);
 
   const mobile = layout === "mobile";
-  const defaultAccountId = accounts?.[0]?.id ?? null;
+  const defaultAccountId = accounts?.find((a) => !a.closed)?.id ?? null;
 
   return (
     <div className={`${styles.shell} ${mobile ? styles.mobileShell : ""}`}>

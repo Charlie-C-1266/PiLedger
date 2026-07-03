@@ -172,3 +172,28 @@ def test_transfer_leg_cannot_be_edited(alice):
     ).json()
     r = alice.put(f"/api/transactions/{created[0]['id']}", json={"amount": 999.0})
     assert r.status_code == 400
+
+
+# ── Closed accounts (#171) ──────────────────────────────────────────────────
+
+
+def test_transfer_from_closed_account_rejected(alice):
+    a = _make_account(alice, "Current")
+    b = _make_account(alice, "Savings", "savings")
+    alice.put(f"/api/accounts/{a}", json={"closed": True})
+    r = alice.post(
+        "/api/transfers",
+        json={"from_account_id": a, "to_account_id": b, "amount": 50.0},
+    )
+    assert r.status_code == 400
+
+
+def test_transfer_to_closed_account_rejected(alice):
+    a = _make_account(alice, "Current")
+    b = _make_account(alice, "Savings", "savings")
+    alice.put(f"/api/accounts/{b}", json={"closed": True})
+    r = alice.post(
+        "/api/transfers",
+        json={"from_account_id": a, "to_account_id": b, "amount": 50.0},
+    )
+    assert r.status_code == 400

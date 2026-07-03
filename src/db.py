@@ -121,7 +121,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 11
+SCHEMA_VERSION: int = 12
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -246,6 +246,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 12. Add transactions.import_hash + its unique-if-not-null index (CSV import dedup).
     _ensure_import_hash_column(conn)
 
+    # 13. Add accounts.closed (marks an account closed: read-only history, no new activity).
+    _ensure_closed_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -297,6 +300,18 @@ def _ensure_import_hash_column(conn: sqlite3.Connection) -> None:
         " ON transactions(import_hash) WHERE import_hash IS NOT NULL"
     )
     conn.commit()
+
+
+def _ensure_closed_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add accounts.closed — marks an account closed (kept for
+    history, no new transactions/transfers/imports/subscriptions against it).
+    Defaults to 0 so every existing account stays open."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    if "closed" not in cols:
+        conn.execute(
+            "ALTER TABLE accounts ADD COLUMN closed INTEGER NOT NULL DEFAULT 0"
+        )
+        conn.commit()
 
 
 def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
@@ -509,6 +524,13 @@ def _migrate_to_11(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_12(conn: sqlite3.Connection) -> None:
+    """Add accounts.closed (marks an account closed: read-only history)."""
+    _ensure_closed_column(conn)
+    _set_schema_version(conn, 12)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -542,6 +564,7 @@ def init() -> None:
                 interest_rate REAL    DEFAULT 0,
                 color         TEXT    DEFAULT '#6366f1',
                 counts_to_net_worth INTEGER NOT NULL DEFAULT 1,
+                closed        INTEGER NOT NULL DEFAULT 0,
                 created_at    TEXT    DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS exchange_rates (
@@ -645,6 +668,10 @@ def init() -> None:
         if version < 11:
             _migrate_to_11(conn)
             version = 11
+
+        if version < 12:
+            _migrate_to_12(conn)
+            version = 12
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
