@@ -1,6 +1,6 @@
 # API Reference
 
-All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) require a valid session cookie. A missing or expired cookie returns `HTTP 401`.
+All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) require either a valid session cookie or an `Authorization: Bearer <token>` header (a personal access token minted via `POST /api/tokens` — see [authentication.md](authentication.md)). A missing or invalid credential returns `HTTP 401`. The token-management routes themselves (`/api/tokens*`) are the one exception: they accept the session cookie only, never a bearer token.
 
 ## Ops
 
@@ -23,6 +23,16 @@ All routes under `/api/` (except `/api/auth/register` and `/api/auth/login`) req
 | `GET` | `/api/auth/me` | — | `{id, username}` |
 | `PUT` | `/api/auth/password` | `{current_password, new_password}` | `{ok}` + rotates every session and sets a fresh cookie, or `400` (weak new password) / `401` (current wrong) |
 | `DELETE` | `/api/auth/me` | `{password}` | `{ok}` + cascades every row owned by the user across `accounts` / `balance_history` / `exchange_rates` / `transactions` / `goals`, kills all sessions, deletes the user row, and clears the session cookie. `401` if the password is wrong. |
+
+## API tokens
+
+Personal access tokens for headless clients (CLI, scheduled scripts, an MCP server). Session-cookie auth **only** — a bearer token cannot call these routes, so a leaked token can't mint, list, or revoke tokens. See [authentication.md](authentication.md) for the full model.
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `POST` | `/api/tokens` | `{name}` | `{id, name, created_at, last_used_at, token}` — `token` (the raw `pil_...` value) is returned **only** in this response |
+| `GET` | `/api/tokens` | — | Array of `{id, name, created_at, last_used_at}`, newest first — never the raw token |
+| `DELETE` | `/api/tokens/{id}` | — | `{ok}`. `404` if not owned |
 
 ## Accounts
 

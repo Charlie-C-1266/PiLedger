@@ -10,6 +10,7 @@ would silently break both the export and the `DELETE /api/auth/me` cascade.
 
 import json
 
+from constants import EXPORT_EXCLUDED_TABLES
 from db import USER_SCOPED_TABLES, db
 
 
@@ -31,6 +32,9 @@ def test_export_for_new_user_returns_empty_tables(alice):
     assert "exported_at" in body and body["exported_at"].endswith("Z")
     assert body["user"]["username"] == "alice"
     for table in USER_SCOPED_TABLES:
+        if table in EXPORT_EXCLUDED_TABLES:
+            assert table not in body, table
+            continue
         assert body[table] == [], table
 
 

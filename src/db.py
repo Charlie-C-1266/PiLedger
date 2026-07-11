@@ -34,6 +34,7 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "budget_group",
     "budget_envelope",
     "subscriptions",
+    "api_tokens",
 )
 
 
@@ -121,7 +122,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 12
+SCHEMA_VERSION: int = 13
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -300,6 +301,20 @@ def _ensure_import_hash_column(conn: sqlite3.Connection) -> None:
         " ON transactions(import_hash) WHERE import_hash IS NOT NULL"
     )
     conn.commit()
+
+
+_API_TOKENS_DDL = """
+    CREATE TABLE IF NOT EXISTS api_tokens (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name         TEXT    NOT NULL,
+        token_hash   TEXT    NOT NULL UNIQUE,
+        created_at   TEXT    NOT NULL,
+        last_used_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
+"""
 
 
 def _ensure_closed_column(conn: sqlite3.Connection) -> None:
@@ -531,6 +546,13 @@ def _migrate_to_12(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_13(conn: sqlite3.Connection) -> None:
+    """Add the api_tokens table (personal access tokens for headless clients)."""
+    conn.executescript(_API_TOKENS_DDL)
+    _set_schema_version(conn, 13)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -615,6 +637,7 @@ def init() -> None:
         """)
         conn.executescript(_BUDGET_TABLES_DDL)
         conn.executescript(_SUBSCRIPTIONS_DDL)
+        conn.executescript(_API_TOKENS_DDL)
         conn.commit()
 
         version = _get_schema_version(conn)
@@ -672,6 +695,10 @@ def init() -> None:
         if version < 12:
             _migrate_to_12(conn)
             version = 12
+
+        if version < 13:
+            _migrate_to_13(conn)
+            version = 13
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

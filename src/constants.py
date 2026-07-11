@@ -285,6 +285,14 @@ DEFAULT_CATEGORIES: list[str] = [
 # Maximum number of custom categories a single user may create.
 MAX_CUSTOM_CATEGORIES = 50
 
+# ─── API tokens ───────────────────────────────────────────────────────────────
+
+# api_tokens is user-scoped (carries user_id) so it lives in db.USER_SCOPED_TABLES
+# and gets swept by the DELETE /api/auth/me cascade — but it must NOT appear in
+# GET /api/export: USER_SCOPED_TABLES is also what that route iterates, and a
+# token's hash/name are credentials, not user data, and are useless on re-import.
+EXPORT_EXCLUDED_TABLES: frozenset[str] = frozenset({"api_tokens"})
+
 # ─── CSV transaction import ───────────────────────────────────────────────────
 
 # Generous enough for any real bank export, tight enough that an accidental

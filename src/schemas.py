@@ -612,3 +612,21 @@ class CategoriesOut(BaseModel):
 
 # Projection responses include keys like "1yr" / "2yr" / "5yr" that aren't valid
 # Python identifiers; FastAPI handles them fine via a plain dict return type.
+
+
+class TokenCreate(_In):
+    name: Annotated[str, Field(min_length=1, max_length=100)]
+
+
+class TokenOut(BaseModel):
+    id: int
+    name: str
+    created_at: str
+    last_used_at: Optional[str] = None
+
+
+class TokenCreatedOut(TokenOut):
+    """`TokenOut` plus the raw token value, returned once on creation only —
+    it is never recoverable afterwards since only its hash is stored."""
+
+    token: str
