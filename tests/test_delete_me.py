@@ -74,6 +74,7 @@ def _seed(client):
         },
     )
     client.post("/api/categories", json={"name": "Hobbies"})
+    client.post("/api/tokens", json={"name": "test-token"})
     # The envelope-budget tables have no CRUD API yet (Phases 4–5), so seed them
     # directly — this keeps every USER_SCOPED_TABLE populated so the cascade and
     # cross-user-isolation assertions actually exercise them.

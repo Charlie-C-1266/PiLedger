@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from constants import (
     COOKIE_SECURE,
+    EXPORT_EXCLUDED_TABLES,
     LOGIN_RATE_LIMIT,
     SESSION_COOKIE,
     SESSION_DAYS,
@@ -222,9 +223,10 @@ def export_data(uid: int = Depends(require_auth)) -> JSONResponse:
     """Return every row owned by the authenticated user as JSON.
 
     The shape is `{version, exported_at, user, <table>: [...rows], ...}` —
-    one key per table in `USER_SCOPED_TABLES` plus the user row itself
-    (without the password hash). The `Content-Disposition: attachment`
-    header makes browsers save the response rather than render it.
+    one key per table in `USER_SCOPED_TABLES` (minus `EXPORT_EXCLUDED_TABLES`)
+    plus the user row itself (without the password hash). The
+    `Content-Disposition: attachment` header makes browsers save the response
+    rather than render it.
     """
     now = utcnow_iso()
     with db() as conn:
@@ -240,6 +242,8 @@ def export_data(uid: int = Depends(require_auth)) -> JSONResponse:
             "user": dict(user_row),
         }
         for table in USER_SCOPED_TABLES:
+            if table in EXPORT_EXCLUDED_TABLES:
+                continue
             rows = conn.execute(user_scoped_select_sql(table), (uid,)).fetchall()
             payload[table] = [dict(r) for r in rows]
     filename = f"piledger-export-{user_row['username']}-{now[:10]}.json"

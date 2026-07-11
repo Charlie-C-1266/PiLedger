@@ -47,6 +47,7 @@ from routers import (
     prefs,
     rates,
     subscriptions,
+    tokens,
     transactions,
 )
 
@@ -111,6 +112,7 @@ app.include_router(subscriptions.router)
 app.include_router(prefs.router)
 app.include_router(rates.router)
 app.include_router(categories.router)
+app.include_router(tokens.router)
 app.include_router(ops.router)
 app.include_router(pages.router)
 

@@ -5,7 +5,7 @@ from typing import Optional
 import hashlib
 import secrets
 
-from fastapi import Cookie, HTTPException
+from fastapi import Cookie, Header, HTTPException
 
 from constants import ISO_FMT, SESSION_COOKIE, SESSION_DAYS
 from db import db, utcnow_iso
@@ -84,12 +84,65 @@ def session_uid(token: Optional[str]) -> Optional[int]:
     return row["user_id"] if row else None
 
 
-def require_auth(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)) -> int:
-    """FastAPI dependency resolving the session cookie to a user id.
+def token_uid(authorization: Optional[str]) -> Optional[int]:
+    """Return the user id for a live ``Authorization: Bearer <token>`` header,
+    or None if the header is missing, malformed, or the token is unknown.
+
+    On a hit, opportunistically bumps ``last_used_at`` — but only when it's
+    more than 60 seconds stale, so token auth doesn't cost a DB write on
+    every request.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    raw = authorization.removeprefix("Bearer ").strip()
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    with db() as conn:
+        row = conn.execute(
+            "SELECT id, user_id, last_used_at FROM api_tokens WHERE token_hash=?",
+            (token_hash,),
+        ).fetchone()
+        if not row:
+            return None
+        now = datetime.now(timezone.utc)
+        last = row["last_used_at"]
+        if last is None or now - datetime.strptime(last, ISO_FMT).replace(
+            tzinfo=timezone.utc
+        ) > timedelta(seconds=60):
+            conn.execute(
+                "UPDATE api_tokens SET last_used_at=? WHERE id=?",
+                (utcnow_iso(), row["id"]),
+            )
+            conn.commit()
+        return int(row["user_id"])
+
+
+def require_session_auth(
+    session: Optional[str] = Cookie(None, alias=SESSION_COOKIE),
+) -> int:
+    """FastAPI dependency resolving the session cookie only — never a bearer
+    token. Used to gate the token-management routes themselves, so a leaked
+    API token can never mint, list, or revoke tokens.
 
     Raises ``HTTPException(401)`` when there is no valid, unexpired session.
     """
     uid = session_uid(session)
+    if not uid:
+        raise HTTPException(401, "Not authenticated")
+    return uid
+
+
+def require_auth(
+    session: Optional[str] = Cookie(None, alias=SESSION_COOKIE),
+    authorization: Optional[str] = Header(None),
+) -> int:
+    """FastAPI dependency resolving either a bearer token or the session
+    cookie to a user id, trying the token first.
+
+    Raises ``HTTPException(401)`` when neither resolves to a live user.
+    """
+    uid = token_uid(authorization)
+    if uid is None:
+        uid = session_uid(session)
     if not uid:
         raise HTTPException(401, "Not authenticated")
     return uid
