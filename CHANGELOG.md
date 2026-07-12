@@ -16,6 +16,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Every response now carries an `X-Request-Id` header, and server logs are structured JSON by default (`PILEDGER_LOG_LEVEL` / `PILEDGER_LOG_FORMAT` env vars), making it possible to correlate a log line back to the request that produced it.
 - Accounts can now be marked closed: they're kept for balance/transaction history and shown with a "Closed" badge, but no longer accept new transactions, transfers, or CSV imports.
 - Personal access tokens: mint, list, and revoke long-lived `Authorization: Bearer` tokens (`/api/tokens`) for headless clients like scripts or an MCP server, without sharing your password or a browser session cookie.
+- Saving a transaction now shows a brief confirmation toast in the corner ("Transaction recorded!"), and a red toast surfaces the failure if a save, edit, or delete doesn't go through.
 
 ### Changed
 

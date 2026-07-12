@@ -33,6 +33,8 @@ def test_add_expense_defaults_to_negative_without_minus_sign(signed_in_page):
     page.get_by_placeholder("Amount (e.g. 42.50)").fill("42.50")
     page.get_by_role("button", name="Save transaction").click()
 
+    # Saving pops a confirmation toast in the corner as visual acknowledgement.
+    expect(page.get_by_role("status")).to_contain_text("Transaction recorded!")
     expect(page.get_by_text("Tesco")).to_be_visible()
     expect(page.get_by_text("−£42.50").first).to_be_visible()
 
