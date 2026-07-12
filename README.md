@@ -40,6 +40,12 @@ For local development with `uv` or `pip`, see the [Getting Started](docs/getting
 | Auth | PBKDF2-SHA256 passwords, 30-day HttpOnly session cookies |
 | CI | GitHub Actions — ruff, mypy, pytest, frontend (eslint + build + vitest), Playwright e2e, pip-audit, lockfile drift |
 
+## MCP Server
+
+An optional [Model Context Protocol](https://modelcontextprotocol.io) server — [**piledger-mcp**](https://github.com/Charlie-C-1266/piledger-mcp) — lets AI assistants and agents (such as Claude) work with your finances in natural language: list accounts, record transactions, and review budgets and goals.
+
+It connects to a running PiLedger instance with a **personal access token** instead of your password or a browser session — mint one through the `/api/tokens` API and the server sends it as an `Authorization: Bearer` header. See the [piledger-mcp](https://github.com/Charlie-C-1266/piledger-mcp) repository for setup, and the [Authentication guide](docs/authentication.md) for how tokens work.
+
 ## Documentation
 
 | Guide | Description |
