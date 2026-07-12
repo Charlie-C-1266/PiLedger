@@ -21,6 +21,8 @@ import type {
   Subscription,
   SubscriptionOccurrence,
   Summary,
+  Token,
+  TokenCreated,
   Transaction,
   TransactionFilters,
   User,
@@ -259,6 +261,16 @@ export const createCategory = (name: string) =>
 
 export const deleteCategory = (id: number) =>
   del<{ ok: boolean }>(`/api/categories/${id}`);
+
+// Personal access tokens
+
+export const getTokens = () => json<Token[]>("/api/tokens");
+
+export const createToken = (name: string) =>
+  post<TokenCreated>("/api/tokens", { name });
+
+export const deleteToken = (id: number) =>
+  del<{ ok: boolean }>(`/api/tokens/${id}`);
 
 // Budget (zero-based envelopes)
 

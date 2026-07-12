@@ -253,3 +253,16 @@ export interface Budget {
   base_currency: Currency;
   missing_rates: Currency[];
 }
+
+export interface Token {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+// Returned only when a token is minted — carries the raw `pil_...` value, which
+// is never recoverable afterwards (the server stores only its hash).
+export interface TokenCreated extends Token {
+  token: string;
+}
