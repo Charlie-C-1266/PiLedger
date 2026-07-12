@@ -37,6 +37,20 @@ def test_add_expense_defaults_to_negative_without_minus_sign(signed_in_page):
     expect(page.get_by_text("−£42.50").first).to_be_visible()
 
 
+def test_add_transaction_shows_confirmation_toast(signed_in_page):
+    page = signed_in_page
+    _make_account(page)
+    page.goto("/transactions")
+
+    page.get_by_role("button", name="+ Add").click()
+    page.get_by_placeholder("Tesco, Spotify…").fill("Tesco")
+    page.get_by_placeholder("Amount (e.g. 42.50)").fill("42.50")
+    page.get_by_role("button", name="Save transaction").click()
+
+    # A confirmation toast pops in the corner as visual acknowledgement.
+    expect(page.get_by_role("status")).to_contain_text("Transaction recorded!")
+
+
 def test_add_income_via_toggle(signed_in_page):
     page = signed_in_page
     _make_account(page)

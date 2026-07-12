@@ -8,6 +8,7 @@ import {
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
 import { useInvalidate } from "../hooks/useInvalidate";
+import { useToast } from "./toast/useToast";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
 import { fmt } from "../lib/currency";
@@ -52,6 +53,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   );
   const [category, setCategory] = useState(transaction?.category ?? "");
   const inv = useInvalidate();
+  const toast = useToast();
 
   const saveMutation = useMutation({
     mutationFn: editing
@@ -60,16 +62,26 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
       : createTransaction,
     onSuccess: () => {
       inv.transactionChanged();
+      toast.success(editing ? "Transaction updated" : "Transaction recorded!");
       onClose();
     },
+    onError: () =>
+      toast.error(
+        editing ? "Couldn't update transaction" : "Couldn't record transaction"
+      ),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteTransaction(transaction!.id),
     onSuccess: () => {
       inv.transactionChanged();
+      toast.success(isTransfer ? "Transfer deleted" : "Transaction deleted");
       onClose();
     },
+    onError: () =>
+      toast.error(
+        isTransfer ? "Couldn't delete transfer" : "Couldn't delete transaction"
+      ),
   });
 
   const handleSave = () => {

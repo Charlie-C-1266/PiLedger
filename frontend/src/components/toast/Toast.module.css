@@ -1,0 +1,84 @@
+.viewport {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1100; /* above the modal layer (1000) so it shows as a modal closes */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: none; /* clicks fall through the gaps; toasts re-enable below */
+  max-width: min(360px, calc(100vw - 40px));
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--pl-surface);
+  box-shadow: var(--pl-shadow-lg);
+  border-left: 3px solid var(--pl-rule);
+}
+
+.success {
+  border-left-color: var(--pl-up);
+}
+
+.error {
+  border-left-color: var(--pl-down);
+}
+
+.icon {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.success .icon {
+  color: var(--pl-up);
+}
+
+.error .icon {
+  color: var(--pl-down);
+}
+
+.message {
+  flex: 1;
+  color: var(--pl-text);
+  font: 600 14px/1.35 "Plus Jakarta Sans", sans-serif;
+}
+
+.close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pl-text-mute);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 140ms, color 140ms;
+}
+
+.close:hover {
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+}
+
+/* On phones, span the width and sit clear of the safe-area inset. */
+@media (max-width: 719px) {
+  .viewport {
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    max-width: none;
+    align-items: stretch;
+  }
+}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
@@ -15,11 +16,17 @@ vi.mock("../api/client", () => ({
 }));
 
 import AddModal from "./AddModal";
+import { ToastProvider } from "./toast/ToastProvider";
+import { createTransaction } from "../api/client";
 import type { Transaction } from "../types";
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient();
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={qc}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  );
 }
 
 beforeEach(() => {
@@ -59,5 +66,43 @@ describe("AddModal", () => {
         screen.getByRole("option", { name: /Old Barclays \(closed\)/ })
       ).toBeInTheDocument()
     );
+  });
+
+  it("shows a confirmation toast after a transaction is recorded", async () => {
+    vi.mocked(createTransaction).mockResolvedValue({} as Transaction);
+    const onClose = vi.fn();
+    render(<AddModal accountId={1} onClose={onClose} />, { wrapper });
+
+    await userEvent.type(screen.getByPlaceholderText("Tesco, Spotify…"), "Tesco");
+    await userEvent.type(
+      screen.getByPlaceholderText("Amount (e.g. 42.50)"),
+      "42.50"
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save transaction" })
+    );
+
+    expect(await screen.findByText("Transaction recorded!")).toBeInTheDocument();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces an error toast when recording fails, keeping the modal open", async () => {
+    vi.mocked(createTransaction).mockRejectedValue(new Error("500 boom"));
+    const onClose = vi.fn();
+    render(<AddModal accountId={1} onClose={onClose} />, { wrapper });
+
+    await userEvent.type(screen.getByPlaceholderText("Tesco, Spotify…"), "Tesco");
+    await userEvent.type(
+      screen.getByPlaceholderText("Amount (e.g. 42.50)"),
+      "42.50"
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save transaction" })
+    );
+
+    expect(
+      await screen.findByText("Couldn't record transaction")
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
