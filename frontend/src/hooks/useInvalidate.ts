@@ -55,6 +55,9 @@ export function useInvalidate() {
       /** A custom transaction category was added or removed. */
       categoryChanged: () => bust("categories"),
 
+      /** A personal access token was minted or revoked. */
+      tokenChanged: () => bust("tokens"),
+
       /** An FX rate changed: re-converts every foreign balance into the base
        *  currency, so summary, net-worth trend and (converted) budget spend move. */
       ratesChanged: () => bust("rates", "summary", "networth", "budget"),

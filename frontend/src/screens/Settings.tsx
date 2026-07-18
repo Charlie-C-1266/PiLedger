@@ -3,6 +3,7 @@ import CategoriesCard from "../components/settings/CategoriesCard";
 import ExchangeRatesCard from "../components/settings/ExchangeRatesCard";
 import ChangePasswordCard from "../components/settings/ChangePasswordCard";
 import HelpCard from "../components/settings/HelpCard";
+import ApiTokensCard from "../components/settings/ApiTokensCard";
 import SessionCard from "../components/settings/SessionCard";
 import ExportDataCard from "../components/settings/ExportDataCard";
 import DangerZoneCard from "../components/settings/DangerZoneCard";
@@ -17,6 +18,7 @@ export default function Settings() {
       <StaggerItem><CategoriesCard /></StaggerItem>
       <StaggerItem><ExchangeRatesCard /></StaggerItem>
       <StaggerItem><ChangePasswordCard /></StaggerItem>
+      <StaggerItem><ApiTokensCard /></StaggerItem>
       <StaggerItem><HelpCard /></StaggerItem>
       <StaggerItem><SessionCard /></StaggerItem>
       <StaggerItem><ExportDataCard /></StaggerItem>

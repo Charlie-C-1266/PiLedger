@@ -300,3 +300,38 @@
   font: 600 13px/1 "JetBrains Mono", monospace;
   color: var(--pl-text-mute);
 }
+
+.hint a {
+  color: var(--pl-accent);
+  text-decoration: none;
+}
+
+.hint a:hover {
+  text-decoration: underline;
+}
+
+/* One-time reveal box for a freshly minted personal access token. */
+.tokenReveal {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--pl-accent), transparent 60%);
+  background: color-mix(in oklab, var(--pl-accent), transparent 92%);
+}
+
+.tokenCode {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+  font: 500 13px/1.5 "JetBrains Mono", monospace;
+  word-break: break-all;
+  user-select: all;
+}
+
+.tokenRevealActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}

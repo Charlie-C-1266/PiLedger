@@ -18,6 +18,7 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 - **Multi-currency** — user-selected base currency with manual exchange rates; net-worth totals convert automatically
 - **Net-worth control** — accounts can be set aside from the net-worth headline (e.g. pension, investment) so the overview figure stays actionable
 - **Per-user isolation** — every query is scoped to the authenticated user; multi-tenant by default
+- **API access** — mint personal access tokens in Settings to drive PiLedger from scripts or the companion [MCP server](https://github.com/Charlie-C-1266/piledger-mcp), without sharing your password
 - **Self-contained** — SQLite database, no external services, runs fully offline once loaded
 - **Dark mode + five accent themes** — chosen in Settings and remembered in your browser
 
