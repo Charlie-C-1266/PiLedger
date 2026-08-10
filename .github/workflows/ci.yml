@@ -203,3 +203,67 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           format: table
+
+  dast:
+    name: DAST baseline (ZAP)
+    runs-on: ubuntu-latest
+    # Report-only for now: the scan is unauthenticated, so it only reaches the
+    # login page, static assets and /healthz. It's a passive smoke test that
+    # uploads a report artifact — it does not open issues or fail the build.
+    # Authenticated active scanning is a follow-up.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install Python dependencies
+        run: uv sync --frozen
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # ZAP crawls the real running app, which serves the SPA from
+      # src/static/dist — build it first so the target isn't a half-mounted app.
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      # Boot Uvicorn on the runner host and wait for /healthz before handing the
+      # URL to ZAP. The ZAP action runs its scanner container with
+      # --network=host, so 127.0.0.1:8080 inside it reaches this process.
+      - name: Start PiLedger
+        run: |
+          uv run uvicorn --app-dir src app:app --host 127.0.0.1 --port 8080 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
+              echo "PiLedger is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "PiLedger did not become healthy in time" >&2
+          exit 1
+        env:
+          PILEDGER_DB: /tmp/piledger-dast.db
+
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: http://127.0.0.1:8080
+          # Don't fail the build on passive-rule warnings, and don't auto-file a
+          # GitHub issue — the uploaded zap_scan report artifact is the output.
+          fail_action: false
+          allow_issue_writing: false
