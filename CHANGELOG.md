@@ -20,6 +20,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Changed
 
+- CI now builds the Docker runtime image and scans it with Trivy, failing the build on fixable HIGH/CRITICAL OS or dependency vulnerabilities.
 - Page transitions now slide each top-level card in from the right in sequence, replacing the fade-and-rise cascade.
 - Add/edit dialogs now appear with a centred fade-and-scale and fade back out on close, replacing the instant desktop pop-in and the mobile bottom sheet; the entrance collapses to a plain fade under `prefers-reduced-motion`, and every dialog now closes on Escape.
 
