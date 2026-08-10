@@ -244,9 +244,15 @@ jobs:
       # Boot Uvicorn on the runner host and wait for /healthz before handing the
       # URL to ZAP. The ZAP action runs its scanner container with
       # --network=host, so 127.0.0.1:8080 inside it reaches this process.
+      #
+      # Run the venv binary directly rather than `uv run`: the server stays
+      # alive in the background for the scan, and a lingering `uv run` process
+      # holds the uv cache lock, which makes setup-uv's post-job `uv cache
+      # prune` time out and fail the job. uvicorn itself never touches that lock.
       - name: Start PiLedger
         run: |
-          uv run uvicorn --app-dir src app:app --host 127.0.0.1 --port 8080 &
+          .venv/bin/uvicorn --app-dir src app:app --host 127.0.0.1 --port 8080 &
+          echo $! > "$RUNNER_TEMP/uvicorn.pid"
           for _ in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then
               echo "PiLedger is up"
@@ -267,3 +273,7 @@ jobs:
           # GitHub issue — the uploaded zap_scan report artifact is the output.
           fail_action: false
           allow_issue_writing: false
+
+      - name: Stop PiLedger
+        if: always()
+        run: kill "$(cat "$RUNNER_TEMP/uvicorn.pid")" 2>/dev/null || true
