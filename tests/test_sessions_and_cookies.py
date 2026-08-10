@@ -45,6 +45,15 @@ def _parse_set_cookie(raw: str) -> dict[str, str | bool]:
     return out
 
 
+def _session_set_cookie_attrs(resp) -> dict[str, str | bool]:
+    """Pull the single ``piledger_session`` Set-Cookie off a response and parse
+    it, asserting exactly one such cookie was issued."""
+    raws = resp.headers.get_list("set-cookie")
+    matching = [r for r in raws if r.split("=", 1)[0] == "piledger_session"]
+    assert len(matching) == 1, f"expected one piledger_session cookie, got {raws}"
+    return _parse_set_cookie(matching[0])
+
+
 def _login_and_get_set_cookie(client: TestClient) -> dict[str, str | bool]:
     client.post(
         "/api/auth/register", json={"username": "alice", "password": "password123"}
@@ -53,10 +62,7 @@ def _login_and_get_set_cookie(client: TestClient) -> dict[str, str | bool]:
         "/api/auth/login", json={"username": "alice", "password": "password123"}
     )
     assert resp.status_code == 200
-    raws = resp.headers.get_list("set-cookie")
-    matching = [r for r in raws if r.split("=", 1)[0] == "piledger_session"]
-    assert len(matching) == 1, f"expected one piledger_session cookie, got {raws}"
-    return _parse_set_cookie(matching[0])
+    return _session_set_cookie_attrs(resp)
 
 
 # ─── Cookie attributes ────────────────────────────────────────────────────────
@@ -106,6 +112,30 @@ def test_login_cookie_secure_on_when_cookie_secure_enabled(app, monkeypatch):
     with TestClient(app) as c:
         attrs = _login_and_get_set_cookie(c)
     assert attrs.get("secure") is True
+
+
+def test_password_change_cookie_carries_same_security_flags(client):
+    """PUT /api/auth/password rotates the session and re-issues the cookie via
+    its own set_cookie() call, independent of login's. Assert the rotated
+    cookie keeps the same defensive flags so that second code path can't
+    silently drop HttpOnly/SameSite/Path/Max-Age on its own — the login tests
+    above would never catch a regression there."""
+    client.post(
+        "/api/auth/register", json={"username": "alice", "password": "password123"}
+    )
+    client.post(
+        "/api/auth/login", json={"username": "alice", "password": "password123"}
+    )
+    resp = client.put(
+        "/api/auth/password",
+        json={"current_password": "password123", "new_password": "newpassword123"},
+    )
+    assert resp.status_code == 200
+    attrs = _session_set_cookie_attrs(resp)
+    assert attrs.get("httponly") is True
+    assert str(attrs.get("samesite", "")).lower() == "lax"
+    assert attrs.get("path") == "/"
+    assert attrs.get("max-age") == str(SESSION_DAYS * 86400)
 
 
 # ─── Session expiry ───────────────────────────────────────────────────────────
