@@ -177,3 +177,29 @@ jobs:
 
       - name: Run pip-audit
         run: uv run pip-audit --strict
+
+  image-scan:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build the same multi-stage runtime image that docker-compose ships, so
+      # the scan covers exactly what gets deployed (OS packages + installed
+      # Python wheels), not just the source tree.
+      - name: Build the runtime image
+        run: docker build -t piledger:${{ github.sha }} .
+
+      # Fail the build on HIGH/CRITICAL vulnerabilities that have a fix
+      # available. ignore-unfixed keeps the gate actionable — an unpatched
+      # upstream CVE with no fix yet can't be resolved by us, so it shouldn't
+      # block every PR until a patched version exists.
+      - name: Scan image for HIGH/CRITICAL vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: piledger:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
