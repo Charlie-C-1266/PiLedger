@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutationState } from "@tanstack/react-query";
 import { useRates, useUpdateRates } from "../../hooks/useRates";
+import { useUpdateBaseCurrency } from "../../hooks/usePrefs";
 import { useSummary } from "../../hooks/useSummary";
+import { ApiError } from "../../api/client";
 import { CURRENCIES } from "../../lib/currency";
 import SettingsCard from "./SettingsCard";
 import styles from "./Settings.module.css";
@@ -21,7 +23,9 @@ export default function ExchangeRatesCard() {
   const { data: ratesData } = useRates();
   const { data: summary } = useSummary();
   const updateRatesMutation = useUpdateRates();
+  const baseMutation = useUpdateBaseCurrency();
   const base = ratesData?.base_currency ?? "GBP";
+  const [baseMsg, setBaseMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [rateRows, setRateRows] = useState<RateRow[]>(rateRowsDraft);
   const [addCurrency, setAddCurrency] = useState("");
   const [rateMsg, setRateMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -90,6 +94,25 @@ export default function ExchangeRatesCard() {
     setAddCurrency("");
   };
 
+  // The server rejects a switch it can't rescale the rates for, and its 400
+  // says exactly which rate to add first — show that wording rather than a
+  // generic failure, since it's the only thing that tells the user what to do.
+  const handleBaseChange = (next: string) => {
+    if (!next || next === base) return;
+    setBaseMsg(null);
+    baseMutation.mutate(next, {
+      onSuccess: () => setBaseMsg({ ok: true, text: `Base currency is now ${next}` }),
+      onError: (err) =>
+        setBaseMsg({
+          ok: false,
+          text:
+            err instanceof ApiError && err.detail
+              ? err.detail
+              : "Couldn't change the base currency — please try again.",
+        }),
+    });
+  };
+
   const handleSaveRates = () => {
     const parsed: { currency: string; rate: number }[] = [];
     for (const r of rateRows) {
@@ -108,6 +131,38 @@ export default function ExchangeRatesCard() {
 
   return (
     <SettingsCard title="Exchange rates">
+      <div className={styles.row}>
+        <div>
+          <div className={styles.label}>Base currency</div>
+          <div className={styles.hint}>
+            Every total is reported in this currency
+          </div>
+        </div>
+        <select
+          className={styles.input}
+          value={base}
+          onChange={(e) => handleBaseChange(e.target.value)}
+          disabled={baseMutation.isPending}
+          aria-label="Base currency"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {baseMsg && (
+        <div
+          className={baseMsg.ok ? styles.hint : styles.warnBanner}
+          role="status"
+          style={{ marginBottom: 16 }}
+        >
+          {baseMsg.text}
+        </div>
+      )}
+
       <div className={styles.hint} style={{ marginBottom: 16 }}>
         Balances held in other currencies are converted into your base currency
         ({base}) using these manual rates. Enter what one unit of each currency is

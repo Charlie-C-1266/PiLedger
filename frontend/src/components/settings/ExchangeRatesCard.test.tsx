@@ -2,14 +2,21 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ExchangeRatesCard from "./ExchangeRatesCard";
-import { getRates, updateRates, getSummary } from "../../api/client";
+import { ApiError, getRates, updateRates, getSummary, updatePrefs } from "../../api/client";
 import type { Rates, Summary } from "../../types";
 
-vi.mock("../../api/client", () => ({
-  getRates: vi.fn(),
-  updateRates: vi.fn(),
-  getSummary: vi.fn(),
-}));
+vi.mock("../../api/client", async (importOriginal) => {
+  // ApiError is a real class the card branches on, so keep the original.
+  const actual = await importOriginal<typeof import("../../api/client")>();
+  return {
+    ApiError: actual.ApiError,
+    getRates: vi.fn(),
+    updateRates: vi.fn(),
+    getSummary: vi.fn(),
+    getPrefs: vi.fn(),
+    updatePrefs: vi.fn(),
+  };
+});
 
 const summaryWithMissingUsd: Summary = {
   total: 0,
@@ -76,5 +83,58 @@ describe("ExchangeRatesCard", () => {
     });
     const newInput = await screen.findByLabelText("Value of 1 USD in GBP");
     expect(newInput).toHaveValue("0.79");
+  });
+
+  it("offers the base currency as a select seeded from the saved rates", async () => {
+    vi.mocked(getRates).mockResolvedValue({ base_currency: "USD", rates: [] });
+    vi.mocked(getSummary).mockResolvedValue(summaryWithMissingUsd);
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderCard(client);
+
+    // The select renders immediately with the "GBP" fallback and only picks up
+    // the saved base once the rates query settles, so wait for the value.
+    const select = await screen.findByLabelText<HTMLSelectElement>("Base currency");
+    await waitFor(() => expect(select.value).toBe("USD"));
+  });
+
+  it("switches the base currency and confirms it", async () => {
+    vi.mocked(getRates).mockResolvedValue({ base_currency: "GBP", rates: [] });
+    vi.mocked(getSummary).mockResolvedValue(summaryWithMissingUsd);
+    vi.mocked(updatePrefs).mockResolvedValue({ base_currency: "EUR" });
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderCard(client);
+
+    const select = await screen.findByLabelText("Base currency");
+    fireEvent.change(select, { target: { value: "EUR" } });
+
+    await waitFor(() =>
+      expect(updatePrefs).toHaveBeenCalledWith({ base_currency: "EUR" }),
+    );
+    expect(await screen.findByText("Base currency is now EUR")).toBeInTheDocument();
+  });
+
+  it("shows the server's reason verbatim when the switch is rejected", async () => {
+    // The 400 names the rate to add first — a generic "failed" message would
+    // leave the user with no way to work out what to do.
+    vi.mocked(getRates).mockResolvedValue({ base_currency: "GBP", rates: [] });
+    vi.mocked(getSummary).mockResolvedValue(summaryWithMissingUsd);
+    vi.mocked(updatePrefs).mockRejectedValue(
+      new ApiError(400, "Add an exchange rate for EUR before making it your base currency", "400"),
+    );
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderCard(client);
+
+    fireEvent.change(await screen.findByLabelText("Base currency"), {
+      target: { value: "EUR" },
+    });
+
+    expect(
+      await screen.findByText(
+        "Add an exchange rate for EUR before making it your base currency",
+      ),
+    ).toBeInTheDocument();
   });
 });

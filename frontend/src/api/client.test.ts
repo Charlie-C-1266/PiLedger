@@ -44,6 +44,22 @@ describe("json (GET requests)", () => {
     await expect(api.getMe()).rejects.toThrow("404 Not Found: no such user");
   });
 
+  it("exposes the status and FastAPI's detail on the thrown ApiError", async () => {
+    fetchMock.mockResolvedValue(
+      errResponse(400, "Bad Request", JSON.stringify({ detail: "Add a rate first" })),
+    );
+    await expect(api.getMe()).rejects.toMatchObject({
+      name: "ApiError",
+      status: 400,
+      detail: "Add a rate first",
+    });
+  });
+
+  it("leaves detail empty when the error body is not JSON", async () => {
+    fetchMock.mockResolvedValue(errResponse(502, "Bad Gateway", "<html>nope</html>"));
+    await expect(api.getMe()).rejects.toMatchObject({ status: 502, detail: "" });
+  });
+
   it("falls back to an empty body when the error body cannot be read", async () => {
     fetchMock.mockResolvedValue({
       ok: false,

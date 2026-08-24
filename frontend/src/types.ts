@@ -196,8 +196,6 @@ export interface User {
 }
 
 export interface Prefs {
-  theme: string;
-  dark_mode: boolean;
   base_currency: Currency;
 }
 
