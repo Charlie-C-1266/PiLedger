@@ -22,6 +22,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Changed
 
 - The Docker runtime image now applies Debian's outstanding OS security updates at build time, so a shipped image isn't left waiting on the upstream `python:3.12-slim` tag to be rebuilt.
+- The in-app guide gains a Subscriptions page, and the README now lists Subscriptions and the hide-amounts toggle among the features — both shipped without documentation.
 - CI now builds the Docker runtime image and scans it with Trivy, failing the build on fixable HIGH/CRITICAL OS or dependency vulnerabilities.
 - CI now runs an OWASP ZAP baseline scan against the running app on every build, uploading a passive-security report as a build artifact (report-only, non-blocking).
 - Page transitions now slide each top-level card in from the right in sequence, replacing the fade-and-rise cascade.
