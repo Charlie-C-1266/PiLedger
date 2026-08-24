@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useOccurrences } from "../hooks/useSubscriptions";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import Modal from "./Modal";
 import type { SubscriptionOccurrence } from "../types";
 import styles from "../screens/Subscriptions.module.css";
@@ -34,6 +34,7 @@ interface Props {
  * roving-tabindex `grid` with arrow-key navigation.
  */
 export default function SubscriptionsCalendar({ currency }: Props) {
+  const { fmt } = useMoney();
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)

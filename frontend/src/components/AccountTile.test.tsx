@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import AccountTile from "./AccountTile";
+import { PrivacyProvider } from "../privacy/PrivacyProvider";
 import type { Account } from "../types";
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
@@ -53,5 +54,22 @@ describe("AccountTile", () => {
     );
     expect(screen.getByText("Closed")).toBeInTheDocument();
     expect(screen.queryByText("Set aside")).not.toBeInTheDocument();
+  });
+
+  it("shows the balance as a figure by default", () => {
+    render(<AccountTile account={makeAccount({ current_balance: 1234.5 })} />);
+    expect(screen.getByText("£1,234.50")).toBeInTheDocument();
+  });
+
+  it("masks the balance when amounts are hidden", () => {
+    localStorage.setItem("pl-privacy", "hidden");
+    render(
+      <PrivacyProvider>
+        <AccountTile account={makeAccount({ current_balance: 1234.5 })} />
+      </PrivacyProvider>,
+    );
+    expect(screen.queryByText("£1,234.50")).not.toBeInTheDocument();
+    expect(screen.getByText("£****")).toBeInTheDocument();
+    localStorage.clear();
   });
 });

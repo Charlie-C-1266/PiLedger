@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
@@ -16,6 +16,7 @@ interface Props {
 }
 
 export default function EditAccountModal({ account, onClose }: Props) {
+  const { fmt } = useMoney();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
   const [countsToNetWorth, setCountsToNetWorth] = useState(

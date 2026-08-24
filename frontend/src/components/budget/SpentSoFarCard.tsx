@@ -1,4 +1,4 @@
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import HBar from "../charts/HBar";
 import styles from "./SpentSoFarCard.module.css";
 
@@ -18,6 +18,7 @@ export default function SpentSoFarCard({
   currency,
   factor,
 }: Props) {
+  const { fmt } = useMoney();
   const planPct = Math.round((totalSpent / (allocated || 1)) * 100);
 
   return (

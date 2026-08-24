@@ -16,10 +16,12 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Every response now carries an `X-Request-Id` header, and server logs are structured JSON by default (`PILEDGER_LOG_LEVEL` / `PILEDGER_LOG_FORMAT` env vars), making it possible to correlate a log line back to the request that produced it.
 - Accounts can now be marked closed: they're kept for balance/transaction history and shown with a "Closed" badge, but no longer accept new transactions, transfers, or CSV imports.
 - Personal access tokens for headless clients like scripts or the companion MCP server: create, view, and revoke long-lived `Authorization: Bearer` tokens (sent instead of your password or a browser session cookie) from a new card in Settings, or via the `/api/tokens` API.
+- A privacy toggle in the header (and in Settings → Appearance) masks every amount on screen as `£****` for when someone can see your screen; the choice is remembered per browser.
 - Saving a transaction now shows a brief confirmation toast in the corner ("Transaction recorded!"), and a red toast surfaces the failure if a save, edit, or delete doesn't go through.
 
 ### Changed
 
+- The Docker runtime image now applies Debian's outstanding OS security updates at build time, so a shipped image isn't left waiting on the upstream `python:3.12-slim` tag to be rebuilt.
 - CI now builds the Docker runtime image and scans it with Trivy, failing the build on fixable HIGH/CRITICAL OS or dependency vulnerabilities.
 - CI now runs an OWASP ZAP baseline scan against the running app on every build, uploading a passive-security report as a build artifact (report-only, non-blocking).
 - Page transitions now slide each top-level card in from the right in sequence, replacing the fade-and-rise cascade.

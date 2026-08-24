@@ -1,4 +1,4 @@
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { BudgetEnvelope, BudgetGroup } from "../../types";
 import { PlusIcon } from "../icons";
 import EnvelopeRow from "./EnvelopeRow";
@@ -29,6 +29,7 @@ export default function GroupCard({
   onAddEnvelope,
   onEditEnvelope,
 }: Props) {
+  const { fmt } = useMoney();
   const total = group.envelopes.reduce((s, e) => s + e.budgeted, 0);
 
   return (

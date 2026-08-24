@@ -1,6 +1,6 @@
 import { useSummary } from "../../hooks/useSummary";
 import { useTheme } from "../../theme/useTheme";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import StatCard from "../../components/StatCard";
 
 /**
@@ -10,6 +10,7 @@ import StatCard from "../../components/StatCard";
  * layout — is owned by the parent StaggerItem in Overview.
  */
 export default function StatRow() {
+  const { fmt } = useMoney();
   const { theme } = useTheme();
   const { data: summary, isPending } = useSummary();
   const currency = summary?.base_currency ?? "GBP";

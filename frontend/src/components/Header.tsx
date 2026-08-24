@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTheme } from "../theme/useTheme";
 import { SunIcon, MoonIcon, PlusIcon, SearchIcon, LogoMark } from "./icons";
 import AddMenu from "./AddMenu";
+import PrivacyToggle from "./PrivacyToggle";
 import type { AddTarget } from "./AddMenu";
 import styles from "./Header.module.css";
 
@@ -33,6 +34,7 @@ export default function Header({ mobile, onAdd, onSearch, username }: Props) {
           <button className={styles.toggleBtn} onClick={onSearch} aria-label="Search">
             <SearchIcon />
           </button>
+          <PrivacyToggle />
           <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
             {mode === "light" ? <MoonIcon /> : <SunIcon />}
           </button>
@@ -68,6 +70,7 @@ export default function Header({ mobile, onAdd, onSearch, username }: Props) {
           <SearchIcon />
           <span className={styles.searchPlaceholder}>Search</span>
         </button>
+        <PrivacyToggle />
         <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
           {mode === "light" ? <MoonIcon /> : <SunIcon />}
         </button>

@@ -11,7 +11,7 @@ import {
 import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
 import { useTheme } from "../../theme/useTheme";
 import type { ThemeTokens } from "../../theme/tokens";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { AccountHistory } from "../../types";
 import { buildHistoryRows, type HistorySeries } from "./accountHistory";
 import styles from "./AccountHistoryChart.module.css";
@@ -42,6 +42,7 @@ function ChartTooltip({
   theme: ThemeTokens;
   series: HistorySeries[];
 }) {
+  const { fmt } = useMoney();
   if (!active || !payload?.length) return null;
   const currencyByKey = new Map(series.map((s) => [s.key, s.currency]));
   return (
@@ -114,6 +115,7 @@ export default function AccountHistoryChart({
   currency = "GBP",
   height = 260,
 }: Props) {
+  const { fmtShort, hidden } = useMoney();
   const { theme } = useTheme();
   const { rows, series } = buildHistoryRows(accounts);
 
@@ -144,7 +146,7 @@ export default function AccountHistoryChart({
             axisLine={false}
             tickLine={false}
             tick={{ fill: theme.textMute, fontSize: 11 }}
-            tickFormatter={(v: number) => fmtShort(v, currency)}
+            tickFormatter={(v: number) => (hidden ? "" : fmtShort(v, currency))}
             width={52}
             tickCount={5}
           />

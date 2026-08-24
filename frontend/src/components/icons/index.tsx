@@ -75,3 +75,11 @@ export function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
 export function UploadIcon(props: React.SVGProps<SVGSVGElement>) {
   return <svg {...s} {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>;
 }
+
+export function EyeIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg {...s} {...props}><path d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12z" /><circle cx="12" cy="12" r="3" /></svg>;
+}
+
+export function EyeOffIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg {...s} {...props}><path d="M9.9 5.7A9.8 9.8 0 0 1 12 5.5c7 0 10.5 6.5 10.5 6.5a18 18 0 0 1-3.3 4.2" /><path d="M6.4 7.4A18 18 0 0 0 1.5 12S5 18.5 12 18.5a9.9 9.9 0 0 0 4.2-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><line x1="3" y1="3" x2="21" y2="21" /></svg>;
+}

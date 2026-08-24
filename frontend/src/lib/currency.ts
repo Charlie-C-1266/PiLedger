@@ -64,3 +64,18 @@ export function fmtShort(value: number, currency = "GBP"): string {
   }
   return value < 0 ? `−${s}${short}` : `${s}${short}`;
 }
+
+/**
+ * What a hidden amount renders as in place of its digits. Deliberately a fixed
+ * width: masking digit-for-digit would leak the magnitude through the length.
+ */
+const MASK = "****";
+
+/**
+ * The stand-in for an amount while privacy mode is on. The currency symbol is
+ * kept so the figure still reads as money in its slot, but the digits and the
+ * sign are gone. Reach for this through `useMoney()` rather than directly.
+ */
+export function fmtHidden(currency = "GBP"): string {
+  return symbol(currency) + MASK;
+}

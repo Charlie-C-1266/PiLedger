@@ -14,7 +14,7 @@ import { useTheme } from "../../theme/useTheme";
 import type { ThemeTokens } from "../../theme/tokens";
 import Modal from "../Modal";
 import { useProjections } from "../../hooks/useProjections";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import {
   buildProjectionRows,
   type ProjectionSeries,
@@ -45,6 +45,7 @@ function ChartTooltip({
   theme: ThemeTokens;
   series: ProjectionSeries[];
 }) {
+  const { fmt } = useMoney();
   if (!active || !payload?.length) return null;
   const currencyByKey = new Map(series.map((s) => [s.key, s.currency]));
   return (
@@ -108,6 +109,7 @@ function ChartTooltip({
  * goal-projection modal's shape, but at the account level.
  */
 export default function AccountProjectionsModal({ currency, onClose }: Props) {
+  const { fmt, fmtShort, hidden } = useMoney();
   const { theme } = useTheme();
   const { data: projections, isPending } = useProjections();
 
@@ -220,7 +222,7 @@ export default function AccountProjectionsModal({ currency, onClose }: Props) {
                       axisLine={false}
                       tickLine={false}
                       tick={{ fill: theme.textMute, fontSize: 11 }}
-                      tickFormatter={(v: number) => fmtShort(v, currency)}
+                      tickFormatter={(v: number) => (hidden ? "" : fmtShort(v, currency))}
                       width={52}
                       tickCount={5}
                     />

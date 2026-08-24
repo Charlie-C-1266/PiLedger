@@ -1,4 +1,4 @@
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import styles from "./SafeToSpendCard.module.css";
 
 interface Props {
@@ -21,6 +21,7 @@ export default function SafeToSpendCard({
   currency,
   factor,
 }: Props) {
+  const { fmt } = useMoney();
   const remaining = Math.max(0, flexRemaining);
 
   const today = new Date();

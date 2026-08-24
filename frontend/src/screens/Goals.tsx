@@ -5,7 +5,7 @@ import { useGoals } from "../hooks/useGoals";
 import { useInvalidate } from "../hooks/useInvalidate";
 import { useSummary } from "../hooks/useSummary";
 import { updateGoal } from "../api/client";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import HBar from "../components/charts/HBar";
 import GoalProjectionModal from "../components/goals/GoalProjectionModal";
 import AddGoalModal from "../components/AddGoalModal";
@@ -31,6 +31,7 @@ function GoalCard({
   currency: string;
   onEdit: (g: Goal) => void;
 }) {
+  const { fmt } = useMoney();
   const { mode } = useTheme();
   const [monthly, setMonthly] = useState(goal.monthly);
   const inv = useInvalidate();

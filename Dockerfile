@@ -17,6 +17,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 
+# Debian publishes security updates for the base image's OS packages sooner
+# than the upstream python:3.12-slim tag is rebuilt, so pull them in at build
+# time. The CI Trivy gate fails on *fixable* HIGH/CRITICAL findings, which is
+# exactly the set this clears — without it, an unrelated PR gets blocked every
+# time Debian patches something in the base layer.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY requirements.txt ./

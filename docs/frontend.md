@@ -108,6 +108,14 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 - **Accent colour** — five preset accents (`ACCENT_OPTIONS` in `tokens.ts`), chosen as colour swatches in Settings → Appearance.
 - **Light / dark mode** — toggled from the header; the choice persists in `localStorage`.
 
+## Privacy mode
+
+The header's eye button (also mirrored in Settings → Appearance) masks every currency amount on screen, replacing the digits with `£****`. `PrivacyProvider.tsx` holds the flag, persisted per browser in `localStorage` (`pl-privacy`) like the theme.
+
+Components never import `fmt` / `fmtShort` from `lib/currency` directly — they format through `useMoney()`, which returns either the real formatters or mask-producing ones, so flipping the switch re-renders every amount at once. `usePrivacy()` deliberately falls back to "showing" outside a provider, which keeps a component (or a unit test) rendered on its own working.
+
+The mask is a fixed width and carries no sign: tracking the digit count or the `−` would leak the very thing it hides. Chart Y-axis ticks blank out entirely rather than repeating the mask at every gridline. Percentages, counts, and chart line shapes are left alone — they're relative, so they give no figure away.
+
 ## Build
 
 ```bash

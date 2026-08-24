@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useSummary } from "../../hooks/useSummary";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import Donut from "../../components/charts/Donut";
 import Skeleton from "../../components/Skeleton";
 import { donutSlices } from "./overviewModel";
@@ -14,6 +14,7 @@ import styles from "../Overview.module.css";
  * that highlights its slice. Owns the hovered-slice UI state.
  */
 export default function DistributionDonut() {
+  const { fmt, fmtShort } = useMoney();
   const { data: accounts, isPending } = useAccounts();
   const { data: summary } = useSummary();
   const [donutHover, setDonutHover] = useState<number | null>(null);

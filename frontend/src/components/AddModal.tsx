@@ -11,7 +11,7 @@ import { useInvalidate } from "../hooks/useInvalidate";
 import { useToast } from "./toast/useToast";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import type { Transaction } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function AddModal({ accountId, transaction, onClose }: Props) {
+  const { fmt } = useMoney();
   const editing = !!transaction;
   // A transfer leg can't be edited (the two sides must stay in sync); the
   // backend rejects PUTs on it. Offer delete-both instead.

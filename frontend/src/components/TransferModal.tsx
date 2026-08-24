@@ -5,7 +5,7 @@ import { useAccounts } from "../hooks/useAccounts";
 import { useInvalidate } from "../hooks/useInvalidate";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import styles from "./AddModal.module.css";
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
 }
 
 export default function TransferModal({ onClose }: Props) {
+  const { fmt } = useMoney();
   const { data: accounts } = useAccounts();
   const inv = useInvalidate();
 

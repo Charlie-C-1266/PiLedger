@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useGoals } from "../../hooks/useGoals";
 import { useSummary } from "../../hooks/useSummary";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import HBar from "../../components/charts/HBar";
 import Skeleton from "../../components/Skeleton";
 import AddGoalModal from "../../components/AddGoalModal";
@@ -14,6 +14,7 @@ import styles from "../Overview.module.css";
  * modal.
  */
 export default function GoalsProgress() {
+  const { fmt } = useMoney();
   const { data: goals, isPending: goalsPending } = useGoals();
   const { data: summary } = useSummary();
   const [showGoalModal, setShowGoalModal] = useState(false);
