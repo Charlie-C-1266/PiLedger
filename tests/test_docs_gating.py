@@ -16,6 +16,7 @@ a constructor change and an unauthenticated scanner could fingerprint
 the entire API.
 """
 
+from constants import DOC_SLUGS
 
 # ── Default FastAPI mounts must NOT be reachable ─────────────────────────────
 
@@ -116,6 +117,22 @@ def test_api_docs_serves_csv_import_guide(client):
     r = client.get("/api/docs/csv-import")
     assert r.status_code == 200
     assert "# Importing Transactions from CSV" in r.text
+
+
+def test_api_docs_serves_subscriptions_guide(client):
+    """The user-facing subscriptions guide is on the allowlist and publicly
+    served — the in-app guide nav links straight to it."""
+    r = client.get("/api/docs/subscriptions")
+    assert r.status_code == 200
+    assert "# Subscriptions" in r.text
+
+
+def test_every_doc_slug_has_a_file(client):
+    """Guards the failure this test file exists to catch from the other side:
+    a slug allowlisted with no markdown behind it 404s at runtime, which the
+    per-doc tests above only catch for the docs someone remembered to add."""
+    for slug in DOC_SLUGS:
+        assert client.get(f"/api/docs/{slug}").status_code == 200, slug
 
 
 def test_api_docs_rejects_path_traversal(client):
