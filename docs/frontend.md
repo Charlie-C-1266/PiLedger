@@ -33,7 +33,7 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 | Route | Component | Purpose |
 |---|---|---|
 | `/overview` | `Overview` | Net-worth chart (with a "Savings projections" modal), account card stack, recent transactions, goals progress rings, asset distribution donut |
-| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter |
+| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter, and a list / by-institution view toggle |
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
@@ -93,8 +93,8 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 
 | Modal | Trigger | Operation |
 |---|---|---|
-| Add Account | "+ Add" menu | Creates an account (name, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
-| Update Balance / Edit Colour | Click account card | Records a new `balance_history` row and/or updates the account colour. |
+| Add Account | "+ Add" menu | Creates an account (name, institution, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
+| Update Balance / Edit Account | Click account card | Records a new `balance_history` row and/or updates the account's colour, institution, and set-aside/closed flags. |
 | Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
 | Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |
 | Add / Edit Group | Budget screen | Creates, edits, or deletes an envelope group (name, colour, fixed/flexible). |
@@ -125,3 +125,21 @@ npm run build   # outputs to src/static/dist/
 ```
 
 The FastAPI app serves `src/static/dist/index.html` for all SPA routes, and serves the rest of `src/static/` under the `/static/` path prefix.
+
+## Institution marks
+
+`accounts.institution` stores a catalogue slug; the display name, brand colour
+and monogram live in `lib/institutions.ts`, and `InstitutionMark` draws them as a
+brand-coloured badge. The marks are monograms rather than real logos — logos are
+trademarked artwork, and a self-hosted app has no business redistributing them
+or reaching out to a CDN to fetch them at render time.
+
+`resolveInstitution(account)` is the single entry point: it returns the
+catalogue entry for a known slug, derives one (initials, hash-picked colour) from
+the free-text name for the `other` slug, and returns `null` when no provider is
+recorded. Its `key` field is what the Accounts screen groups by, so two
+spellings of one custom name collapse into a single group.
+
+Adding an institution means adding the slug to the `InstitutionSlug` literal in
+`constants.py` *and* an entry to `INSTITUTIONS` here —
+`tests/test_institution_frontend_parity.py` fails if only one side moves.

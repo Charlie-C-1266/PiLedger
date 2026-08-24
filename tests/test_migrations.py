@@ -327,6 +327,26 @@ def test_existing_accounts_default_to_open(migrated_db):
     assert all(r[0] == 0 for r in rows)
 
 
+def test_adds_accounts_institution(migrated_db):
+    """A pre-stamp (legacy) DB whose accounts table predates the institution
+    columns must gain both via _run_legacy_migrations."""
+    cols = _table_columns(migrated_db, "accounts")
+    assert {"institution", "institution_name"} <= cols
+
+
+def test_existing_accounts_have_no_institution(migrated_db):
+    """The provider can't be inferred from an existing row, so every account
+    carries NULL until its owner records one."""
+    conn = sqlite3.connect(str(migrated_db))
+    try:
+        rows = conn.execute(
+            "SELECT institution, institution_name FROM accounts ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] is None and r[1] is None for r in rows)
+
+
 def test_adds_users_base_currency(migrated_db):
     assert "base_currency" in _table_columns(migrated_db, "users")
 
@@ -440,6 +460,8 @@ def test_init_on_empty_db_creates_all_tables(tmp_path, monkeypatch):
         "name",
         "type",
         "subtype",
+        "institution",
+        "institution_name",
         "currency",
         "interest_rate",
         "color",
@@ -897,6 +919,22 @@ def test_gated_path_adds_closed(stamped_v1_db):
     finally:
         conn.close()
     assert all(r[0] == 0 for r in rows)
+
+
+def test_gated_path_adds_institution(stamped_v1_db):
+    """_migrate_to_14 adds the institution pair on the version-gated ladder,
+    leaving every pre-existing account with no provider recorded."""
+    assert {"institution", "institution_name"} <= _table_columns(
+        stamped_v1_db, "accounts"
+    )
+    conn = sqlite3.connect(str(stamped_v1_db))
+    try:
+        rows = conn.execute(
+            "SELECT institution, institution_name FROM accounts"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert all(r[0] is None and r[1] is None for r in rows)
 
 
 def test_gated_path_drops_theme_and_dark_mode(stamped_v1_db):

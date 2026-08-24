@@ -37,10 +37,22 @@
   gap: 8px;
 }
 
+/* Mark + name, sharing the slot the bare type label used to own. `min-width: 0`
+   lets the name below it ellipsis rather than shoving the badge off the card. */
+.provider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
 .institution {
   font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: 1.2px;
   opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {

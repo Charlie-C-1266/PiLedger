@@ -11,6 +11,8 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     name: "Monzo",
     type: "current",
     subtype: "general",
+    institution: null,
+    institution_name: null,
     currency: "GBP",
     interest_rate: 0,
     color: "#6366f1",
@@ -54,6 +56,35 @@ describe("AccountTile", () => {
     );
     expect(screen.getByText("Closed")).toBeInTheDocument();
     expect(screen.queryByText("Set aside")).not.toBeInTheDocument();
+  });
+
+  it("shows the institution name and mark when one is recorded", () => {
+    render(<AccountTile account={makeAccount({ institution: "chase" })} />);
+    expect(screen.getByText("Chase")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Chase" })).toBeInTheDocument();
+  });
+
+  it("keeps the account type visible alongside a known institution", () => {
+    render(<AccountTile account={makeAccount({ institution: "chase" })} />);
+    expect(screen.getByText(/CURRENT/)).toBeInTheDocument();
+  });
+
+  it("names a custom institution from the free-text label", () => {
+    render(
+      <AccountTile
+        account={makeAccount({
+          institution: "other",
+          institution_name: "Glasgow Credit Union",
+        })}
+      />,
+    );
+    expect(screen.getByText("Glasgow Credit Union")).toBeInTheDocument();
+  });
+
+  it("falls back to the account type when no institution is recorded", () => {
+    render(<AccountTile account={makeAccount({ institution: null })} />);
+    expect(screen.getByText("CURRENT")).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("shows the balance as a figure by default", () => {

@@ -122,7 +122,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 13
+SCHEMA_VERSION: int = 14
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -250,6 +250,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 13. Add accounts.closed (marks an account closed: read-only history, no new activity).
     _ensure_closed_column(conn)
 
+    # 14. Add accounts.institution / institution_name (who the account is with).
+    _ensure_institution_columns(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -327,6 +330,22 @@ def _ensure_closed_column(conn: sqlite3.Connection) -> None:
             "ALTER TABLE accounts ADD COLUMN closed INTEGER NOT NULL DEFAULT 0"
         )
         conn.commit()
+
+
+def _ensure_institution_columns(conn: sqlite3.Connection) -> None:
+    """Idempotently add accounts.institution + accounts.institution_name.
+
+    Both stay NULL on every existing row: the provider an account is held with
+    can't be inferred from a name ("Everyday" says nothing about who holds it),
+    so the User records it themselves. `institution_name` carries the free-text
+    label that goes with the catch-all `'other'` slug and is NULL otherwise.
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    if "institution" not in cols:
+        conn.execute("ALTER TABLE accounts ADD COLUMN institution TEXT")
+    if "institution_name" not in cols:
+        conn.execute("ALTER TABLE accounts ADD COLUMN institution_name TEXT")
+    conn.commit()
 
 
 def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
@@ -553,6 +572,14 @@ def _migrate_to_13(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_14(conn: sqlite3.Connection) -> None:
+    """Add accounts.institution / institution_name (the provider an account is
+    held with, so accounts can be grouped by who they're with)."""
+    _ensure_institution_columns(conn)
+    _set_schema_version(conn, 14)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -582,6 +609,8 @@ def init() -> None:
                 name          TEXT    NOT NULL,
                 type          TEXT    NOT NULL CHECK(type IN ('current','savings','loan','credit','invest')),
                 subtype       TEXT    DEFAULT 'general',
+                institution   TEXT,
+                institution_name TEXT,
                 currency      TEXT    NOT NULL DEFAULT 'GBP',
                 interest_rate REAL    DEFAULT 0,
                 color         TEXT    DEFAULT '#6366f1',
@@ -699,6 +728,10 @@ def init() -> None:
         if version < 13:
             _migrate_to_13(conn)
             version = 13
+
+        if version < 14:
+            _migrate_to_14(conn)
+            version = 14
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

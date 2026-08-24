@@ -1,5 +1,7 @@
 import { colorToGradient } from "../theme/swatches";
 import { useMoney } from "../privacy/useMoney";
+import { resolveInstitution } from "../lib/institutions";
+import InstitutionMark from "./InstitutionMark";
 import type { Account } from "../types";
 import styles from "./AccountTile.module.css";
 
@@ -30,6 +32,7 @@ export default function AccountTile({
   const { fmt } = useMoney();
   const sw = colorToGradient(account.color || "#6366f1");
   const bg = `linear-gradient(135deg, ${sw.start}, ${sw.end})`;
+  const institution = resolveInstitution(account);
 
   return (
     <div
@@ -44,7 +47,17 @@ export default function AccountTile({
         <circle cx="90" cy="30" r="25" />
       </svg>
       <div className={styles.top}>
-        <span className={styles.institution}>{account.type.toUpperCase()}</span>
+        {/* The provider takes the headline slot when it's known — it's what
+            people recognise a card by. The type keeps its place otherwise, and
+            moves down beside the card number so it isn't lost either way. */}
+        {institution ? (
+          <span className={styles.provider}>
+            <InstitutionMark institution={institution} size={20} ring />
+            <span className={styles.institution}>{institution.name}</span>
+          </span>
+        ) : (
+          <span className={styles.institution}>{account.type.toUpperCase()}</span>
+        )}
         {account.closed ? (
           <span className={styles.badge}>Closed</span>
         ) : (
@@ -55,7 +68,9 @@ export default function AccountTile({
         )}
       </div>
       {!compact && (
-        <div className={styles.cardNum}>•••• {initials(account.id)}</div>
+        <div className={styles.cardNum}>
+          {institution && <>{account.type.toUpperCase()} · </>}•••• {initials(account.id)}
+        </div>
       )}
       <div className={styles.bottom}>
         <span className={styles.name}>{account.name}</span>

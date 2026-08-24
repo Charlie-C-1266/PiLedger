@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createAccount, recordBalance } from "../api/client";
 import { CURRENCIES } from "../lib/currency";
+import { INSTITUTION_GROUPS, OTHER } from "../lib/institutions";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
@@ -87,6 +88,8 @@ export default function AddAccountModal({ onClose }: Props) {
   const [name, setName] = useState("");
   const [type, setType] = useState("current");
   const [subtype, setSubtype] = useState("general");
+  const [institution, setInstitution] = useState("");
+  const [institutionName, setInstitutionName] = useState("");
   const [balance, setBalance] = useState("");
   const [interestRate, setInterestRate] = useState("");
   const [currency, setCurrency] = useState("");
@@ -103,6 +106,11 @@ export default function AddAccountModal({ onClose }: Props) {
     setSubtype("general");
   };
 
+  // The API rejects a custom name on a catalogue slug, and requires one on
+  // "other" — so send the pair the same way the picker presents it.
+  const customName = institutionName.trim();
+  const needsCustomName = institution === OTHER;
+
   const mutation = useMutation({
     mutationFn: async () => {
       const rate = parseFloat(interestRate);
@@ -110,6 +118,8 @@ export default function AddAccountModal({ onClose }: Props) {
         name: name.trim(),
         type,
         subtype,
+        institution: institution || null,
+        institution_name: needsCustomName ? customName : null,
         color,
         currency: selectedCurrency,
         interest_rate: !isNaN(rate) && rate >= 0 ? rate : 0,
@@ -128,6 +138,7 @@ export default function AddAccountModal({ onClose }: Props) {
 
   const handleSave = () => {
     if (!name.trim()) return;
+    if (needsCustomName && !customName) return;
     mutation.mutate();
   };
 
@@ -143,6 +154,36 @@ export default function AddAccountModal({ onClose }: Props) {
           autoComplete="off"
           autoFocus
         />
+
+        <select
+          className={styles.select}
+          value={institution}
+          onChange={(e) => setInstitution(e.target.value)}
+          aria-label="Institution"
+        >
+          <option value="">No institution</option>
+          {INSTITUTION_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.institutions.map((i) => (
+                <option key={i.slug} value={i.slug}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        {needsCustomName && (
+          <input
+            className={styles.input}
+            placeholder="Institution name (e.g. Chase)"
+            value={institutionName}
+            onChange={(e) => setInstitutionName(e.target.value)}
+            aria-label="Institution name"
+            maxLength={60}
+            autoComplete="off"
+          />
+        )}
 
         <input
           className={styles.input}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { useMoney } from "../privacy/useMoney";
+import { INSTITUTION_GROUPS, OTHER } from "../lib/institutions";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
@@ -19,6 +20,10 @@ export default function EditAccountModal({ account, onClose }: Props) {
   const { fmt } = useMoney();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
+  const [institution, setInstitution] = useState(account.institution ?? "");
+  const [institutionName, setInstitutionName] = useState(
+    account.institution_name ?? ""
+  );
   const [countsToNetWorth, setCountsToNetWorth] = useState(
     account.counts_to_net_worth
   );
@@ -53,19 +58,45 @@ export default function EditAccountModal({ account, onClose }: Props) {
       updateAccount(account.id, { closed: nextClosed }),
   });
 
+  // Sent as a pair: the API rejects a custom name on a catalogue slug and
+  // requires one on "other", so switching between them has to move both fields
+  // in the same request.
+  const institutionMutation = useMutation({
+    mutationFn: () =>
+      updateAccount(account.id, {
+        institution: institution || null,
+        institution_name: institution === OTHER ? institutionName.trim() : null,
+      }),
+  });
+
+  const customName = institutionName.trim();
+  const needsCustomName = institution === OTHER;
+
   const handleSave = async () => {
     const colorChanged = color !== (account.color || "#6366f1");
     const flagChanged = countsToNetWorth !== account.counts_to_net_worth;
     const closedChanged = closed !== account.closed;
+    const institutionChanged =
+      institution !== (account.institution ?? "") ||
+      (needsCustomName && customName !== (account.institution_name ?? ""));
     const balanceParsed = parseFloat(balance);
     const hasBalance = !isNaN(balanceParsed);
 
-    if (!hasBalance && !colorChanged && !flagChanged && !closedChanged) return;
+    if (needsCustomName && !customName) return;
+    if (
+      !hasBalance &&
+      !colorChanged &&
+      !flagChanged &&
+      !closedChanged &&
+      !institutionChanged
+    )
+      return;
 
     if (hasBalance) await balanceMutation.mutateAsync(balanceParsed);
     if (colorChanged) await colorMutation.mutateAsync(color);
     if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
     if (closedChanged) await closedMutation.mutateAsync(closed);
+    if (institutionChanged) await institutionMutation.mutateAsync();
 
     inv.accountChanged();
     onClose();
@@ -76,6 +107,7 @@ export default function EditAccountModal({ account, onClose }: Props) {
     colorMutation.isPending ||
     flagMutation.isPending ||
     closedMutation.isPending ||
+    institutionMutation.isPending ||
     deleteMutation.isPending;
 
   return (
@@ -96,6 +128,36 @@ export default function EditAccountModal({ account, onClose }: Props) {
           inputMode="decimal"
           autoFocus
         />
+
+        <select
+          className={styles.select}
+          value={institution}
+          onChange={(e) => setInstitution(e.target.value)}
+          aria-label="Institution"
+        >
+          <option value="">No institution</option>
+          {INSTITUTION_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.institutions.map((i) => (
+                <option key={i.slug} value={i.slug}>
+                  {i.name}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        {needsCustomName && (
+          <input
+            className={styles.input}
+            placeholder="Institution name (e.g. Chase)"
+            value={institutionName}
+            onChange={(e) => setInstitutionName(e.target.value)}
+            aria-label="Institution name"
+            maxLength={60}
+            autoComplete="off"
+          />
+        )}
 
         <ColorPicker value={color} onChange={setColor} />
 

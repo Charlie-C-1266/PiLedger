@@ -101,6 +101,66 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Balance filter and view toggle sit side by side; they wrap onto two rows
+   before they'd squeeze the total off the right edge on a narrow screen. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.groupMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.groupName {
+  font: 700 15px/1.2 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.2px;
+  color: var(--pl-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupCount {
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.groupTotal {
+  flex-shrink: 0;
+  font: 700 16px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stand-in mark for accounts with no institution recorded — same footprint as
+   InstitutionMark at size 30 so the headers stay on one baseline. */
+.noMark {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  border: 1.5px dashed var(--pl-text-mute);
+  opacity: 0.5;
+}
+
 .picker {
   display: flex;
   gap: 2px;

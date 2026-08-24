@@ -8,6 +8,11 @@ export interface Account {
   name: string;
   type: AccountType;
   subtype: string;
+  /** Catalogue slug for the provider the account is held with, or null if
+   * unrecorded. See `lib/institutions.ts` for names, colours and marks. */
+  institution: string | null;
+  /** The user-typed provider name, set only when `institution` is "other". */
+  institution_name: string | null;
   currency: Currency;
   interest_rate: number;
   color: string;

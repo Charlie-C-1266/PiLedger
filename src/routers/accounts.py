@@ -22,6 +22,7 @@ from schemas import (
     BalanceEntryOut,
     BalanceIn,
     OkOut,
+    validated_institution,
 )
 from services.accounts import LATEST_BALANCE_JOIN
 
@@ -37,6 +38,8 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         name=row["name"],
         type=row["type"],
         subtype=row["subtype"] or "general",
+        institution=row["institution"],
+        institution_name=row["institution_name"],
         currency=row["currency"] or "GBP",
         interest_rate=row["interest_rate"],
         color=row["color"],
@@ -76,13 +79,16 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
     returned ``current_balance``/``last_updated`` are None until one is recorded."""
     with db() as conn:
         cur = conn.execute(
-            "INSERT INTO accounts(user_id, name, type, subtype, currency, interest_rate, color, counts_to_net_worth, closed)"
-            " VALUES(?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO accounts(user_id, name, type, subtype, institution, institution_name,"
+            " currency, interest_rate, color, counts_to_net_worth, closed)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 data.name,
                 data.type,
                 data.subtype,
+                data.institution,
+                data.institution_name,
                 data.currency,
                 data.interest_rate,
                 data.color,
@@ -106,16 +112,22 @@ def update_account(
     """Patch the supplied fields of one of the user's accounts (404 if not
     theirs).
 
-    Only non-None fields are applied. Subtype is re-checked against the row's
-    existing ``type`` here because a partial patch omits ``type``, so the
-    schema-level validator can't see it.
+    Only non-None fields are applied, except the institution pair — those are
+    nullable columns where clearing is a meaningful edit ("no longer recorded"),
+    so an explicit null there reaches the UPDATE. Subtype and institution are
+    both re-checked against the row's existing values here because a partial
+    patch omits the other half of each pair, so the schema-level validators
+    can't see it.
     """
     with db() as conn:
         existing = conn.execute(
-            "SELECT type FROM accounts WHERE id=? AND user_id=?", (aid, uid)
+            "SELECT type, institution, institution_name FROM accounts"
+            " WHERE id=? AND user_id=?",
+            (aid, uid),
         ).fetchone()
         if not existing:
             raise HTTPException(404, "Not found")
+        set_fields = data.model_fields_set
         updates = {k: v for k, v in data.model_dump().items() if v is not None}
         # Cross-field check: subtype must be valid for the row's existing type.
         # The Pydantic schema can't enforce this on a partial patch because
@@ -128,6 +140,27 @@ def update_account(
                 400,
                 f"subtype '{updates['subtype']}' is not valid for type '{existing['type']}'",
             )
+        # Same idea for the institution pair, resolved against the stored row so
+        # that patching one half is checked against the other. Writing both
+        # columns keeps them coherent — switching from 'other' to a catalogue
+        # slug has to drop the now-meaningless custom name.
+        if {"institution", "institution_name"} & set_fields:
+            slug = (
+                data.institution
+                if "institution" in set_fields
+                else existing["institution"]
+            )
+            raw_name = (
+                data.institution_name
+                if "institution_name" in set_fields
+                else existing["institution_name"]
+            )
+            try:
+                slug, name = validated_institution(slug, raw_name)
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            updates["institution"] = slug
+            updates["institution_name"] = name
         if updates:
             sets = ", ".join(f"{k}=?" for k in updates)
             conn.execute(

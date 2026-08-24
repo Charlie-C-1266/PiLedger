@@ -142,6 +142,8 @@ export const createAccount = (data: {
   name: string;
   type: string;
   subtype?: string;
+  institution?: string | null;
+  institution_name?: string | null;
   currency?: string;
   interest_rate?: number;
   color?: string;
