@@ -31,6 +31,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Fixed
 
+- React Router updated to 7.18.2, clearing a set of security advisories against the version PiLedger shipped — including an open redirect via backslashes in `<Link>`/`useNavigate`.
 - The mobile bottom navigation no longer overflows the screen now that it holds seven destinations: the tab bar scrolls horizontally when the tabs don't all fit and keeps the active tab in view.
 - Views now refresh straight after the change that affects them: adding a transaction updates the net-worth trend, editing an exchange rate updates budget spending, and recording a balance updates the account-history chart and savings projections — previously some of these stayed stale until a reload or navigation.
 
