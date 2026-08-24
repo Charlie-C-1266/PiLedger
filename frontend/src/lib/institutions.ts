@@ -134,6 +134,17 @@ export function markForeground(color: string): string {
   return luminance(color) > 0.4 ? "#10131A" : "#FFFFFF";
 }
 
+// Longer monograms need proportionally smaller text to stay inside their badge.
+// Indexed by mark length; anything longer than four characters uses the last.
+const TEXT_SCALE = [0.5, 0.42, 0.33, 0.26];
+
+/** Type size for `mark` drawn inside a badge `size` px across. Shared so the
+ * small picker badge and the large card emblem stay visually consistent. */
+export function markFontSize(mark: string, size: number): number {
+  const scale = TEXT_SCALE[Math.min(mark.length, TEXT_SCALE.length) - 1];
+  return Math.round(size * scale * 10) / 10;
+}
+
 /** What to draw for one account's institution: the catalogue entry for a known
  * slug, a derived one for a custom name, or null when none is recorded.
  *

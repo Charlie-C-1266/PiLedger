@@ -64,6 +64,29 @@ describe("AccountTile", () => {
     expect(screen.getByRole("img", { name: "Chase" })).toBeInTheDocument();
   });
 
+  it("uses the institution emblem as the card's artwork, not the plain circles", () => {
+    const { container } = render(
+      <AccountTile account={makeAccount({ institution: "chase" })} />,
+    );
+    // One decorative SVG on the card, and it is the emblem.
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
+    expect(container.querySelector("svg")).toHaveAttribute("aria-label", "Chase");
+  });
+
+  it("keeps the plain circles on a card with no institution", () => {
+    const { container } = render(<AccountTile account={makeAccount()} />);
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
+    expect(container.querySelector("svg")).not.toHaveAttribute("aria-label");
+  });
+
+  it("still shows a badge on a card whose corner the emblem owns", () => {
+    render(
+      <AccountTile account={makeAccount({ institution: "chase", closed: true })} />,
+    );
+    expect(screen.getByText("Closed")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Chase" })).toBeInTheDocument();
+  });
+
   it("keeps the account type visible alongside a known institution", () => {
     render(<AccountTile account={makeAccount({ institution: "chase" })} />);
     expect(screen.getByText(/CURRENT/)).toBeInTheDocument();

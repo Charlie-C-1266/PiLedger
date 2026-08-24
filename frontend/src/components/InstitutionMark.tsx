@@ -1,4 +1,4 @@
-import { markForeground } from "../lib/institutions";
+import { markFontSize, markForeground } from "../lib/institutions";
 import type { Institution } from "../lib/institutions";
 import styles from "./InstitutionMark.module.css";
 
@@ -7,14 +7,8 @@ interface Props {
   institution: Pick<Institution, "name" | "color" | "mark">;
   /** Badge edge length in px. */
   size?: number;
-  /** Draw a translucent light ring, so the mark separates from a coloured card. */
-  ring?: boolean;
   className?: string;
 }
-
-// Longer monograms need proportionally smaller text to stay inside the badge.
-// Indexed by mark length; anything longer than four characters uses the last.
-const TEXT_SCALE = [0.5, 0.42, 0.33, 0.26];
 
 /**
  * A brand-coloured monogram standing in for an institution's logo.
@@ -27,22 +21,20 @@ const TEXT_SCALE = [0.5, 0.42, 0.33, 0.26];
 export default function InstitutionMark({
   institution,
   size = 22,
-  ring,
   className,
 }: Props) {
   const { name, color, mark } = institution;
-  const scale = TEXT_SCALE[Math.min(mark.length, TEXT_SCALE.length) - 1];
 
   return (
     <span
-      className={`${styles.mark} ${ring ? styles.ring : ""} ${className ?? ""}`}
+      className={`${styles.mark} ${className ?? ""}`}
       style={{
         width: size,
         height: size,
         borderRadius: Math.max(4, Math.round(size * 0.28)),
         background: color,
         color: markForeground(color),
-        fontSize: Math.round(size * scale * 10) / 10,
+        fontSize: markFontSize(mark, size),
       }}
       role="img"
       aria-label={name}

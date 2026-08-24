@@ -129,10 +129,22 @@ The FastAPI app serves `src/static/dist/index.html` for all SPA routes, and serv
 ## Institution marks
 
 `accounts.institution` stores a catalogue slug; the display name, brand colour
-and monogram live in `lib/institutions.ts`, and `InstitutionMark` draws them as a
-brand-coloured badge. The marks are monograms rather than real logos — logos are
-trademarked artwork, and a self-hosted app has no business redistributing them
-or reaching out to a CDN to fetch them at render time.
+and monogram live in `lib/institutions.ts`. The marks are monograms rather than
+real logos — logos are trademarked artwork, and a self-hosted app has no business
+redistributing them or reaching out to a CDN to fetch them at render time.
+
+Two components draw them, sharing `markFontSize` / `markForeground` so the
+monogram is sized and inked the same way at both scales:
+
+- `InstitutionMark` — a small rounded badge, used in the Accounts screen's
+  by-institution group headings.
+- `InstitutionEmblem` — the account card's own artwork: brand-coloured rings
+  bleeding off the top-right corner around a solid brand disc, standing in for
+  the plain white circles a card shows when no provider is recorded. Each ring
+  carries a faint white understroke, because card colours are user-chosen and
+  often *are* the brand colour — a Chase-blue ring on a Chase-blue card would
+  otherwise vanish. The card's "Closed" / "Set aside" badge sits at the bottom
+  right so it never collides with the emblem.
 
 `resolveInstitution(account)` is the single entry point: it returns the
 catalogue entry for a known slug, derives one (initials, hash-picked colour) from

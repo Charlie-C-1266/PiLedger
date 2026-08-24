@@ -1,0 +1,18 @@
+/* Sits in the tile's top-right corner, in the slot the decorative circles used
+   to occupy. Offsetting past the corner lets the outer rings bleed and be
+   clipped by the tile's own `overflow: hidden`. */
+.emblem {
+  position: absolute;
+  top: -16px;
+  right: -16px;
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+}
+
+.mark {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  user-select: none;
+}
