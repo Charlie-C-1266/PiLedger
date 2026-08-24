@@ -75,4 +75,22 @@ describe("useInvalidate ripple sets", () => {
     result.current.subscriptionChanged();
     expect(bustedKeys(spy)).toEqual(new Set(["subscriptions", "occurrences"]));
   });
+  it("baseCurrencyChanged busts every figure denominated in the base currency", () => {
+    // Switching base re-scales the stored rates server-side and re-denominates
+    // every total, so leaving any of these cached shows figures in the old
+    // currency until a reload.
+    const { result, spy } = setup();
+    result.current.baseCurrencyChanged();
+    expect(bustedKeys(spy)).toEqual(
+      new Set([
+        "prefs",
+        "rates",
+        "summary",
+        "networth",
+        "budget",
+        "history-all",
+        "projections",
+      ]),
+    );
+  });
 });

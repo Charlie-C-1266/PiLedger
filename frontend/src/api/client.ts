@@ -33,11 +33,40 @@ import type {
 type BudgetGroupRow = Omit<BudgetGroup, "envelopes">;
 type BudgetEnvelopeRow = Omit<BudgetEnvelope, "spent">;
 
+/**
+ * A non-2xx response. `detail` carries FastAPI's human-readable reason when the
+ * body has one, so a caller can show it verbatim instead of parsing `message`
+ * — some rejections (switching base currency without a pivot rate, say) explain
+ * exactly what the user has to do next, and that wording is worth keeping.
+ */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    let detail = "";
+    try {
+      const parsed: unknown = JSON.parse(body);
+      const d = (parsed as { detail?: unknown })?.detail;
+      if (typeof d === "string") detail = d;
+    } catch {
+      // Not a JSON body (an HTML error page, a proxy timeout) — no detail to show.
+    }
+    throw new ApiError(
+      res.status,
+      detail,
+      `${res.status} ${res.statusText}: ${body}`,
+    );
   }
   return res.json() as Promise<T>;
 }

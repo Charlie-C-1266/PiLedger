@@ -58,6 +58,20 @@ export function useInvalidate() {
       /** A personal access token was minted or revoked. */
       tokenChanged: () => bust("tokens"),
 
+      /** The base currency changed: the server re-scales the stored rates, and
+       *  every figure the app reports is denominated in it — so this is the
+       *  widest ripple of all, the rates one plus the balance-derived views. */
+      baseCurrencyChanged: () =>
+        bust(
+          "prefs",
+          "rates",
+          "summary",
+          "networth",
+          "budget",
+          "history-all",
+          "projections",
+        ),
+
       /** An FX rate changed: re-converts every foreign balance into the base
        *  currency, so summary, net-worth trend and (converted) budget spend move. */
       ratesChanged: () => bust("rates", "summary", "networth", "budget"),
