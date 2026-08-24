@@ -4,7 +4,7 @@ import { useTheme } from "../../theme/useTheme";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useSummary } from "../../hooks/useSummary";
 import { useNetWorthSeries } from "../../hooks/useNetWorthSeries";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { NetWorthPoint, RangeKey } from "../../types";
 import LineChart from "../../components/charts/LineChart";
 import RangePills from "../../components/RangePills";
@@ -21,6 +21,7 @@ import styles from "../Overview.module.css";
  * to counting accounts (ADR-0003).
  */
 export default function NetWorthHero() {
+  const { fmt } = useMoney();
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary, isPending: summaryPending } = useSummary();

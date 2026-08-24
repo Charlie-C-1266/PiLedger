@@ -1,6 +1,6 @@
 import { updateEnvelope } from "../../api/client";
 import { useBudgetEdit } from "../../hooks/useBudget";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { BudgetEnvelope } from "../../types";
 import HBar from "../charts/HBar";
 import styles from "./EnvelopeRow.module.css";
@@ -33,6 +33,7 @@ export default function EnvelopeRow({
   incomeTotal,
   onEdit,
 }: Props) {
+  const { fmt } = useMoney();
   const { patch, persist } = useBudgetEdit();
   const over = env.spent > env.budgeted;
   // A single envelope tops out at the whole income (the zero-based ceiling),

@@ -1,7 +1,7 @@
 import PeriodToggle from "./PeriodToggle";
 import type { Period } from "./period";
 import { CheckIcon } from "../icons";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import styles from "./Hero.module.css";
 
 export interface HeroSegment {
@@ -38,6 +38,7 @@ export default function Hero({
   period,
   onPeriodChange,
 }: Props) {
+  const { fmt } = useMoney();
   const left = incomeTotal - allocated;
   const stateClass = left === 0 ? styles.up : left > 0 ? styles.warn : styles.down;
   const label =

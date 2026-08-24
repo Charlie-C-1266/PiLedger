@@ -1,4 +1,4 @@
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import { useLongPress } from "../hooks/useLongPress";
 import type { Transaction } from "../types";
 import styles from "./TxnRow.module.css";
@@ -25,6 +25,7 @@ function formatDate(iso: string): string {
 }
 
 export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: Props) {
+  const { fmt } = useMoney();
   const positive = txn.amount >= 0;
 
   // Mouse keeps immediate click-to-edit. Touch/pen use long-press so that an

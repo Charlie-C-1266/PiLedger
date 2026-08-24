@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { CURRENCIES, currencySymbol, fmt, fmtShort } from "./currency";
+import {
+  CURRENCIES,
+  currencySymbol,
+  fmt,
+  fmtHidden,
+  fmtShort,
+} from "./currency";
 
 // The negative prefix is a real minus sign (U+2212), not an ASCII hyphen.
 const MINUS = "−";
@@ -94,5 +100,23 @@ describe("CURRENCIES", () => {
       expect(c.code).toMatch(/^[A-Z]{3}$/);
       expect(c.name.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("fmtHidden", () => {
+  it("keeps the currency symbol but replaces the digits", () => {
+    expect(fmtHidden("GBP")).toBe("£****");
+    expect(fmtHidden("USD")).toBe("$****");
+  });
+
+  it("defaults to GBP when no currency is given", () => {
+    expect(fmtHidden()).toBe("£****");
+  });
+
+  it("is the same width whatever the amount would have been, and unsigned", () => {
+    // A mask that tracked the digit count (or the sign) would leak the very
+    // thing it is meant to hide.
+    expect(fmtHidden("GBP")).toBe(fmtHidden("GBP"));
+    expect(fmtHidden("GBP")).not.toContain(MINUS);
   });
 });

@@ -10,7 +10,7 @@ import {
 import type { ValueType, NameType } from "recharts/types/component/DefaultTooltipContent";
 import { useTheme } from "../../theme/useTheme";
 import type { ThemeTokens } from "../../theme/tokens";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 
 interface Point {
   date: string;
@@ -56,6 +56,7 @@ function ChartTooltip({
   theme: ThemeTokens;
   currency: string;
 }) {
+  const { fmt } = useMoney();
   if (!active || !payload?.length) return null;
   const value = payload[0]?.value;
   return (
@@ -96,6 +97,7 @@ export default function LineChart({
   onHover,
   currency = "GBP",
 }: Props) {
+  const { fmtShort, hidden } = useMoney();
   const { mode, theme } = useTheme();
   const fillOpacity = mode === "light" ? 0.22 : 0.32;
 
@@ -129,7 +131,7 @@ export default function LineChart({
           axisLine={false}
           tickLine={false}
           tick={{ fill: theme.textMute, fontSize: 11 }}
-          tickFormatter={(v: number) => fmtShort(v, currency)}
+          tickFormatter={(v: number) => (hidden ? "" : fmtShort(v, currency))}
           width={50}
           tickCount={4}
         />

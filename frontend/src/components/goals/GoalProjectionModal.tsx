@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import { useTheme } from "../../theme/useTheme";
 import Modal from "../Modal";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { Goal } from "../../types";
 import styles from "./GoalProjectionModal.module.css";
 
@@ -67,6 +67,7 @@ function monthsToReach(goal: Goal): number | null {
  * the goals already loaded.
  */
 export default function GoalProjectionModal({ goals, currency, onClose }: Props) {
+  const { fmt, fmtShort, hidden } = useMoney();
   const { theme } = useTheme();
 
   // Only goals with a real target are projectable; default to showing them all.
@@ -182,7 +183,7 @@ export default function GoalProjectionModal({ goals, currency, onClose }: Props)
                       axisLine={false}
                       tickLine={false}
                       tick={{ fill: theme.textMute, fontSize: 11 }}
-                      tickFormatter={(v: number) => fmtShort(v, currency)}
+                      tickFormatter={(v: number) => (hidden ? "" : fmtShort(v, currency))}
                       width={52}
                       tickCount={5}
                     />

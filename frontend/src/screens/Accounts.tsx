@@ -3,7 +3,7 @@ import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
 import { useAllHistory } from "../hooks/useAllHistory";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
@@ -40,6 +40,7 @@ const BALANCE_FILTER_LABELS: Record<BalanceFilter, string> = {
 const isDebt = (a: Account) => a.type === "loan" || a.type === "credit";
 
 export default function Accounts() {
+  const { fmt } = useMoney();
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary } = useSummary();

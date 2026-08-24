@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmt, fmtShort } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import Donut from "../charts/Donut";
 import styles from "./AllocationDonut.module.css";
 
@@ -23,6 +23,7 @@ export default function AllocationDonut({
   currency,
   factor,
 }: Props) {
+  const { fmt, fmtShort } = useMoney();
   const [hover, setHover] = useState<number | null>(null);
 
   const pct = (v: number) => Math.round((v / (allocated || 1)) * 100);

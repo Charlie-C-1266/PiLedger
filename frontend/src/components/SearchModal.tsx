@@ -5,7 +5,7 @@ import { getTransactions } from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useGoals } from "../hooks/useGoals";
 import { useSummary } from "../hooks/useSummary";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import { SearchIcon, WalletIcon, FlagIcon, ListIcon } from "./icons";
 import styles from "./SearchModal.module.css";
 
@@ -36,6 +36,7 @@ const GROUP_ICON: Record<ResultKind, React.ReactNode> = {
 };
 
 export default function SearchModal({ onClose }: Props) {
+  const { fmt } = useMoney();
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -101,7 +102,7 @@ export default function SearchModal({ onClose }: Props) {
       to: `/transactions?q=${encodeURIComponent(debounced)}`,
     }));
     return [...accountResults, ...goalResults, ...txnResults];
-  }, [debounced, accounts, goals, transactions, currency]);
+  }, [debounced, accounts, goals, transactions, currency, fmt]);
 
   // Keep the active highlight in range as results change.
   useEffect(() => {

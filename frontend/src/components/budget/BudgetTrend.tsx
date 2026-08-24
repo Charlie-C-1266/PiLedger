@@ -1,4 +1,4 @@
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { BudgetHistoryPoint } from "../../types";
 import { PERIODS, type Period } from "./period";
 import styles from "./BudgetTrend.module.css";
@@ -22,6 +22,7 @@ function monthLabel(ym: string): string {
  * The "budgeted" line is the current flat allocation (no historical snapshots).
  */
 export default function BudgetTrend({ history, currency, factor, period }: Props) {
+  const { fmt } = useMoney();
   if (history.length === 0) return null;
 
   const maxHist = Math.max(

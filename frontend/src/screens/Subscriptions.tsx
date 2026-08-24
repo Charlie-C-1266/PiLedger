@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useSubscriptions } from "../hooks/useSubscriptions";
 import { useSummary } from "../hooks/useSummary";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import SegmentedControl from "../components/SegmentedControl";
 import SubscriptionsCalendar from "../components/SubscriptionsCalendar";
@@ -37,6 +37,7 @@ function SubscriptionRow({
   currency: string;
   onEdit: (s: Subscription) => void;
 }) {
+  const { fmt } = useMoney();
   const due = dueLabel(sub);
   return (
     <div

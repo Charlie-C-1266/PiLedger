@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useTransactions } from "../hooks/useTransactions";
-import { fmt } from "../lib/currency";
+import { useMoney } from "../privacy/useMoney";
 import { useSummary } from "../hooks/useSummary";
 import { SearchIcon, FilterIcon } from "../components/icons";
 import TxnRow from "../components/TxnRow";
@@ -23,6 +23,7 @@ const SORT_OPTIONS: { key: TxnSort; label: string }[] = [
 ];
 
 export default function Transactions() {
+  const { fmt } = useMoney();
   const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary } = useSummary();

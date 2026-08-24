@@ -1,6 +1,6 @@
 import { updateIncome } from "../../api/client";
 import { useBudgetEdit } from "../../hooks/useBudget";
-import { fmt } from "../../lib/currency";
+import { useMoney } from "../../privacy/useMoney";
 import type { BudgetIncome } from "../../types";
 import { PlusIcon } from "../icons";
 import Stepper from "./Stepper";
@@ -36,6 +36,7 @@ export default function IncomeCard({
   onAdd,
   onEdit,
 }: Props) {
+  const { fmt } = useMoney();
   const { patch, persist } = useBudgetEdit();
   const total = incomes.reduce((s, i) => s + i.amount, 0);
   const show = (v: number) => fmt(v * factor, currency, { decimals: 0 });

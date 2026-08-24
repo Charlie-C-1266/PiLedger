@@ -1,11 +1,13 @@
 import { useTheme } from "../../theme/useTheme";
+import { usePrivacy } from "../../privacy/usePrivacy";
 import { ACCENT_OPTIONS } from "../../theme/tokens";
-import { SunIcon, MoonIcon } from "../icons";
+import { SunIcon, MoonIcon, EyeIcon, EyeOffIcon } from "../icons";
 import SettingsCard from "./SettingsCard";
 import styles from "./Settings.module.css";
 
 export default function AppearanceCard() {
   const { mode, accent, toggleMode, setAccent } = useTheme();
+  const { hidden, toggle: togglePrivacy } = usePrivacy();
 
   return (
     <SettingsCard title="Appearance">
@@ -17,6 +19,24 @@ export default function AppearanceCard() {
         <button className={styles.toggleBtn} onClick={toggleMode} aria-label="Toggle theme">
           {mode === "light" ? <MoonIcon /> : <SunIcon />}
           <span>{mode === "light" ? "Dark" : "Light"}</span>
+        </button>
+      </div>
+
+      <div className={styles.row}>
+        <div>
+          <div className={styles.label}>Hide amounts</div>
+          <div className={styles.hint}>
+            Mask every amount on screen — same as the eye button in the header
+          </div>
+        </div>
+        <button
+          className={styles.toggleBtn}
+          onClick={togglePrivacy}
+          aria-label={hidden ? "Show amounts" : "Hide amounts"}
+          aria-pressed={hidden}
+        >
+          {hidden ? <EyeOffIcon /> : <EyeIcon />}
+          <span>{hidden ? "Show" : "Hide"}</span>
         </button>
       </div>
 
