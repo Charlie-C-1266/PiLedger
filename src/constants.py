@@ -1,7 +1,7 @@
 """Module-level constants, type aliases, and bounds shared across PiLedger."""
 
 import os
-from typing import Literal
+from typing import Literal, get_args
 
 
 # Application version. Returned by `GET /healthz` so uptime monitors and
@@ -134,6 +134,78 @@ AccountSubtype = Literal[
     "trading_account",
     "crypto",
 ]
+
+# The financial institution an Account is held with, so a User can see (and
+# group) everything they hold with one provider — a current account and a
+# credit card both at Chase. Curated to the UK market; `"other"` is the escape
+# hatch and is the only slug that carries a free-text `institution_name`.
+# Storing the slug keeps the API stable while the frontend owns the display
+# name, brand colour and monogram mark (frontend/src/lib/institutions.ts) —
+# the same split used for AccountSubtype. `tests/test_institution_frontend_parity.py`
+# guards the two sides against drift.
+InstitutionSlug = Literal[
+    # High-street banks
+    "barclays",
+    "hsbc",
+    "first_direct",
+    "lloyds",
+    "halifax",
+    "bank_of_scotland",
+    "natwest",
+    "royal_bank_of_scotland",
+    "santander",
+    "tsb",
+    "co_operative_bank",
+    "metro_bank",
+    "virgin_money",
+    # Building societies
+    "nationwide",
+    "yorkshire_building_society",
+    "coventry_building_society",
+    "skipton_building_society",
+    "leeds_building_society",
+    # Digital banks
+    "monzo",
+    "starling",
+    "chase",
+    "revolut",
+    "wise",
+    # Card issuers
+    "amex",
+    "barclaycard",
+    "capital_one",
+    "mbna",
+    # Supermarket banks
+    "tesco_bank",
+    "sainsburys_bank",
+    # Investing & pensions
+    "vanguard",
+    "hargreaves_lansdown",
+    "aj_bell",
+    "interactive_investor",
+    "trading_212",
+    "freetrade",
+    "moneybox",
+    "nutmeg",
+    # Other providers
+    "nsandi",
+    "student_loans_company",
+    "paypal",
+    "klarna",
+    "coinbase",
+    "other",
+]
+
+INSTITUTION_SLUGS: frozenset[str] = frozenset(get_args(InstitutionSlug))
+
+# The slug whose label the User types themselves. Every other slug takes its
+# display name from the frontend catalogue, so pairing one with a custom name
+# is rejected rather than silently ignored.
+INSTITUTION_OTHER = "other"
+
+# Bound on that free-text name — long enough for "Nationwide Building Society",
+# short enough to render on an account card without truncation games.
+MAX_INSTITUTION_NAME = 60
 
 # Supported currencies. Curated shortlist — adding a new one means appending
 # here plus listing the symbol in CURRENCY_INFO below and the label in the

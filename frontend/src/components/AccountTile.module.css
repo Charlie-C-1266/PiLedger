@@ -37,14 +37,24 @@
   gap: 8px;
 }
 
+/* Reserve the corner the emblem's disc occupies so a long provider name
+   ellipses instead of running underneath it. */
+.topInset {
+  padding-right: 52px;
+}
+
 .institution {
   font: 600 10px/1 "Plus Jakarta Sans", sans-serif;
   letter-spacing: 1.2px;
   opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .badge {
   flex-shrink: 0;
+  margin-bottom: 2px;
   padding: 3px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
@@ -62,13 +72,26 @@
 
 .bottom {
   display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.details {
+  display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .name {
   font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
   opacity: 0.7;
+  /* Now that the badge shares this row, a long account name has to give way
+     rather than run into it. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .balance {

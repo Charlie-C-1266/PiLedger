@@ -39,11 +39,13 @@ Personal access tokens for headless clients (CLI, scheduled scripts, an MCP serv
 | Method | Path | Body | Response |
 |---|---|---|---|
 | `GET` | `/api/accounts` | — | Array of account objects, each with `current_balance` and `last_updated` joined from the latest `balance_history` row |
-| `POST` | `/api/accounts` | `{name, type, subtype?, currency?, interest_rate?, color?}` | Created account object. `subtype` defaults to `general` and must be valid for the given `type` (see the `SUBTYPES_BY_TYPE` map in `constants.py`); `currency` defaults to `GBP`. |
-| `PUT` | `/api/accounts/{id}` | `{name?, subtype?, currency?, interest_rate?, color?}` | Updated account object. `type` is not editable after creation. |
+| `POST` | `/api/accounts` | `{name, type, subtype?, institution?, institution_name?, currency?, interest_rate?, color?}` | Created account object. `subtype` defaults to `general` and must be valid for the given `type` (see the `SUBTYPES_BY_TYPE` map in `constants.py`); `currency` defaults to `GBP`. |
+| `PUT` | `/api/accounts/{id}` | `{name?, subtype?, institution?, institution_name?, currency?, interest_rate?, color?}` | Updated account object. `type` is not editable after creation. Sending `institution: null` clears the provider; every other field is left unchanged when null. |
 | `DELETE` | `/api/accounts/{id}` | — | `{ok}` |
 
 Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
+
+`institution` records who the account is held with, as a slug from the `InstitutionSlug` literal in `constants.py`. It pairs with `institution_name` under one rule: `'other'` **requires** a non-empty `institution_name`, and every other slug **forbids** one (the display name comes from the frontend catalogue). A mismatched pair is a 400, on create and update alike — on update the missing half is read from the stored row, so patching either field on its own is checked against the other.
 
 ## Balance history
 

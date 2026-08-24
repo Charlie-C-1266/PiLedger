@@ -32,6 +32,8 @@ Financial accounts. Each row belongs to exactly one user.
 | `name` | TEXT | Display name, e.g. "Barclays Current" |
 | `type` | TEXT | Constrained to `'current'`, `'savings'`, `'loan'`, `'credit'`, or `'invest'` |
 | `subtype` | TEXT | Sub-classification within a type (e.g. `'cash_isa'`, `'stocks_shares_isa'`, `'mortgage'`); defaults to `'general'`. Full list in the `AccountSubtype` literal in `constants.py` |
+| `institution` | TEXT | The provider the account is held with, as a catalogue slug (e.g. `'chase'`, `'nationwide'`); NULL when not recorded. Full list in the `InstitutionSlug` literal in `constants.py` |
+| `institution_name` | TEXT | Free-text provider name, set **only** when `institution` is `'other'`; NULL otherwise (a catalogue slug takes its display name from the frontend) |
 | `currency` | TEXT | ISO-4217 currency code; defaults to `'GBP'` |
 | `interest_rate` | REAL | Annual rate as a percentage (e.g. `4.5` for 4.5% AER on savings, or APR on loans) |
 | `color` | TEXT | Hex colour used in chart lines and card borders |
@@ -151,7 +153,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 
 **Fresh databases** get the current-schema `CREATE TABLE IF NOT EXISTS` statements, then are stamped with the latest `SCHEMA_VERSION`.
 
-**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — eight idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
+**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — fourteen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
 
 1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
 2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
@@ -161,6 +163,12 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 6. **`users.base_currency` (0.11.0)** — added via `ALTER TABLE`, defaults to `'GBP'`.
 7. **`balance_history.balance REAL` → `balance_cents INTEGER`** — table rebuilt; values converted with `CAST(ROUND(balance * 100) AS INTEGER)`.
 8. **`budget_items` dropped** — the retired recurring-cash-flow table (superseded by the envelope budget) is removed with `DROP TABLE IF EXISTS budget_items`.
+9. **`transactions.transfer_id`** — added via `ALTER TABLE`; links the two legs of a transfer.
+10. **`goals.account_id`** — added via `ALTER TABLE`; links a goal to the account it tracks.
+11. **`accounts.counts_to_net_worth`** — added via `ALTER TABLE`, defaults to `1`.
+12. **`transactions.import_hash`** — added via `ALTER TABLE`, with its unique-if-not-null index (CSV import dedup).
+13. **`accounts.closed`** — added via `ALTER TABLE`, defaults to `0`.
+14. **`accounts.institution` + `accounts.institution_name`** — added via `ALTER TABLE`, both NULL on existing rows.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
@@ -171,3 +179,8 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v7** — the zero-based envelope budget tables are created: `budget_income`, `budget_group`, `budget_envelope`.
 - **v8** — `accounts.counts_to_net_worth` added (the Accessible-net-worth / set-aside flag, [ADR-0003](adr/0003-accessible-net-worth-user-flag.md)), defaulting to `1` so existing accounts keep counting.
 - **v9** — the retired `users.theme` / `users.dark_mode` columns are dropped (theming is client-side now; nothing read them server-side).
+- **v10** — the `subscriptions` table is created (recurring payments and standing orders).
+- **v11** — `transactions.import_hash` added, with a unique-if-not-null index, so a re-uploaded CSV export skips rows already imported.
+- **v12** — `accounts.closed` added, defaulting to `0` so existing accounts stay open.
+- **v13** — the `api_tokens` table is created (personal access tokens for headless clients).
+- **v14** — `accounts.institution` and `accounts.institution_name` added, both NULL on existing rows: the provider can't be inferred from an account's name, so it stays unrecorded until its owner sets it.

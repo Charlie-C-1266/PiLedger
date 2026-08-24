@@ -19,8 +19,12 @@ from constants import (
     Frequency,
     HEX_COLOR_PATTERN,
     ImportDateFormat,
+    INSTITUTION_OTHER,
+    INSTITUTION_SLUGS,
+    InstitutionSlug,
     ISO_FMT,
     MAX_IMPORT_CSV_CHARS,
+    MAX_INSTITUTION_NAME,
     MAX_MONEY,
     MAX_RATE,
     MAX_RATE_FX,
@@ -121,10 +125,52 @@ class PasswordChangeIn(_In):
     new_password: Annotated[str, Field(min_length=8, max_length=256)]
 
 
+def validated_institution(
+    slug: Optional[str], name: Optional[str]
+) -> tuple[Optional[str], Optional[str]]:
+    """Normalise and cross-check an ``(institution, institution_name)`` pair.
+
+    Exactly one of the two carries the label: a catalogue slug takes its display
+    name from the frontend, while ``'other'`` is the only slug the User names
+    themselves. Rejecting the incoherent combinations (rather than quietly
+    dropping half the pair) keeps a mistyped payload from storing an account
+    whose provider silently reads as blank.
+
+    Returns the cleaned pair; raises ``ValueError`` if they disagree. Shared by
+    ``AccountIn`` and the ``PUT /api/accounts/{id}`` handler, which has to apply
+    the same rules against the row's existing values because a partial patch may
+    supply only one half.
+    """
+    cleaned = name.strip() if name else ""
+    if slug is None:
+        if cleaned:
+            raise ValueError("institution_name requires an institution")
+        return None, None
+    if slug not in INSTITUTION_SLUGS:
+        raise ValueError(f"unknown institution '{slug}'")
+    if slug == INSTITUTION_OTHER:
+        if not cleaned:
+            raise ValueError(
+                f"institution_name is required when institution is '{INSTITUTION_OTHER}'"
+            )
+        return slug, cleaned
+    if cleaned:
+        raise ValueError(
+            f"institution_name is only valid when institution is '{INSTITUTION_OTHER}'"
+        )
+    return slug, None
+
+
 class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
     subtype: AccountSubtype = "general"
+    # Who the account is held with. Both stay None for a User who doesn't
+    # record it; `institution_name` is set only alongside institution='other'.
+    institution: Optional[InstitutionSlug] = None
+    institution_name: Optional[str] = Field(
+        default=None, max_length=MAX_INSTITUTION_NAME
+    )
     currency: Currency = "GBP"
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
@@ -141,10 +187,31 @@ class AccountIn(_In):
             )
         return self
 
+    @model_validator(mode="after")
+    def _institution_pair_is_coherent(self) -> "AccountIn":
+        """Cross-check institution against institution_name (see
+        ``validated_institution``) and keep the trimmed name.
+
+        Only the name is reassigned: the helper returns the slug untouched
+        whenever the pair validates, so there is nothing to write back.
+        """
+        _, self.institution_name = validated_institution(
+            self.institution, self.institution_name
+        )
+        return self
+
 
 class AccountPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     subtype: Optional[AccountSubtype] = None
+    # Both use exclude_unset in the handler, so an explicit `institution: null`
+    # clears the provider while an omitted field is left alone. The pair is
+    # cross-checked there rather than here: a partial patch may carry only one
+    # half, and the other has to come from the stored row.
+    institution: Optional[InstitutionSlug] = None
+    institution_name: Optional[str] = Field(
+        default=None, max_length=MAX_INSTITUTION_NAME
+    )
     currency: Optional[Currency] = None
     interest_rate: Optional[float] = Field(
         default=None, ge=0, le=MAX_RATE, allow_inf_nan=False
@@ -397,6 +464,10 @@ class AccountOut(BaseModel):
     name: str
     type: AccountType
     subtype: AccountSubtype = "general"
+    # Catalogue slug, or None when the User hasn't recorded a provider.
+    institution: Optional[InstitutionSlug] = None
+    # The User-supplied label, set only when institution == 'other'.
+    institution_name: Optional[str] = None
     currency: Currency = "GBP"
     interest_rate: float
     color: str

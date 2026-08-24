@@ -26,6 +26,8 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
     name: "Monzo",
     type: "current",
     subtype: "general",
+    institution: null,
+    institution_name: null,
     currency: "GBP",
     interest_rate: 0,
     color: "#6366f1",
@@ -64,6 +66,78 @@ describe("EditAccountModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).toHaveBeenCalledWith(1, { closed: true });
+  });
+
+  it("preselects the account's current institution", () => {
+    render(
+      <EditAccountModal account={makeAccount({ institution: "chase" })} onClose={() => {}} />,
+      { wrapper },
+    );
+    expect(screen.getByLabelText("Institution")).toHaveValue("chase");
+  });
+
+  it("saves a newly chosen institution as a pair", async () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    await userEvent.selectOptions(screen.getByLabelText("Institution"), "chase");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    expect(updateAccount).toHaveBeenCalledWith(1, {
+      institution: "chase",
+      institution_name: null,
+    });
+  });
+
+  it("clears the provider when the institution is unset", async () => {
+    render(
+      <EditAccountModal account={makeAccount({ institution: "chase" })} onClose={() => {}} />,
+      { wrapper },
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Institution"), "");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    expect(updateAccount).toHaveBeenCalledWith(1, {
+      institution: null,
+      institution_name: null,
+    });
+  });
+
+  it("asks for a name when Other is chosen, and sends it with the slug", async () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    expect(screen.queryByLabelText("Institution name")).not.toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Institution"), "other");
+    await userEvent.type(screen.getByLabelText("Institution name"), "Kroo");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    expect(updateAccount).toHaveBeenCalledWith(1, {
+      institution: "other",
+      institution_name: "Kroo",
+    });
+  });
+
+  it("will not save Other without a name, since the API would reject it", async () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    await userEvent.selectOptions(screen.getByLabelText("Institution"), "other");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    expect(updateAccount).not.toHaveBeenCalled();
+  });
+
+  it("drops the stale custom name when switching from Other to a catalogue slug", async () => {
+    render(
+      <EditAccountModal
+        account={makeAccount({ institution: "other", institution_name: "Kroo" })}
+        onClose={() => {}}
+      />,
+      { wrapper },
+    );
+    await userEvent.selectOptions(screen.getByLabelText("Institution"), "starling");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    expect(updateAccount).toHaveBeenCalledWith(1, {
+      institution: "starling",
+      institution_name: null,
+    });
   });
 
   it("does not call updateAccount for closed when the toggle is untouched", async () => {

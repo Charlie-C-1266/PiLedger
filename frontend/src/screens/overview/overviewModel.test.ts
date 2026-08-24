@@ -14,6 +14,8 @@ function makeAccount(over: Partial<Account>): Account {
     name: "Acc",
     type: "current",
     subtype: "general",
+    institution: null,
+    institution_name: null,
     currency: "GBP",
     interest_rate: 0,
     color: "#abcabc",
