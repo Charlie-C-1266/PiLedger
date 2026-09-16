@@ -1,5 +1,6 @@
 import type {
   Account,
+  AccountBalanceEntry,
   AccountHistory,
   AccountProjection,
   Budget,
@@ -158,6 +159,11 @@ export const removeAccount = (id: number) =>
 
 export const recordBalance = (accountId: number, balance: number) =>
   post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, { balance });
+
+// Balance-history points for a single account over the last `days` (default
+// 90), oldest first. Balance stays in the account's own currency.
+export const getAccountHistory = (accountId: number, days = 90) =>
+  json<AccountBalanceEntry[]>(`/api/accounts/${accountId}/history?days=${days}`);
 
 // Summary
 

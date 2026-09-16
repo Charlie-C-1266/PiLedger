@@ -79,13 +79,14 @@ Line/area charts use **Recharts**; the donut and the horizontal/trend bars are h
 |---|---|---|---|
 | Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
 | Account balances | Accounts | Multi-line step (`AccountHistoryChart`) | `GET /api/history/all?days=` — one line per account, not currency-converted |
+| Account balance | Account edit modal (History section) | Single-line step (`AccountHistoryChart`, reused) | `GET /api/accounts/{aid}/history?days=` — one account's own history |
 | Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
 | Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
 | Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
 | Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |
 | Savings projections | Overview (modal) | Multi-line (`AccountProjectionsModal`) | `GET /api/projections?months=` — compound-interest growth per savings account |
 
-The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart and the Accounts balance-history chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
+The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart, the Accounts balance-history chart, and the account edit modal's History section; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
 
 ## Modals
 
