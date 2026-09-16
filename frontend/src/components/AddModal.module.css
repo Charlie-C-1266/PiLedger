@@ -274,3 +274,24 @@
 .toggleSwitchOn .toggleKnob {
   transform: translateX(18px);
 }
+
+/* ── Balance history (account edit modal) ──────────────── */
+
+.historySection {
+  margin-bottom: 20px;
+}
+
+.historyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.historyState {
+  color: var(--pl-text-mute);
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  text-align: center;
+  padding: 24px 0;
+}

@@ -164,6 +164,24 @@ describe("range / window query params", () => {
     await api.getProjections();
     expect(fetchMock).toHaveBeenCalledWith("/api/projections?months=24", undefined);
   });
+
+  it("defaults a single account's history window to 90 days", async () => {
+    fetchMock.mockResolvedValue(okJson([]));
+    await api.getAccountHistory(5);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/accounts/5/history?days=90",
+      undefined,
+    );
+  });
+
+  it("passes an explicit account-history window", async () => {
+    fetchMock.mockResolvedValue(okJson([]));
+    await api.getAccountHistory(5, 30);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/accounts/5/history?days=30",
+      undefined,
+    );
+  });
 });
 
 describe("exportData", () => {

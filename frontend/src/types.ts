@@ -160,6 +160,15 @@ export interface AccountHistory {
   history: AccountHistoryPoint[];
 }
 
+/** One balance reading for a single account, from
+ * `GET /api/accounts/{aid}/history`. Balance stays in the account's own
+ * currency — it is not converted to base. */
+export interface AccountBalanceEntry {
+  balance: number;
+  notes: string | null;
+  recorded_at: string;
+}
+
 /** One month of a savings-account compound-interest projection. */
 export interface ProjectionPoint {
   date: string;
