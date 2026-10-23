@@ -14,10 +14,12 @@ file is simply parsed twice.
 Dedup relies on `transactions.import_hash`, a unique-if-not-null index
 computed from (account_id, occurred_at, amount_cents, merchant), so
 re-uploading an overlapping export skips the already-imported rows instead
-of duplicating them.
+of duplicating them. Identical rows within one export (e.g. two same-day
+fares) are disambiguated by their occurrence count so both import.
 """
 
 import sqlite3
+from collections import Counter
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
@@ -47,8 +49,8 @@ router = APIRouter(tags=["imports"])
 PREVIEW_ROWS = 20
 
 # One parsed, insert-ready row: (amount_cents, occurred_at, merchant,
-# category, note, import_hash).
-_ParsedRow = tuple[int, str, str, str, str, str]
+# category, note).
+_ParsedRow = tuple[int, str, str, str, str]
 
 
 @router.post("/api/transactions/import/preview", response_model=ImportPreviewOut)
@@ -95,16 +97,12 @@ def _parse_row(
         note=note,
     )
     amount_cents = to_cents(validated.amount)
-    row_hash = import_row_hash(
-        account_id, validated.occurred_at, amount_cents, validated.merchant
-    )
     return (
         amount_cents,
         validated.occurred_at,
         validated.merchant,
         validated.category,
         validated.note,
-        row_hash,
     )
 
 
@@ -141,6 +139,7 @@ def commit_import(
         except (ValidationError, ValueError, IndexError) as e:
             errors.append(ImportRowError(row=i, message=str(e)))
 
+    seen: Counter[tuple[int, str, str]] = Counter()
     imported = 0
     skipped = 0
     with db() as conn:
@@ -151,8 +150,12 @@ def commit_import(
             merchant,
             category,
             note,
-            row_hash,
         ) in parsed_rows:
+            key = (amount_cents, occurred_at, merchant)
+            row_hash = import_row_hash(
+                data.account_id, occurred_at, amount_cents, merchant, seen[key]
+            )
+            seen[key] += 1
             try:
                 conn.execute(
                     "INSERT INTO transactions(user_id, account_id, amount_cents,"
