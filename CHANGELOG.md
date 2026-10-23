@@ -9,6 +9,11 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Fixed
+
+- CSV import no longer drops genuinely repeated same-day transactions (e.g. two identical fares) as duplicates; re-importing an export still skips rows already imported.
+- Updated `anyio`, `certifi` and `urllib3` to clear newly-disclosed security advisories flagged by the dependency and image scans.
+
 ### Added
 
 - Tapping an account now shows a "History" section in its edit view with a balance-over-time chart (7D/30D/90D/1Y), so you can see how an individual account has trended.

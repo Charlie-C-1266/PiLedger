@@ -125,6 +125,55 @@ def test_commit_reimporting_same_csv_is_deduped(alice):
     assert len(alice.get("/api/transactions").json()) == 2
 
 
+_FARES_MAPPING = {"date": "date", "amount": "amount", "merchant": "description"}
+
+
+def test_commit_keeps_identical_same_day_rows_in_one_csv(alice):
+    """Two genuinely distinct same-day, same-amount, same-merchant rows both import."""
+    account_id = _make_account(alice)
+    csv_text = (
+        "date,description,amount\n"
+        "2026-01-15,TFL TRAVEL,-3.20\n"
+        "2026-01-15,TFL TRAVEL,-3.20\n"
+    )
+    payload = {
+        "csv_text": csv_text,
+        "account_id": account_id,
+        "mapping": _FARES_MAPPING,
+    }
+    first = alice.post("/api/transactions/import/commit", json=payload).json()
+    assert first == {"imported": 2, "skipped_duplicates": 0, "errors": []}
+    assert len(alice.get("/api/transactions").json()) == 2
+    assert alice.get("/api/accounts").json()[0]["current_balance"] == -6.4
+
+    # Re-importing the same export still dedups both rows.
+    second = alice.post("/api/transactions/import/commit", json=payload).json()
+    assert second == {"imported": 0, "skipped_duplicates": 2, "errors": []}
+    assert alice.get("/api/accounts").json()[0]["current_balance"] == -6.4
+
+
+def test_commit_overlapping_export_dedups_repeated_rows_by_occurrence(alice):
+    """An overlapping export with fewer repeats only imports the extra ones."""
+    account_id = _make_account(alice)
+    one = "date,description,amount\n2026-01-15,TFL TRAVEL,-3.20\n"
+    two = one + "2026-01-15,TFL TRAVEL,-3.20\n"
+    url = "/api/transactions/import/commit"
+
+    def run(csv_text):
+        return alice.post(
+            url,
+            json={
+                "csv_text": csv_text,
+                "account_id": account_id,
+                "mapping": _FARES_MAPPING,
+            },
+        ).json()
+
+    assert run(one)["imported"] == 1
+    assert run(two) == {"imported": 1, "skipped_duplicates": 1, "errors": []}
+    assert len(alice.get("/api/transactions").json()) == 2
+
+
 def test_commit_debit_credit_split_columns(alice):
     account_id = _make_account(alice)
     csv_text = (

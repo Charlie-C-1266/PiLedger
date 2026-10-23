@@ -80,9 +80,21 @@ def parse_occurred_at(raw: str, date_format: str) -> str:
 
 
 def import_row_hash(
-    account_id: int, occurred_at: str, amount_cents: int, merchant: str
+    account_id: int,
+    occurred_at: str,
+    amount_cents: int,
+    merchant: str,
+    occurrence: int = 0,
 ) -> str:
     """Stable hash identifying a transaction for dedup across re-imports of
-    the same (or an overlapping) export."""
+    the same (or an overlapping) export.
+
+    `occurrence` is the 0-based count of earlier identical rows in the same
+    export, so genuinely repeated same-day purchases get distinct hashes while
+    a re-import still reproduces them. The first occurrence omits it, keeping
+    hashes of previously imported rows unchanged.
+    """
     key = f"{account_id}|{occurred_at}|{amount_cents}|{merchant}"
+    if occurrence:
+        key += f"|{occurrence}"
     return hashlib.sha256(key.encode()).hexdigest()
