@@ -4,7 +4,11 @@ annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
     # via pydantic
-anyio==4.13.0
+anyio==4.14.2 ; python_full_version < '3.15'
+    # via
+    #   starlette
+    #   watchfiles
+anyio==4.15.1 ; python_full_version >= '3.15'
     # via
     #   starlette
     #   watchfiles
