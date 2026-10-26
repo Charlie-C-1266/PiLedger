@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMoney } from "../privacy/useMoney";
 import { useLongPress } from "../hooks/useLongPress";
 import type { Transaction } from "../types";
@@ -45,7 +46,20 @@ export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: 
           {formatDate(txn.occurred_at)}
         </div>
       </div>
-      {accountName && <div className={styles.account}>{accountName}</div>}
+      {accountName && (
+        <div className={styles.account}>
+          {/* Opens the account's page. Stops the row's own click/long-press so
+              following the link doesn't also open the transaction editor. */}
+          <Link
+            to={`/accounts/${txn.account_id}`}
+            className={styles.accountLink}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {accountName}
+          </Link>
+        </div>
+      )}
       <div className={`${styles.amount} ${positive ? styles.up : styles.down}`}>
         {positive ? "+" : "−"}
         {fmt(Math.abs(txn.amount), currency).replace(/^[−-]/, "")}

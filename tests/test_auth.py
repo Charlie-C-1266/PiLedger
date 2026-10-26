@@ -190,6 +190,19 @@ def test_root_serves_dashboard_when_authenticated(alice):
     assert resp.status_code in (200, 503)
 
 
+def test_account_page_deep_link_redirects_unauthenticated_to_login(client):
+    resp = client.get("/accounts/12", follow_redirects=False)
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["location"]
+
+
+def test_account_page_deep_link_serves_the_spa_when_authenticated(alice):
+    # A refresh on /accounts/<id> must load the app rather than 404; the SPA
+    # itself decides whether the id is one of the user's accounts.
+    resp = alice.get("/accounts/12", follow_redirects=False)
+    assert resp.status_code in (200, 503)
+
+
 def test_login_page_is_public(client):
     resp = client.get("/login")
     assert resp.status_code == 200

@@ -4,17 +4,21 @@ End-to-end coverage for the global header search palette.
 Seeds an account, a goal and a transaction via the API (reusing the browser's
 session cookie), then drives the search overlay from the desktop header:
 account/goal matches come from the cached lists, transaction matches come from
-the server-side `?search=` query, and selecting a transaction deep-links to
-`/transactions?q=<term>` with the list pre-filtered.
+the server-side `?search=` query, selecting a transaction deep-links to
+`/transactions?q=<term>` with the list pre-filtered, and selecting an account
+opens that account's own page.
 """
 
 from __future__ import annotations
 
+import re
+
 from playwright.sync_api import expect
 
 
-def _seed(page) -> None:
-    """Create one account, one goal and one transaction for the signed-in user."""
+def _seed(page) -> int:
+    """Create one account, one goal and one transaction for the signed-in user,
+    returning the account's id."""
     acc = page.request.post(
         "/api/accounts",
         data={"name": "Holiday Savings", "type": "savings", "currency": "GBP"},
@@ -39,11 +43,12 @@ def _seed(page) -> None:
     # bypasses that.
     page.reload()
     page.get_by_text("ACCESSIBLE NET WORTH", exact=True).wait_for(state="visible")
+    return account_id
 
 
 def test_search_matches_accounts_and_goals(signed_in_page) -> None:
     page = signed_in_page
-    _seed(page)
+    account_id = _seed(page)
 
     page.get_by_role("button", name="Search").click()
     dialog = page.get_by_role("dialog", name="Search")
@@ -55,6 +60,21 @@ def test_search_matches_accounts_and_goals(signed_in_page) -> None:
     # palette so an unrelated overview card can't satisfy the locator.
     expect(dialog.get_by_text("Holiday Savings")).to_be_visible()
     expect(dialog.get_by_text("Holiday Trip")).to_be_visible()
+
+    # Selecting the account opens its own page (read-only: no new data, so
+    # this extends the test rather than adding a mutating one).
+    dialog.get_by_role("button", name=re.compile("Holiday Savings")).click()
+    page.wait_for_url(f"**/accounts/{account_id}")
+    expect(page.get_by_role("heading", level=1, name="Holiday Savings")).to_be_visible()
+    expect(page.get_by_text("Counts toward net worth")).to_be_visible()
+    recent = page.get_by_role("region", name="Recent transactions")
+    expect(recent.get_by_text("Tesco Express")).to_be_visible()
+    expect(recent.get_by_text("Last 30 days · 1 transaction")).to_be_visible()
+
+    # "View all" lands on Transactions filtered to this account.
+    recent.get_by_role("link", name=re.compile("View all")).click()
+    page.wait_for_url(f"**/transactions?account={account_id}")
+    expect(page.get_by_text("Tesco Express")).to_be_visible()
 
 
 def test_search_transaction_deep_links_to_filtered_list(signed_in_page) -> None:

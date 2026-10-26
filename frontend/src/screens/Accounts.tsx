@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTheme } from "../theme/useTheme";
 import { useAccounts } from "../hooks/useAccounts";
 import { useSummary } from "../hooks/useSummary";
@@ -7,14 +8,11 @@ import { useMoney } from "../privacy/useMoney";
 import CardStack from "../components/CardStack";
 import StackControls from "../components/StackControls";
 import AccountTile from "../components/AccountTile";
-import PressableTile from "../components/PressableTile";
-import EditAccountModal from "../components/EditAccountModal";
 import RangePills from "../components/RangePills";
 import Skeleton from "../components/Skeleton";
 import AccountHistoryChart from "../components/charts/AccountHistoryChart";
 import InstitutionMark from "../components/InstitutionMark";
 import { resolveInstitution } from "../lib/institutions";
-import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType, RangeKey } from "../types";
@@ -84,6 +82,21 @@ function groupByInstitution(accounts: Account[]): Grouped[] {
   });
 }
 
+/** An account tile that opens the account's own page. A plain tap or click
+ * navigates; editing lives behind that page's Edit button. */
+function AccountLink({ account }: { account: Account }) {
+  const { fmt } = useMoney();
+  return (
+    <Link
+      to={`/accounts/${account.id}`}
+      className={styles.tileLink}
+      aria-label={`${account.name}, ${fmt(account.current_balance ?? 0, account.currency)}`}
+    >
+      <AccountTile account={account} badge style={{ width: "100%", height: 150 }} />
+    </Link>
+  );
+}
+
 export default function Accounts() {
   const { fmt } = useMoney();
   const { theme } = useTheme();
@@ -92,7 +105,6 @@ export default function Accounts() {
   const [variant, setVariant] = useState<StackVariant>("fan");
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "">("");
   const [balanceFilter, setBalanceFilter] = useState<BalanceFilter>("all");
-  const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [historyRange, setHistoryRange] = useState<RangeKey>("90D");
   const [grouped, setGrouped] = useState(false);
   const { data: history, isPending: historyPending } = useAllHistory(historyRange);
@@ -264,13 +276,7 @@ export default function Accounts() {
                   </header>
                   <div className={styles.accountGrid}>
                     {g.accounts.map((a) => (
-                      <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
-                        <AccountTile
-                          account={a}
-                          badge
-                          style={{ width: "100%", height: 150 }}
-                        />
-                      </PressableTile>
+                      <AccountLink key={a.id} account={a} />
                     ))}
                   </div>
                 </section>
@@ -279,9 +285,7 @@ export default function Accounts() {
           ) : (
             <div className={styles.accountGrid}>
               {listedAccounts.map((a) => (
-                <PressableTile key={a.id} onActivate={() => setEditAccount(a)}>
-                  <AccountTile account={a} badge style={{ width: "100%", height: 150 }} />
-                </PressableTile>
+                <AccountLink key={a.id} account={a} />
               ))}
             </div>
           )}
@@ -293,15 +297,6 @@ export default function Accounts() {
           No accounts yet. Add one to get started.
         </StaggerItem>
       )}
-
-      <AnimatePresence>
-        {editAccount && (
-          <EditAccountModal
-            account={editAccount}
-            onClose={() => setEditAccount(null)}
-          />
-        )}
-      </AnimatePresence>
     </PageStagger>
   );
 }

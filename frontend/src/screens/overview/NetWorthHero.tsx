@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { useTheme } from "../../theme/useTheme";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useSummary } from "../../hooks/useSummary";
 import { useNetWorthSeries } from "../../hooks/useNetWorthSeries";
@@ -9,6 +8,7 @@ import type { NetWorthPoint, RangeKey } from "../../types";
 import LineChart from "../../components/charts/LineChart";
 import RangePills from "../../components/RangePills";
 import Skeleton from "../../components/Skeleton";
+import DeltaPill from "../../components/DeltaPill";
 import AccountProjectionsModal from "../../components/accounts/AccountProjectionsModal";
 import { netPosition, pctChange } from "./overviewModel";
 import styles from "../Overview.module.css";
@@ -22,7 +22,6 @@ import styles from "../Overview.module.css";
  */
 export default function NetWorthHero() {
   const { fmt } = useMoney();
-  const { theme } = useTheme();
   const { data: accounts } = useAccounts();
   const { data: summary, isPending: summaryPending } = useSummary();
 
@@ -44,11 +43,9 @@ export default function NetWorthHero() {
   const currentValue = hoverPoint?.value ?? series[series.length - 1]?.value ?? null;
   const pct = pctChange(series, currentValue);
   const pctUp = pct != null && pct >= 0;
-  const pctColor = pctUp ? theme.up : theme.down;
   // Net position = assets − debts; colour the pill by its sign so a net-negative
   // position shows red. Guarded by the `summary.total !== 0` render condition.
   const netPos = netPosition(summary?.assets ?? 0, summary?.debts ?? 0);
-  const netPositionColor = netPos >= 0 ? theme.up : theme.down;
 
   return (
     <>
@@ -66,29 +63,19 @@ export default function NetWorthHero() {
       )}
       {!summaryPending && summary && summary.total !== 0 && (
         <div className={styles.heroMeta}>
-          <span
-            className={styles.deltaPill}
-            style={{
-              background: `color-mix(in oklab, ${netPositionColor}, transparent 90%)`,
-              color: netPositionColor,
-            }}
-          >
+          <DeltaPill direction={netPos >= 0 ? "up" : "down"}>
             {fmt(netPos, currency)}
-          </span>
+          </DeltaPill>
           <span className={styles.metaMute}>net position</span>
           {pct != null && (
             <>
-              <span
-                className={styles.deltaPill}
-                style={{
-                  background: `color-mix(in oklab, ${pctColor}, transparent 90%)`,
-                  color: pctColor,
-                }}
+              <DeltaPill
+                direction={pctUp ? "up" : "down"}
                 title={`Net worth change over the ${range} period`}
                 aria-label={`Net worth ${pctUp ? "up" : "down"} ${Math.abs(pct).toFixed(1)} percent over ${range}`}
               >
                 {pctUp ? "▲" : "▼"} {Math.abs(pct).toFixed(1)}%
-              </span>
+              </DeltaPill>
               <span className={styles.metaMute}>{range}</span>
             </>
           )}

@@ -182,6 +182,45 @@ describe("range / window query params", () => {
       undefined,
     );
   });
+
+  it("defaults an account's activity window to 30 days", async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    await api.getAccountActivity(5);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/accounts/5/activity?days=30",
+      undefined,
+    );
+  });
+});
+
+describe("recordBalance", () => {
+  const bodyOf = () => JSON.parse(fetchMock.mock.calls[0][1].body as string);
+
+  it("sends just the balance by default", async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+    await api.recordBalance(3, 1250.5);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/accounts/3/balance");
+    expect(bodyOf()).toEqual({ balance: 1250.5 });
+  });
+
+  it("adds a backdated timestamp and a note when given", async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+    await api.recordBalance(3, 900, {
+      recorded_at: "2026-10-01T12:00:00Z",
+      notes: "From the statement",
+    });
+    expect(bodyOf()).toEqual({
+      balance: 900,
+      recorded_at: "2026-10-01T12:00:00Z",
+      notes: "From the statement",
+    });
+  });
+
+  it("leaves out empty optional fields", async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+    await api.recordBalance(3, 900, { recorded_at: undefined, notes: "" });
+    expect(bodyOf()).toEqual({ balance: 900 });
+  });
 });
 
 describe("exportData", () => {

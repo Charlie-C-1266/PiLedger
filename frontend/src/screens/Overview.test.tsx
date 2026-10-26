@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "../theme/ThemeProvider";
-import { lightTokens } from "../theme/tokens";
 import type { Summary } from "../types";
 
 // Mock the data hooks so we can drive Overview with controlled summaries.
@@ -53,17 +52,8 @@ function renderOverview() {
   );
 }
 
-// jsdom may serialise an inline hex colour as either the hex or its rgb() form;
-// accept both.
-function colorForms(hex: string): string[] {
-  const h = hex.replace("#", "");
-  const rgb = `rgb(${parseInt(h.slice(0, 2), 16)}, ${parseInt(
-    h.slice(2, 4),
-    16,
-  )}, ${parseInt(h.slice(4, 6), 16)})`;
-  return [hex.toLowerCase(), rgb];
-}
-
+// The pill's colour comes from DeltaPill's up/down class (see
+// DeltaPill.test.tsx); here it's enough that the sign picks the direction.
 describe("Overview net-position pill (H7)", () => {
   beforeEach(() => {
     localStorage.setItem("pl-theme-mode", "light");
@@ -77,7 +67,7 @@ describe("Overview net-position pill (H7)", () => {
     renderOverview();
 
     const pill = screen.getByText("−£1,500.00");
-    expect(colorForms(lightTokens.down)).toContain(pill.style.color);
+    expect(pill).toHaveAttribute("data-direction", "down");
   });
 
   it("colours the pill green (up) when net position is positive", () => {
@@ -88,6 +78,6 @@ describe("Overview net-position pill (H7)", () => {
     renderOverview();
 
     const pill = screen.getByText("£2,500.00");
-    expect(colorForms(lightTokens.up)).toContain(pill.style.color);
+    expect(pill).toHaveAttribute("data-direction", "up");
   });
 });

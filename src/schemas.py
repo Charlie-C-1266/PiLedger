@@ -484,6 +484,21 @@ class BalanceEntryOut(BaseModel):
     recorded_at: str
 
 
+class AccountActivityOut(BaseModel):
+    # Start of the window (canonical UTC ``ISO_FMT``), ``days`` before now.
+    since: str
+    # The balance the account had at ``since``: its latest snapshot at or before
+    # that moment, or None when its history starts inside the window.
+    opening_balance: Optional[float] = None
+    # Current balance minus ``opening_balance``; None when there's no opening.
+    change: Optional[float] = None
+    # Transactions on the account dated at or after ``since``.
+    count: int
+    # Sum of the window's credits, and of its debits as a positive magnitude.
+    total_in: float
+    total_out: float
+
+
 class SummaryOut(BaseModel):
     # All figures below cover only Accounts flagged to count toward net worth
     # ("Accessible net worth", ADR-0003), except `set_aside` and

@@ -46,6 +46,7 @@ def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 
 @router.get("/overview")
 @router.get("/accounts")
+@router.get("/accounts/{aid}")
 @router.get("/transactions")
 @router.get("/budget")
 @router.get("/goals")

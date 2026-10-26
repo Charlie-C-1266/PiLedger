@@ -53,6 +53,7 @@ Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
 |---|---|---|---|
 | `POST` | `/api/accounts/{id}/balance` | Body: `{balance, notes?, recorded_at?}` | `{ok}` |
 | `GET` | `/api/accounts/{id}/history` | `?days=90` | Array of `{balance, notes, recorded_at}` |
+| `GET` | `/api/accounts/{id}/activity` | `?days=30` (1–366) | `{since, opening_balance, change, count, total_in, total_out}` — `opening_balance` is the latest snapshot at or before `since` (null if the history starts inside the window, and then `change` is null too); `change` is the current balance minus it; `count` and the totals cover transactions dated on or after `since`, with `total_out` as a positive magnitude. 404 for another user's account. |
 
 ## Dashboard
 

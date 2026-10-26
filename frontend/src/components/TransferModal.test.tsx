@@ -33,4 +33,21 @@ describe("TransferModal", () => {
       screen.queryByRole("option", { name: /Old Barclays/ })
     ).not.toBeInTheDocument();
   });
+
+  it("starts with no source account picked by default", async () => {
+    render(<TransferModal onClose={() => {}} />, { wrapper });
+    const [from, to] = await screen.findAllByRole("combobox");
+    expect(from).toHaveValue("");
+    expect(to).toBeDisabled();
+  });
+
+  it("starts from the given account, with its destinations ready to pick", async () => {
+    render(<TransferModal fromAccountId={2} onClose={() => {}} />, { wrapper });
+    const [from, to] = await screen.findAllByRole("combobox");
+    expect(from).toHaveValue("2");
+    expect(to).toBeEnabled();
+    // The source can't also be the destination.
+    const toOptions = [...(to as HTMLSelectElement).options].map((o) => o.textContent);
+    expect(toOptions).toEqual(["To account", "Current"]);
+  });
 });

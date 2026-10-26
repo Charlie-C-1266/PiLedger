@@ -169,6 +169,23 @@ export interface AccountBalanceEntry {
   recorded_at: string;
 }
 
+/** One account's recent movement, from `GET /api/accounts/{aid}/activity`.
+ * Figures stay in the account's own currency. */
+export interface AccountActivity {
+  /** Start of the window, `days` before now (UTC ISO). */
+  since: string;
+  /** The balance at `since` (latest snapshot at or before it), or null when
+   * the account's history starts inside the window. */
+  opening_balance: number | null;
+  /** Current balance minus `opening_balance`; null without an opening. */
+  change: number | null;
+  /** Transactions dated on or after `since`. */
+  count: number;
+  total_in: number;
+  /** Debits in the window, as a positive magnitude. */
+  total_out: number;
+}
+
 /** One month of a savings-account compound-interest projection. */
 export interface ProjectionPoint {
   date: string;

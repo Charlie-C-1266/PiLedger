@@ -17,11 +17,13 @@ import app
 EXPECTED_ROUTES = {
     ("/", "GET"),
     ("/accounts", "GET"),
+    ("/accounts/{aid}", "GET"),
     ("/budget", "GET"),
     ("/api/accounts", "GET"),
     ("/api/accounts", "POST"),
     ("/api/accounts/{aid}", "DELETE"),
     ("/api/accounts/{aid}", "PUT"),
+    ("/api/accounts/{aid}/activity", "GET"),
     ("/api/accounts/{aid}/balance", "POST"),
     ("/api/accounts/{aid}/history", "GET"),
     ("/api/auth/login", "POST"),

@@ -10,14 +10,16 @@ import styles from "./AddModal.module.css";
 
 interface Props {
   onClose: () => void;
+  /** Start with this account picked as the source (e.g. from its own page). */
+  fromAccountId?: number;
 }
 
-export default function TransferModal({ onClose }: Props) {
+export default function TransferModal({ onClose, fromAccountId }: Props) {
   const { fmt } = useMoney();
   const { data: accounts } = useAccounts();
   const inv = useInvalidate();
 
-  const [fromId, setFromId] = useState<number | "">("");
+  const [fromId, setFromId] = useState<number | "">(fromAccountId ?? "");
   const [toId, setToId] = useState<number | "">("");
   const [amount, setAmount] = useState("");
   const [error, setError] = useState("");

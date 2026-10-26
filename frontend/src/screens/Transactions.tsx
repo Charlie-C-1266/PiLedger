@@ -22,6 +22,12 @@ const SORT_OPTIONS: { key: TxnSort; label: string }[] = [
   { key: "amount_asc", label: "Smallest" },
 ];
 
+/** A positive integer account id from the query string, or "" (all accounts). */
+function parseAccountParam(value: string | null): number | "" {
+  const id = Number(value);
+  return value && Number.isInteger(id) && id > 0 ? id : "";
+}
+
 export default function Transactions() {
   const { fmt } = useMoney();
   const { theme } = useTheme();
@@ -31,14 +37,19 @@ export default function Transactions() {
 
   const mobile = useIsMobile();
   // Seed the search box from a `?q=` deep link (e.g. the global search palette
-  // jumping to a matching transaction), and keep it in sync if the param changes.
+  // jumping to a matching transaction) and the account filter from `?account=`
+  // (an account page's "View all"), and keep both in sync if the params change.
   const [searchParams] = useSearchParams();
   const qParam = searchParams.get("q") ?? "";
+  const accountParam = parseAccountParam(searchParams.get("account"));
   const [search, setSearch] = useState(qParam);
   useEffect(() => {
     setSearch(qParam);
   }, [qParam]);
-  const [accountFilter, setAccountFilter] = useState<number | "">("");
+  const [accountFilter, setAccountFilter] = useState<number | "">(accountParam);
+  useEffect(() => {
+    setAccountFilter(accountParam);
+  }, [accountParam]);
   const [sortKey, setSortKey] = useState<TxnSort>("date");
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [showModal, setShowModal] = useState(false);

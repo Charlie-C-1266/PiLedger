@@ -33,8 +33,9 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 | Route | Component | Purpose |
 |---|---|---|
 | `/overview` | `Overview` | Net-worth chart (with a "Savings projections" modal), account card stack, recent transactions, goals progress rings, asset distribution donut |
-| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter, and a list / by-institution view toggle |
-| `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort |
+| `/accounts` | `Accounts` | Full account list with card stack (fan / cascade / wave / grid variants), a per-account balance-history chart with a 7D/30D/90D/1Y range picker, assets-vs-debts sections, account type filter, and a list / by-institution view toggle. Each tile links to its account's page. |
+| `/accounts/:id` | `AccountPage` | One account: header (provider mark, name, net-worth chip, Edit / Transfer / Add transaction), current balance with its 30-day change and share of net worth, account details, and the latest transactions. Also reached from a transaction's account name and from search. Unknown ids show "Account not found". |
+| `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort. `?q=` seeds the search and `?account=<id>` the account filter. |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
 | `/settings` | `Settings` | Theme, dark mode, custom transaction categories, exchange-rate editor, documentation link, password change, account deletion |
@@ -65,6 +66,7 @@ All API calls go through typed wrappers in `src/api/client.ts`. TanStack Query h
 | `useProjections(months)` | `GET /api/projections` | default |
 | `useNetWorthSeries(range)` | `GET /api/history/networth` | 30 s |
 | `useAllHistory(range)` | `GET /api/history/all` | default |
+| `useAccountActivity(id, days)` | `GET /api/accounts/{aid}/activity` | default |
 | `useMe()` | `GET /api/auth/me` | Infinity |
 
 Any hook receiving a `401` response redirects to `/login` immediately.
@@ -79,14 +81,13 @@ Line/area charts use **Recharts**; the donut and the horizontal/trend bars are h
 |---|---|---|---|
 | Net worth | Overview | Area line | `GET /api/history/networth?range=7D\|30D\|90D\|1Y` |
 | Account balances | Accounts | Multi-line step (`AccountHistoryChart`) | `GET /api/history/all?days=` — one line per account, not currency-converted |
-| Account balance | Account edit modal (History section) | Single-line step (`AccountHistoryChart`, reused) | `GET /api/accounts/{aid}/history?days=` — one account's own history |
 | Distribution | Overview | Donut (SVG) | Account list (in memory). Loans and credit excluded — shows asset distribution only. |
 | Allocation donut | Budget | Donut (SVG) | Group totals from `GET /api/budget` |
 | Spent vs budgeted | Budget | Horizontal bar (`HBar`) | Per-envelope spent/budgeted from `GET /api/budget` |
 | Budget vs actual | Budget | CSS-grid bars | 6-month `history` from `GET /api/budget` |
 | Savings projections | Overview (modal) | Multi-line (`AccountProjectionsModal`) | `GET /api/projections?months=` — compound-interest growth per savings account |
 
-The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart, the Accounts balance-history chart, and the account edit modal's History section; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
+The `RangePills` component renders the 7D / 30D / 90D / 1Y segmented control used by the net-worth chart and the Accounts balance-history chart; the Budget screen has its own monthly/weekly/yearly `PeriodToggle`.
 
 ## Modals
 
@@ -95,7 +96,9 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 | Modal | Trigger | Operation |
 |---|---|---|
 | Add Account | "+ Add" menu | Creates an account (name, institution, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
-| Update Balance / Edit Account | Click account card | Records a new `balance_history` row and/or updates the account's colour, institution, and set-aside/closed flags. |
+| Edit Account | Account page's Edit button | Records a new `balance_history` row and/or updates the account's colour, institution, and set-aside/closed flags. |
+| Update Balance | Account page's "Update balance" pill | Records a `balance_history` row with an optional earlier date and note. |
+| Transfer | "+ Add" menu or account page | Moves money between two same-currency accounts; from an account page it starts with that account as the source. |
 | Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
 | Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |
 | Add / Edit Group | Budget screen | Creates, edits, or deletes an envelope group (name, colour, fixed/flexible). |

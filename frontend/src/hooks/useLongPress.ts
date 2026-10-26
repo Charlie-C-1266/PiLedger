@@ -14,13 +14,12 @@ export interface LongPressHandlers {
 }
 
 /**
- * A deliberate edit gesture shared by the transaction rows and the account
- * tiles so they behave identically.
+ * A deliberate edit gesture for list rows (transaction rows today), so a
+ * scroll that ends on a row doesn't open its editor.
  *
  * Mouse keeps an immediate click-to-activate. Touch/pen instead require a
  * ~500ms long-press: an accidental tap at the end of a scroll gesture would
- * otherwise open the editor, and on the large account tiles a plain tap also
- * invites double-tap-to-zoom. A press-state (`pressing`) turns true ~150ms
+ * otherwise open the editor. A press-state (`pressing`) turns true ~150ms
  * into the hold so the press registers visibly before the action fires, and
  * moving more than 10px (i.e. scrolling) cancels it. The synthetic click that
  * follows a tap or long-press is swallowed.

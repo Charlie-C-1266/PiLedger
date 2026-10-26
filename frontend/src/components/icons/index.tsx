@@ -83,3 +83,12 @@ export function EyeIcon(props: React.SVGProps<SVGSVGElement>) {
 export function EyeOffIcon(props: React.SVGProps<SVGSVGElement>) {
   return <svg {...s} {...props}><path d="M9.9 5.7A9.8 9.8 0 0 1 12 5.5c7 0 10.5 6.5 10.5 6.5a18 18 0 0 1-3.3 4.2" /><path d="M6.4 7.4A18 18 0 0 0 1.5 12S5 18.5 12 18.5a9.9 9.9 0 0 0 4.2-.9" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><line x1="3" y1="3" x2="21" y2="21" /></svg>;
 }
+
+// Chevrons for the account page's back link and the "View all" text links.
+export function ChevronLeftIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg {...s} {...props}><polyline points="15 18 9 12 15 6" /></svg>;
+}
+
+export function ChevronRightIcon(props: React.SVGProps<SVGSVGElement>) {
+  return <svg {...s} {...props}><polyline points="9 18 15 12 9 6" /></svg>;
+}

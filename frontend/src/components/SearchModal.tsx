@@ -81,7 +81,7 @@ export default function SearchModal({ onClose }: Props) {
           (a.current_balance != null
             ? ` · ${fmt(a.current_balance, a.currency)}`
             : ""),
-        to: "/accounts",
+        to: `/accounts/${a.id}`,
       }));
     const goalResults: Result[] = (goals ?? [])
       .filter((g) => g.name.toLowerCase().includes(q))

@@ -2,11 +2,12 @@
 
 The valid sub-types per account type are maintained by hand in two places and
 two languages: ``constants.SUBTYPES_BY_TYPE`` / the ``AccountSubtype`` literal on
-the backend, and ``SUBTYPES_BY_TYPE`` / ``SUBTYPE_LABELS`` in the add-account
-modal on the frontend. Nothing at runtime ties them together, so adding a
-sub-type to one side and forgetting the other would silently let the UI offer a
-value the API rejects (or hide a valid one). These tests parse the frontend
-constants out of the modal and assert they stay in lock-step with the backend.
+the backend, and ``SUBTYPES_BY_TYPE`` / ``SUBTYPE_LABELS`` in
+``lib/accountTypes.ts`` on the frontend (shared by the add-account modal and the
+account page). Nothing at runtime ties them together, so adding a sub-type to
+one side and forgetting the other would silently let the UI offer a value the
+API rejects (or hide a valid one). These tests parse the frontend
+constants out of that module and assert they stay in lock-step with the backend.
 
 The human-readable *labels* remain frontend-owned (the backend only stores the
 snake_case key); we just check every offered key has one.
@@ -18,20 +19,20 @@ from typing import get_args
 
 from constants import AccountSubtype, SUBTYPES_BY_TYPE
 
-_MODAL = (
+_SOURCE = (
     Path(__file__).resolve().parent.parent
     / "frontend"
     / "src"
-    / "components"
-    / "AddAccountModal.tsx"
+    / "lib"
+    / "accountTypes.ts"
 )
 
 
 def _object_body(name: str) -> str:
     """Return the text between the braces of a ``const <name> ... = { ... };``."""
-    text = _MODAL.read_text(encoding="utf-8")
+    text = _SOURCE.read_text(encoding="utf-8")
     match = re.search(rf"const {name}\b[^=]*=\s*\{{(.*?)\n\}};", text, re.DOTALL)
-    assert match, f"Could not find `{name}` in {_MODAL.name}"
+    assert match, f"Could not find `{name}` in {_SOURCE.name}"
     return match.group(1)
 
 

@@ -1,5 +1,6 @@
 import type {
   Account,
+  AccountActivity,
   AccountBalanceEntry,
   AccountHistory,
   AccountProjection,
@@ -157,13 +158,28 @@ export const updateAccount = (id: number, data: Partial<Account>) =>
 export const removeAccount = (id: number) =>
   del<{ ok: boolean }>(`/api/accounts/${id}`);
 
-export const recordBalance = (accountId: number, balance: number) =>
-  post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, { balance });
+/** Record a balance snapshot, timestamped now unless `recorded_at` backdates
+ * it. Empty optional fields are left out, so a blank note stores no note. */
+export const recordBalance = (
+  accountId: number,
+  balance: number,
+  opts?: { recorded_at?: string; notes?: string },
+) =>
+  post<{ ok: boolean }>(`/api/accounts/${accountId}/balance`, {
+    balance,
+    ...(opts?.recorded_at ? { recorded_at: opts.recorded_at } : {}),
+    ...(opts?.notes ? { notes: opts.notes } : {}),
+  });
 
 // Balance-history points for a single account over the last `days` (default
 // 90), oldest first. Balance stays in the account's own currency.
 export const getAccountHistory = (accountId: number, days = 90) =>
   json<AccountBalanceEntry[]>(`/api/accounts/${accountId}/history?days=${days}`);
+
+// How one account moved over the last `days` (default 30): the change since
+// then and the window's transaction count and totals.
+export const getAccountActivity = (accountId: number, days = 30) =>
+  json<AccountActivity>(`/api/accounts/${accountId}/activity?days=${days}`);
 
 // Summary
 

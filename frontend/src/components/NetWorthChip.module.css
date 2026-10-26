@@ -1,0 +1,27 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+/* pl-text on the soft accent: accent-coloured text fails AA in dark mode. */
+.included {
+  background: var(--pl-accent-soft);
+  color: var(--pl-text);
+}
+
+.excluded {
+  background: var(--pl-surface-alt);
+  color: var(--pl-text-soft);
+}

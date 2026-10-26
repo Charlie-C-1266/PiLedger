@@ -1,0 +1,28 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-radius: 6px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 140ms;
+}
+
+.link:hover {
+  color: var(--pl-text);
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@media (pointer: coarse) {
+  .link {
+    min-height: 44px;
+  }
+}

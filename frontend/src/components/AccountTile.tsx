@@ -8,6 +8,8 @@ import styles from "./AccountTile.module.css";
 interface Props {
   account: Account;
   compact?: boolean;
+  /** Fill the parent's width at 168px tall — the account page's identity tile. */
+  wide?: boolean;
   /** Show a "Set aside" badge when the account is excluded from net worth. */
   badge?: boolean;
   style?: React.CSSProperties;
@@ -23,6 +25,7 @@ function initials(id: number): string {
 export default function AccountTile({
   account,
   compact,
+  wide,
   badge,
   style,
   className,
@@ -41,7 +44,7 @@ export default function AccountTile({
 
   return (
     <div
-      className={`${styles.tile} ${compact ? styles.compact : ""} ${className ?? ""}`}
+      className={`${styles.tile} ${compact ? styles.compact : ""} ${wide ? styles.wide : ""} ${className ?? ""}`}
       style={{ background: bg, ...style }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
