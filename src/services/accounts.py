@@ -36,21 +36,30 @@ LATEST_BALANCE_JOIN = (
 )
 
 
-def adjust_account_balance(
-    conn: sqlite3.Connection, account_id: int, delta_cents: int
-) -> None:
-    """Add delta_cents to the account's latest balance and record a new entry.
+# Account types whose stored balance is the amount owed rather than held.
+DEBT_TYPES = frozenset({"credit", "loan"})
+
+
+def balance_delta(account_type: str | None, cashflow_cents: int) -> int:
+    """How far a cash flow moves an account's stored balance.
 
     Debt accounts (``credit``, ``loan``) store their balance as the amount
     owed, which moves opposite to the cashflow sign: an expense increases what's
-    owed and income (e.g. a payment or refund) reduces it. The delta is
-    inverted for those account types so the stored balance reflects that.
+    owed and income (e.g. a payment or refund) reduces it. Every other account
+    moves with the cash flow.
     """
+    return -cashflow_cents if account_type in DEBT_TYPES else cashflow_cents
+
+
+def adjust_account_balance(
+    conn: sqlite3.Connection, account_id: int, delta_cents: int
+) -> None:
+    """Add a cash flow of delta_cents to the account's latest balance and
+    record a new entry, applying the debt sign rule (``balance_delta``)."""
     account = conn.execute(
         "SELECT type FROM accounts WHERE id=?", (account_id,)
     ).fetchone()
-    if account and account["type"] in ("credit", "loan"):
-        delta_cents = -delta_cents
+    delta_cents = balance_delta(account["type"] if account else None, delta_cents)
     current = latest_balance_cents(conn, account_id) or 0
     conn.execute(
         "INSERT INTO balance_history(account_id, balance_cents, recorded_at)"
