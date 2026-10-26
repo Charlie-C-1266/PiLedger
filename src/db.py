@@ -34,6 +34,7 @@ USER_SCOPED_TABLES: tuple[str, ...] = (
     "budget_group",
     "budget_envelope",
     "subscriptions",
+    "subscription_postings",
     "api_tokens",
 )
 
@@ -122,7 +123,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 15
+SCHEMA_VERSION: int = 16
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -255,6 +256,10 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
 
     # 15. Add subscriptions.kind / to_account_id (income and transfers).
     _ensure_subscription_kind_columns(conn)
+
+    # 16. Add subscriptions.auto_post / auto_post_from (the posting log table
+    #     itself is created by init() before this runs).
+    _ensure_subscription_auto_post_columns(conn)
 
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
@@ -520,15 +525,18 @@ def _migrate_to_9(conn: sqlite3.Connection) -> None:
 
 
 # Scheduled items (the `subscriptions` table): recurring payments, income and
-# transfers. Reminder-only for now — a row never posts a transaction;
-# `account_id` is the account money leaves (expense) or arrives in (income), and
-# a transfer also names `to_account_id`. `amount_cents` is always positive; the
-# `kind` gives the sign. Money is integer cents like every other table;
+# transfers. `account_id` is the account money leaves (expense) or arrives in
+# (income), and a transfer also names `to_account_id`. `amount_cents` is always
+# positive; the `kind` gives the sign. A row is a reminder unless `auto_post` is
+# set, in which case each occurrence from `auto_post_from` (the day auto-post
+# was switched on, so nothing is back-filled) becomes a real transaction — see
+# services/posting.py. Money is integer cents like every other table;
 # `next_due_date` is computed on read, never stored, so an elapsed date can't go
 # stale. The CHECK lists are built from `constants.FREQUENCIES` /
 # `constants.SUBSCRIPTION_KINDS` so they can't drift from the schema literals.
 # Defined once and shared between init() (fresh installs) and _migrate_to_10
-# (existing DBs); _migrate_to_15 adds the kind columns to tables made before.
+# (existing DBs); _migrate_to_15 and _migrate_to_16 append the later columns to
+# tables made before them.
 _FREQUENCY_CHECK = ", ".join(f"'{f}'" for f in constants.FREQUENCIES)
 _SUBSCRIPTION_KIND_CHECK = ", ".join(f"'{k}'" for k in constants.SUBSCRIPTION_KINDS)
 _SUBSCRIPTIONS_DDL = f"""
@@ -548,9 +556,40 @@ _SUBSCRIPTIONS_DDL = f"""
         created_at   TEXT    DEFAULT (datetime('now')),
         kind         TEXT    NOT NULL DEFAULT 'expense'
                              CHECK(kind IN ({_SUBSCRIPTION_KIND_CHECK})),
-        to_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL
+        to_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+        auto_post    INTEGER NOT NULL DEFAULT 0,
+        auto_post_from TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+"""
+
+# The posting log: one row per handled occurrence of a scheduled item, either
+# `posted` (it created a transaction, linked by `transaction_id`, or a transfer,
+# linked by `transfer_id`) or `skipped`. UNIQUE(subscription_id,
+# occurrence_date) is what makes posting idempotent — the poster writes this
+# row first with INSERT OR IGNORE and only creates the transaction if it
+# inserted. `transaction_id` is ON DELETE SET NULL so the row outlives a deleted
+# transaction and that date is never posted again; `transfer_id` is plain text
+# (a transfer is two rows sharing it). Deleting the scheduled item deletes its
+# postings but keeps the transactions they created. The two lookup indexes back
+# the `subscription_id` badge on transaction reads (and the SET NULL on delete).
+# Shared between init() (every DB) and _migrate_to_16.
+_SUBSCRIPTION_POSTINGS_DDL = """
+    CREATE TABLE IF NOT EXISTS subscription_postings (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subscription_id INTEGER NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+        occurrence_date TEXT    NOT NULL,
+        status          TEXT    NOT NULL CHECK(status IN ('posted','skipped')),
+        transaction_id  INTEGER REFERENCES transactions(id) ON DELETE SET NULL,
+        transfer_id     TEXT,
+        created_at      TEXT    DEFAULT (datetime('now')),
+        UNIQUE(subscription_id, occurrence_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_subscription_postings_txn
+        ON subscription_postings(transaction_id);
+    CREATE INDEX IF NOT EXISTS idx_subscription_postings_transfer
+        ON subscription_postings(transfer_id);
 """
 
 
@@ -573,6 +612,23 @@ def _ensure_subscription_kind_columns(conn: sqlite3.Connection) -> None:
             "ALTER TABLE subscriptions ADD COLUMN to_account_id INTEGER"
             " REFERENCES accounts(id) ON DELETE SET NULL"
         )
+    conn.commit()
+
+
+def _ensure_subscription_auto_post_columns(conn: sqlite3.Connection) -> None:
+    """Idempotently add subscriptions.auto_post + subscriptions.auto_post_from.
+
+    Every existing row stays a reminder (`auto_post` 0, no start day), so an
+    upgrade never starts moving money on its own. Appended after the kind
+    columns, matching the fresh-install DDL's column order.
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(subscriptions)").fetchall()}
+    if "auto_post" not in cols:
+        conn.execute(
+            "ALTER TABLE subscriptions ADD COLUMN auto_post INTEGER NOT NULL DEFAULT 0"
+        )
+    if "auto_post_from" not in cols:
+        conn.execute("ALTER TABLE subscriptions ADD COLUMN auto_post_from TEXT")
     conn.commit()
 
 
@@ -617,6 +673,15 @@ def _migrate_to_15(conn: sqlite3.Connection) -> None:
     or a transfer between two accounts, not just a payment."""
     _ensure_subscription_kind_columns(conn)
     _set_schema_version(conn, 15)
+    conn.commit()
+
+
+def _migrate_to_16(conn: sqlite3.Connection) -> None:
+    """Let scheduled items post themselves: add subscriptions.auto_post /
+    auto_post_from and the subscription_postings log (see services/posting.py)."""
+    _ensure_subscription_auto_post_columns(conn)
+    conn.executescript(_SUBSCRIPTION_POSTINGS_DDL)
+    _set_schema_version(conn, 16)
     conn.commit()
 
 
@@ -706,6 +771,7 @@ def init() -> None:
         """)
         conn.executescript(_BUDGET_TABLES_DDL)
         conn.executescript(_SUBSCRIPTIONS_DDL)
+        conn.executescript(_SUBSCRIPTION_POSTINGS_DDL)
         conn.executescript(_API_TOKENS_DDL)
         conn.commit()
 
@@ -776,6 +842,10 @@ def init() -> None:
         if version < 15:
             _migrate_to_15(conn)
             version = 15
+
+        if version < 16:
+            _migrate_to_16(conn)
+            version = 16
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

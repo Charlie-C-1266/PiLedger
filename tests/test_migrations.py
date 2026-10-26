@@ -1093,3 +1093,178 @@ def test_gated_path_adds_subscription_kind(stamped_v1_db):
 
 def test_legacy_path_has_subscription_kind(migrated_db):
     assert {"kind", "to_account_id"} <= _table_columns(migrated_db, "subscriptions")
+
+
+# ─── v16: auto-post + the posting log ────────────────────────────────────────
+# The subscriptions table as v15 left it: kind columns appended, no auto-post.
+_V15_SUBSCRIPTIONS = _V14_SUBSCRIPTIONS.replace(
+    "        created_at   TEXT    DEFAULT (datetime('now'))\n    );",
+    "        created_at   TEXT    DEFAULT (datetime('now')),\n"
+    "        kind         TEXT    NOT NULL DEFAULT 'expense'\n"
+    "                     CHECK(kind IN ('expense','income','transfer')),\n"
+    "        to_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL\n"
+    "    );",
+)
+
+
+@pytest.fixture
+def stamped_v15_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 15 with no posting log and a
+    subscriptions table predating the auto-post columns, holding a payment and
+    a transfer. init() must climb it to v16 keeping both as reminders."""
+    db_path = tmp_path / "v15.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, _set_schema_version
+
+    init()
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("DROP TABLE subscription_postings")
+        conn.execute("DROP TABLE subscriptions")
+        conn.executescript(_V15_SUBSCRIPTIONS)
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES"
+            "(1, 1, 'Current', 'current'), (2, 1, 'Savings', 'savings')"
+        )
+        conn.execute(
+            "INSERT INTO subscriptions(id, user_id, name, amount_cents, account_id,"
+            " frequency, start_date, kind, to_account_id) VALUES"
+            "(1, 1, 'Netflix', 999, 1, 'monthly', '2024-01-15', 'expense', NULL),"
+            "(2, 1, 'Save', 5000, 1, 'monthly', '2024-02-01', 'transfer', 2)"
+        )
+        _set_schema_version(conn, 15)
+        conn.commit()
+    finally:
+        conn.close()
+
+    init()
+    return db_path
+
+
+def test_v15_db_climbs_to_current_version(stamped_v15_db):
+    from db import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == 16
+    assert _read_schema_version(stamped_v15_db) == SCHEMA_VERSION
+
+
+def test_v15_subscriptions_stay_reminders(stamped_v15_db):
+    """_migrate_to_16 adds auto_post (off) and auto_post_from (unset), so an
+    upgrade never starts posting on its own."""
+    conn = sqlite3.connect(str(stamped_v15_db))
+    try:
+        rows = conn.execute(
+            "SELECT id, name, kind, to_account_id, auto_post, auto_post_from"
+            " FROM subscriptions ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows == [
+        (1, "Netflix", "expense", None, 0, None),
+        (2, "Save", "transfer", 2, 0, None),
+    ]
+
+
+def test_v15_gains_the_posting_log(stamped_v15_db):
+    assert {
+        "id",
+        "user_id",
+        "subscription_id",
+        "occurrence_date",
+        "status",
+        "transaction_id",
+        "transfer_id",
+        "created_at",
+    } == _table_columns(stamped_v15_db, "subscription_postings")
+
+
+def test_posting_log_is_unique_per_occurrence_and_checks_status(stamped_v15_db):
+    conn = sqlite3.connect(str(stamped_v15_db))
+    try:
+        conn.execute(
+            "INSERT INTO subscription_postings(user_id, subscription_id,"
+            " occurrence_date, status) VALUES(1, 1, '2026-01-15', 'posted')"
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO subscription_postings(user_id, subscription_id,"
+                " occurrence_date, status) VALUES(1, 1, '2026-01-15', 'skipped')"
+            )
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO subscription_postings(user_id, subscription_id,"
+                " occurrence_date, status) VALUES(1, 1, '2026-02-15', 'pending')"
+            )
+    finally:
+        conn.close()
+
+
+def test_posting_log_outlives_its_transaction(fresh_db):
+    """transaction_id is ON DELETE SET NULL (the row stays, so the date is
+    never re-posted); deleting the scheduled item cascades to its postings."""
+    conn = sqlite3.connect(str(fresh_db))
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'a', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES(1, 1, 'C', 'current')"
+        )
+        conn.execute(
+            "INSERT INTO subscriptions(id, user_id, name, amount_cents, frequency,"
+            " start_date) VALUES(1, 1, 'N', 999, 'monthly', '2026-01-15')"
+        )
+        conn.execute(
+            "INSERT INTO transactions(id, user_id, account_id, amount_cents,"
+            " merchant) VALUES(7, 1, 1, -999, 'N')"
+        )
+        conn.execute(
+            "INSERT INTO subscription_postings(user_id, subscription_id,"
+            " occurrence_date, status, transaction_id)"
+            " VALUES(1, 1, '2026-01-15', 'posted', 7)"
+        )
+        conn.execute("DELETE FROM transactions WHERE id=7")
+        assert conn.execute(
+            "SELECT status, transaction_id FROM subscription_postings"
+        ).fetchall() == [("posted", None)]
+        conn.execute("DELETE FROM subscriptions WHERE id=1")
+        assert conn.execute(
+            "SELECT COUNT(*) FROM subscription_postings"
+        ).fetchone() == (0,)
+    finally:
+        conn.close()
+
+
+def test_migrated_v16_subscriptions_match_fresh_install(stamped_v15_db, fresh_db):
+    def ordered(db_path: Path, table: str) -> list[str]:
+        conn = sqlite3.connect(str(db_path))
+        try:
+            return [
+                r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            ]
+        finally:
+            conn.close()
+
+    for table in ("subscriptions", "subscription_postings"):
+        assert ordered(stamped_v15_db, table) == ordered(fresh_db, table)
+
+
+def test_gated_path_adds_auto_post(stamped_v1_db):
+    assert {"auto_post", "auto_post_from"} <= _table_columns(
+        stamped_v1_db, "subscriptions"
+    )
+    assert "occurrence_date" in _table_columns(stamped_v1_db, "subscription_postings")
+
+
+def test_legacy_path_has_auto_post(migrated_db):
+    assert {"auto_post", "auto_post_from"} <= _table_columns(
+        migrated_db, "subscriptions"
+    )
+    assert "occurrence_date" in _table_columns(migrated_db, "subscription_postings")

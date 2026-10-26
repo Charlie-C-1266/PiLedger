@@ -170,6 +170,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 13. **`accounts.closed`** — added via `ALTER TABLE`, defaults to `0`.
 14. **`accounts.institution` + `accounts.institution_name`** — added via `ALTER TABLE`, both NULL on existing rows.
 15. **`subscriptions.kind` + `subscriptions.to_account_id`** — added via `ALTER TABLE`; `kind` defaults to `'expense'`, `to_account_id` is NULL.
+16. **`subscriptions.auto_post` + `subscriptions.auto_post_from`** — added via `ALTER TABLE`; `auto_post` defaults to `0` (every existing item stays a reminder), `auto_post_from` is NULL.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
@@ -186,3 +187,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v13** — the `api_tokens` table is created (personal access tokens for headless clients).
 - **v14** — `accounts.institution` and `accounts.institution_name` added, both NULL on existing rows: the provider can't be inferred from an account's name, so it stays unrecorded until its owner sets it.
 - **v15** — `subscriptions.kind` (`'expense'`, `'income'` or `'transfer'`, defaulting to `'expense'` so every existing row stays a payment) and `subscriptions.to_account_id` (a transfer's destination, `ON DELETE SET NULL`) added, so scheduled items can be income or transfers.
+- **v16** — scheduled items can post themselves. `subscriptions.auto_post` (default `0`, so nothing starts posting on upgrade) and `subscriptions.auto_post_from` (the first day auto-post may post — the day it was switched on, so the past is never back-filled) added, and the `subscription_postings` log created: one row per handled occurrence (`posted` or `skipped`), unique on `(subscription_id, occurrence_date)` so a date is never posted twice. Its `transaction_id` is `ON DELETE SET NULL`, so deleting an auto-posted transaction doesn't bring it back; deleting the scheduled item deletes its postings but keeps its transactions.

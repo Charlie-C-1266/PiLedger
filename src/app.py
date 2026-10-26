@@ -4,16 +4,22 @@ Money is stored as integer cents in SQLite; the JSON API exposes plain
 floating-point dollars to keep the frontend contract unchanged.
 
 This is the thin wiring module: it constructs the FastAPI app, registers the
-middleware and the 422→400 validation handler, runs init(), and includes every
-router. No HTTP handlers live here. Supporting code lives in:
+middleware and the 422→400 validation handler, runs init(), starts the auto-post
+timer in its lifespan, and includes every router. No HTTP handlers live here.
+Supporting code lives in:
     routers/     — one APIRouter per resource (the HTTP handlers)
-    services/    — business logic shared across routers (currency, accounts)
+    services/    — business logic shared across routers (currency, accounts,
+                   transactions, scheduled-item posting)
+    autopost.py  — when auto-post runs (startup catch-up + daily timer)
     limiter.py   — the shared rate limiter (kept separate to avoid an app cycle)
     constants.py — bounds, type aliases, cookie + path settings
     db.py        — connection, schema init/migrations, money helpers
     auth.py      — password hashing, sessions, require_auth dependency
     schemas.py   — Pydantic request/response models
 """
+
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -31,6 +37,7 @@ from db import (
     init,
 )
 from logging_config import configure_logging
+import autopost
 from security import RequestIdMiddleware, SecurityHeadersMiddleware
 from limiter import limiter
 
@@ -52,6 +59,18 @@ from routers import (
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Catch up auto-posting at startup, keep the daily run going while the
+    server is up, and cancel it on shutdown (see ``autopost``)."""
+    task = await autopost.start()
+    app.state.autopost_task = task
+    try:
+        yield
+    finally:
+        await autopost.stop(task)
+
+
 # `docs_url=None` / `redoc_url=None` / `openapi_url=None` disable FastAPI's
 # default unauthenticated mounts. The replacements below (`/docs`, `/redoc`,
 # `/api/openapi.json`) all gate on the session cookie, so an anonymous scanner
@@ -64,6 +83,7 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None,
     openapi_url=None,
+    lifespan=lifespan,
 )
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
