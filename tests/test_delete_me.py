@@ -64,7 +64,7 @@ def _seed(client):
         },
     )
     client.post("/api/goals", json={"name": "Rainy day", "target": 1000.0})
-    client.post(
+    sub = client.post(
         "/api/subscriptions",
         json={
             "name": "Netflix",
@@ -72,7 +72,9 @@ def _seed(client):
             "frequency": "monthly",
             "start_date": "2024-01-15",
         },
-    )
+    ).json()
+    # Skipping an occurrence writes a subscription_postings row.
+    client.post(f"/api/subscriptions/{sub['id']}/skip", json={"date": "2024-01-15"})
     client.post("/api/categories", json={"name": "Hobbies"})
     client.post("/api/tokens", json={"name": "test-token"})
     # The envelope-budget tables have no CRUD API yet (Phases 4–5), so seed them

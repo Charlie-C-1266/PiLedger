@@ -12,8 +12,16 @@ test, so they share one database — which is required for isolation tests where
 one user should not be able to see another's data.
 """
 
-import pytest
-from fastapi.testclient import TestClient
+import os
+
+# Every `with TestClient(app)` runs the app's lifespan, which would otherwise
+# run an auto-post catch-up and start the daily timer. Switch both off before
+# `constants` is first imported (it reads the variable at import); tests of the
+# timer itself patch `constants.AUTOPOST_TIME` back on (tests/test_autopost.py).
+os.environ["PILEDGER_AUTOPOST_TIME"] = "off"
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 
 @pytest.fixture

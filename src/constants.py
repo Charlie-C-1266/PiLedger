@@ -102,6 +102,19 @@ FREQUENCIES: tuple[str, ...] = (
 SubscriptionKind = Literal["expense", "income", "transfer"]
 SUBSCRIPTION_KINDS: tuple[str, ...] = get_args(SubscriptionKind)
 
+# When the daily auto-post run fires, as server-local "HH:MM" (24-hour), or
+# "off" to disable both it and the startup catch-up (POST
+# /api/subscriptions/post-due still works on request). Read by app.py's lifespan
+# at startup; the pytest suite sets "off" so TestClient never posts behind a
+# test's back. Dates follow the server's local time until per-user timezones
+# exist.
+AUTOPOST_TIME: str = os.environ.get("PILEDGER_AUTOPOST_TIME", "00:05")
+
+# A scheduled item's posting log status: the occurrence was posted (a
+# transaction or transfer was created for it) or skipped. Mirrors the
+# `subscription_postings.status` CHECK in db.py.
+PostingStatus = Literal["posted", "skipped"]
+
 # UK-market account sub-types. "general" is the catch-all for users who don't
 # want to record this level of detail and is valid for every parent type.
 # Storing the enum value (snake_case) keeps the API stable; the frontend owns

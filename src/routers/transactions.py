@@ -1,14 +1,14 @@
 """Transactions plus account-to-account transfers.
 
 A transfer is recorded as two linked transactions sharing a ``transfer_id``;
-both legs are created, edited (guarded) and deleted together. Balance side
-effects go through ``services/accounts.adjust_account_balance`` so accounts
-can't drift.
+both legs are created, edited (guarded) and deleted together. Inserts and
+deletes go through ``services/transactions`` (shared with the scheduled-item
+poster), and every balance side effect through
+``services/accounts.adjust_account_balance``, so accounts can't drift.
 """
 
 from typing import Optional
 import sqlite3
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -22,6 +22,12 @@ from schemas import (
     TransferIn,
 )
 from services.accounts import adjust_account_balance, require_open_account
+from services.transactions import (
+    TXN_SELECT,
+    delete_transaction_legs,
+    insert_transaction,
+    insert_transfer,
+)
 
 router = APIRouter(tags=["transactions"])
 
@@ -45,8 +51,11 @@ def _escape_like(term: str) -> str:
 
 
 def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
-    """Map a ``transactions`` row to ``TransactionOut`` (cents → dollars, NULL
-    note → empty string, ``transfer_id`` present only on transfer legs)."""
+    """Map a ``transactions`` row (read through ``TXN_SELECT``) to
+    ``TransactionOut`` (cents → dollars, NULL note → empty string,
+    ``transfer_id`` present only on transfer legs, ``subscription_id`` only on
+    rows a scheduled item posted)."""
+    keys = row.keys()
     return TransactionOut(
         id=row["id"],
         user_id=row["user_id"],
@@ -56,7 +65,8 @@ def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
         merchant=row["merchant"],
         category=row["category"],
         note=row["note"] or "",
-        transfer_id=row["transfer_id"] if "transfer_id" in row.keys() else None,
+        transfer_id=row["transfer_id"] if "transfer_id" in keys else None,
+        subscription_id=row["subscription_id"] if "subscription_id" in keys else None,
         created_at=row["created_at"],
     )
 
@@ -92,8 +102,7 @@ def list_transactions(
     order = _TXN_SORT_MAP.get(sort or "date", _TXN_SORT_MAP["date"])
     offset = (page - 1) * per_page
     sql = (
-        f"SELECT * FROM transactions WHERE {' AND '.join(clauses)}"
-        f" ORDER BY {order} LIMIT ? OFFSET ?"
+        f"{TXN_SELECT} WHERE {' AND '.join(clauses)} ORDER BY {order} LIMIT ? OFFSET ?"
     )
     params += [per_page, offset]
     with db() as conn:
@@ -111,26 +120,18 @@ def create_transaction(
     amount."""
     with db() as conn:
         require_open_account(conn, data.account_id, uid)
-        ts = data.occurred_at or utcnow_iso()
-        amount_cents = to_cents(data.amount)
-        cur = conn.execute(
-            "INSERT INTO transactions(user_id, account_id, amount_cents,"
-            " occurred_at, merchant, category, note) VALUES(?,?,?,?,?,?,?)",
-            (
-                uid,
-                data.account_id,
-                amount_cents,
-                ts,
-                data.merchant,
-                data.category,
-                data.note,
-            ),
+        tid = insert_transaction(
+            conn,
+            uid,
+            data.account_id,
+            to_cents(data.amount),
+            data.occurred_at or utcnow_iso(),
+            data.merchant,
+            data.category,
+            data.note,
         )
-        adjust_account_balance(conn, data.account_id, amount_cents)
         conn.commit()
-        row = conn.execute(
-            "SELECT * FROM transactions WHERE id=?", (cur.lastrowid,)
-        ).fetchone()
+        row = conn.execute(f"{TXN_SELECT} WHERE id=?", (tid,)).fetchone()
     return _txn_row_to_out(row)
 
 
@@ -163,35 +164,20 @@ def create_transfer(
                 400,
                 "Transfers between accounts of different currencies are not supported",
             )
-        ts = data.occurred_at or utcnow_iso()
-        amount_cents = to_cents(data.amount)
-        transfer_id = uuid.uuid4().hex
-        ids: list[int] = []
-        for account_id, signed, merchant in (
-            (src["id"], -amount_cents, f"Transfer to {dst['name']}"),
-            (dst["id"], amount_cents, f"Transfer from {src['name']}"),
-        ):
-            cur = conn.execute(
-                "INSERT INTO transactions(user_id, account_id, amount_cents,"
-                " occurred_at, merchant, category, note, transfer_id)"
-                " VALUES(?,?,?,?,?,?,?,?)",
-                (
-                    uid,
-                    account_id,
-                    signed,
-                    ts,
-                    merchant,
-                    "Transfer",
-                    data.note,
-                    transfer_id,
-                ),
-            )
-            ids.append(cur.lastrowid)
-            adjust_account_balance(conn, account_id, signed)
+        _, ids = insert_transfer(
+            conn,
+            uid,
+            src["id"],
+            dst["id"],
+            to_cents(data.amount),
+            data.occurred_at or utcnow_iso(),
+            data.note,
+            (f"Transfer to {dst['name']}", f"Transfer from {src['name']}"),
+        )
         conn.commit()
         placeholders = ",".join("?" * len(ids))
         rows = conn.execute(
-            f"SELECT * FROM transactions WHERE id IN ({placeholders}) ORDER BY id",
+            f"{TXN_SELECT} WHERE id IN ({placeholders}) ORDER BY id",
             ids,
         ).fetchall()
     return [_txn_row_to_out(r) for r in rows]
@@ -243,7 +229,7 @@ def update_transaction(
                     patch.get("amount_cents", old["amount_cents"]),
                 )
             conn.commit()
-        row = conn.execute("SELECT * FROM transactions WHERE id=?", (tid,)).fetchone()
+        row = conn.execute(f"{TXN_SELECT} WHERE id=?", (tid,)).fetchone()
     return _txn_row_to_out(row)
 
 
@@ -254,24 +240,13 @@ def delete_transaction(tid: int, uid: int = Depends(require_auth)) -> OkOut:
     reverses both adjustments so the accounts can't drift."""
     with db() as conn:
         txn = conn.execute(
-            "SELECT id, account_id, amount_cents, transfer_id"
-            " FROM transactions WHERE id=? AND user_id=?",
+            "SELECT id, transfer_id FROM transactions WHERE id=? AND user_id=?",
             (tid, uid),
         ).fetchone()
         if not txn:
             raise HTTPException(404, "Not found")
         # A transfer is two linked legs; deleting either removes both and
         # reverses both balance adjustments, so the accounts can't drift.
-        if txn["transfer_id"]:
-            legs = conn.execute(
-                "SELECT id, account_id, amount_cents FROM transactions"
-                " WHERE transfer_id=? AND user_id=?",
-                (txn["transfer_id"], uid),
-            ).fetchall()
-        else:
-            legs = [txn]
-        for leg in legs:
-            adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
-            conn.execute("DELETE FROM transactions WHERE id=?", (leg["id"],))
+        delete_transaction_legs(conn, uid, txn["id"], txn["transfer_id"])
         conn.commit()
     return OkOut(ok=True)

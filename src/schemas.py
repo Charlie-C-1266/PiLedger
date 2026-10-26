@@ -29,6 +29,7 @@ from constants import (
     MAX_RATE,
     MAX_RATE_FX,
     MIN_RATE_FX,
+    PostingStatus,
     SubscriptionKind,
     SUBTYPES_BY_TYPE,
 )
@@ -345,6 +346,12 @@ class SubscriptionIn(_In):
     color: Annotated[str, Field(max_length=32)] = ""
     notes: Annotated[str, Field(max_length=500)] = ""
     active: bool = True
+    # Post each occurrence as a real transaction. Omitted means off, so an API
+    # client never starts moving money unasked; needs an open account (both, for
+    # a transfer). `auto_post_from` is the first day it may post — the server
+    # sets it to today when omitted, so nothing before that is back-filled.
+    auto_post: bool = False
+    auto_post_from: Optional[IsoDateStr] = None
 
 
 class SubscriptionPatch(_In):
@@ -367,6 +374,17 @@ class SubscriptionPatch(_In):
     color: Optional[str] = Field(default=None, max_length=32)
     notes: Optional[str] = Field(default=None, max_length=500)
     active: Optional[bool] = None
+    # Switching auto-post on (or resuming / rescheduling an auto-posting item)
+    # moves `auto_post_from` to today unless the patch names it; null for
+    # either field means "leave it as it is".
+    auto_post: Optional[bool] = None
+    auto_post_from: Optional[IsoDateStr] = None
+
+
+class SubscriptionOccurrenceIn(_In):
+    """Names one occurrence of a scheduled item, for Post now / Skip."""
+
+    date: IsoDateStr
 
 
 class BudgetIncomeIn(_In):
@@ -615,6 +633,9 @@ class TransactionOut(BaseModel):
     category: str
     note: str
     transfer_id: Optional[str] = None
+    # The scheduled item whose occurrence created this row (auto-post or "Post
+    # now"), from the posting log; null for anything entered by hand.
+    subscription_id: Optional[int] = None
     created_at: str
 
 
@@ -667,9 +688,14 @@ class SubscriptionOut(BaseModel):
     color: str
     notes: str
     active: bool
-    # Computed on read (never stored): the next due date on or after today, or
-    # null when the subscription is inactive or has elapsed past its end_date.
+    # Computed on read (never stored): the next due date on or after today that
+    # isn't already posted or skipped, or null when the subscription is
+    # inactive or has elapsed past its end_date.
     next_due_date: Optional[str] = None
+    auto_post: bool = False
+    # The first day auto-post may post (the day it was switched on); null while
+    # auto-post is off.
+    auto_post_from: Optional[str] = None
     created_at: str
 
 
@@ -684,6 +710,24 @@ class SubscriptionOccurrenceOut(BaseModel):
     kind: SubscriptionKind
     account_id: Optional[int] = None
     to_account_id: Optional[int] = None
+    # From the posting log: null while the date is still to come or unhandled.
+    status: Optional[PostingStatus] = None
+
+
+class SubscriptionPostingOut(BaseModel):
+    """One handled occurrence in a scheduled item's posting log."""
+
+    subscription_id: int
+    date: str
+    status: PostingStatus
+    # The transaction a plain posting created, or the transfer's shared id —
+    # both null when skipped (or once the user deleted what was posted).
+    transaction_id: Optional[int] = None
+    transfer_id: Optional[str] = None
+
+
+class PostDueOut(BaseModel):
+    posted: int
 
 
 class NetWorthPointOut(BaseModel):
