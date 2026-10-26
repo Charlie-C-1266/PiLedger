@@ -13,6 +13,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 - CSV import no longer drops genuinely repeated same-day transactions (e.g. two identical fares) as duplicates; re-importing an export still skips rows already imported.
 - Updated `anyio`, `certifi` and `urllib3` to clear newly-disclosed security advisories flagged by the dependency and image scans.
+- Updated `filelock` (used only by the development dependency audit) to clear newly-disclosed security advisories.
 
 ### Added
 
