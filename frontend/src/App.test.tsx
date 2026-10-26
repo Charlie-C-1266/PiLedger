@@ -20,6 +20,14 @@ vi.mock("./screens/Accounts", () => ({ default: () => <div>accounts-screen</div>
 vi.mock("./screens/Transactions", () => ({ default: () => <div>transactions-screen</div> }));
 vi.mock("./screens/Budget", () => ({ default: () => <div>budget-screen</div> }));
 vi.mock("./screens/Goals", () => ({ default: () => <div>goals-screen</div> }));
+vi.mock("./screens/Subscriptions", async () => {
+  const rrd = await vi.importActual<typeof import("react-router-dom")>(
+    "react-router-dom",
+  );
+  return {
+    default: () => <div>scheduled-screen at {rrd.useLocation().pathname}</div>,
+  };
+});
 vi.mock("./screens/Settings", () => ({ default: () => <div>settings-screen</div> }));
 
 import App from "./App";
@@ -39,11 +47,19 @@ describe("App routing", () => {
     ["/transactions", "transactions-screen"],
     ["/budget", "budget-screen"],
     ["/goals", "goals-screen"],
+    ["/scheduled", "scheduled-screen"],
     ["/settings", "settings-screen"],
   ])("renders %s under the Shell layout", (path, marker) => {
     renderAt(path);
     expect(screen.getByTestId("shell")).toBeInTheDocument();
-    expect(screen.getByText(marker)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(marker))).toBeInTheDocument();
+  });
+
+  it("redirects the old /subscriptions path to /scheduled", () => {
+    renderAt("/subscriptions");
+    expect(
+      screen.getByText("scheduled-screen at /scheduled")
+    ).toBeInTheDocument();
   });
 
   it("redirects / to /overview", () => {

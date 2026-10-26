@@ -19,10 +19,12 @@ export default function App() {
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/goals" element={<Goals />} />
-          <Route path="/subscriptions" element={<Subscriptions />} />
+          <Route path="/scheduled" element={<Subscriptions />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/" element={<Navigate to="/overview" replace />} />
+        {/* The Scheduled screen's old path, kept so saved links still work. */}
+        <Route path="/subscriptions" element={<Navigate to="/scheduled" replace />} />
         <Route path="*" element={<Navigate to="/overview" replace />} />
       </Routes>
     </MotionConfig>

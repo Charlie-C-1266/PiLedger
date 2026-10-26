@@ -20,6 +20,7 @@ import type {
   Frequency,
   Rates,
   Subscription,
+  SubscriptionKind,
   SubscriptionOccurrence,
   Summary,
   Token,
@@ -276,7 +277,9 @@ export const createSubscription = (data: {
   frequency: Frequency;
   start_date: string;
   category?: string;
+  kind?: SubscriptionKind;
   account_id?: number | null;
+  to_account_id?: number | null;
   end_date?: string | null;
   color?: string;
   notes?: string;

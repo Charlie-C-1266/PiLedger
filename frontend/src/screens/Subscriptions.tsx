@@ -2,17 +2,17 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useSubscriptions } from "../hooks/useSubscriptions";
 import { useSummary } from "../hooks/useSummary";
-import { useMoney } from "../privacy/useMoney";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import SegmentedControl from "../components/SegmentedControl";
 import SubscriptionsCalendar from "../components/SubscriptionsCalendar";
 import AddSubscriptionModal from "../components/AddSubscriptionModal";
+import ScheduledAmount, { TransferMark } from "../components/ScheduledAmount";
 import type { Subscription } from "../types";
 import styles from "./Subscriptions.module.css";
 
 type View = "list" | "calendar";
 
-/** Human "due in N days" label + the pill style class for a subscription. */
+/** Human "due in N days" label + the pill style class for a scheduled item. */
 function dueLabel(sub: Subscription): { text: string; cls: string } {
   if (!sub.active) return { text: "Paused", cls: styles.duePillNone };
   if (!sub.next_due_date) return { text: "No upcoming", cls: styles.duePillNone };
@@ -37,8 +37,8 @@ function SubscriptionRow({
   currency: string;
   onEdit: (s: Subscription) => void;
 }) {
-  const { fmt } = useMoney();
   const due = dueLabel(sub);
+  const isTransfer = sub.kind === "transfer";
   return (
     <div
       className={styles.card}
@@ -46,15 +46,30 @@ function SubscriptionRow({
       onClick={() => onEdit(sub)}
     >
       <div className={styles.cardLeft}>
-        <span className={styles.name}>{sub.name}</span>
+        <span className={styles.name}>
+          {isTransfer && <TransferMark />}
+          {sub.name}
+        </span>
         <span className={styles.meta}>
           <span className={styles.freqBadge}>{sub.frequency}</span>
-          {sub.account_name && <span>{sub.account_name}</span>}
+          {isTransfer ? (
+            <span>
+              {sub.account_name ?? "No account"} →{" "}
+              {sub.to_account_name ?? "No account"}
+            </span>
+          ) : (
+            sub.account_name && <span>{sub.account_name}</span>
+          )}
           {sub.category && <span>{sub.category}</span>}
         </span>
       </div>
       <div className={styles.cardRight}>
-        <span className={styles.amount}>{fmt(sub.amount, currency)}</span>
+        <ScheduledAmount
+          kind={sub.kind}
+          amount={sub.amount}
+          currency={currency}
+          className={styles.amount}
+        />
         <span className={`${styles.duePill} ${due.cls}`}>{due.text}</span>
       </div>
     </div>
@@ -72,7 +87,7 @@ export default function Subscriptions() {
   return (
     <PageStagger className={styles.page}>
       <StaggerItem className={styles.header}>
-        <h1 className={styles.title}>Subscriptions</h1>
+        <h1 className={styles.title}>Scheduled</h1>
         <div className={styles.headerActions}>
           <SegmentedControl<View>
             options={[
@@ -81,10 +96,10 @@ export default function Subscriptions() {
             ]}
             value={view}
             onChange={setView}
-            ariaLabel="Subscription view"
+            ariaLabel="Scheduled view"
           />
           <button className={styles.addBtn} onClick={() => setShowAdd(true)}>
-            + Add subscription
+            + Add scheduled item
           </button>
         </div>
       </StaggerItem>
@@ -102,7 +117,8 @@ export default function Subscriptions() {
             ))}
             {subscriptions?.length === 0 && (
               <div className={styles.empty}>
-                No subscriptions yet. Add one to track its renewal dates.
+                Nothing scheduled yet. Add a regular payment, income or
+                transfer to see when it's next due.
               </div>
             )}
           </div>

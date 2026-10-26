@@ -93,14 +93,26 @@ export interface Goal {
 
 export type Frequency = "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
 
+/** What a scheduled item does with money: a payment out of `account_id`,
+ * income into it, or a transfer from `account_id` to `to_account_id`. The
+ * amount is always positive; the kind gives the sign. Mirrors
+ * `constants.SubscriptionKind` on the backend. */
+export type SubscriptionKind = "expense" | "income" | "transfer";
+
+/** A scheduled item (payment, income or transfer). Named `Subscription` after
+ * the `/api/subscriptions` resource it comes from. */
 export interface Subscription {
   id: number;
   user_id: number;
   name: string;
   amount: number;
   category: string;
+  kind: SubscriptionKind;
   account_id?: number | null;
   account_name?: string | null;
+  /** A transfer's destination; always null for payments and income. */
+  to_account_id?: number | null;
+  to_account_name?: string | null;
   frequency: Frequency;
   start_date: string;
   end_date?: string | null;
@@ -119,6 +131,9 @@ export interface SubscriptionOccurrence {
   name: string;
   amount: number;
   color: string;
+  kind: SubscriptionKind;
+  account_id?: number | null;
+  to_account_id?: number | null;
 }
 
 export interface Summary {

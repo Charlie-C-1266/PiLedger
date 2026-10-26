@@ -9,7 +9,7 @@ const EXPECTED = [
   { label: "Txns", href: "/transactions" },
   { label: "Budget", href: "/budget" },
   { label: "Goals", href: "/goals" },
-  { label: "Subs", href: "/subscriptions" },
+  { label: "Scheduled", href: "/scheduled" },
   { label: "Settings", href: "/settings" },
 ];
 
@@ -28,7 +28,7 @@ describe("TabStrip", () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("renders every destination, including Subscriptions, with the right links", () => {
+  it("renders every destination, including Scheduled, with the right links", () => {
     renderAt("/overview");
 
     const links = screen.getAllByRole("link");
@@ -41,9 +41,9 @@ describe("TabStrip", () => {
   });
 
   it("marks the matching tab as the current page", () => {
-    renderAt("/subscriptions");
+    renderAt("/scheduled");
 
-    expect(screen.getByRole("link", { name: "Subs" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Scheduled" })).toHaveAttribute(
       "aria-current",
       "page",
     );

@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useOccurrences } from "../hooks/useSubscriptions";
-import { useMoney } from "../privacy/useMoney";
 import Modal from "./Modal";
+import ScheduledAmount, { TransferMark } from "./ScheduledAmount";
 import type { SubscriptionOccurrence } from "../types";
 import styles from "../screens/Subscriptions.module.css";
 
@@ -34,7 +34,6 @@ interface Props {
  * roving-tabindex `grid` with arrow-key navigation.
  */
 export default function SubscriptionsCalendar({ currency }: Props) {
-  const { fmt } = useMoney();
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
@@ -154,7 +153,7 @@ export default function SubscriptionsCalendar({ currency }: Props) {
           const occ = byDate[cell.key] ?? [];
           const hasOcc = occ.length > 0;
           const label = `${cell.date.getDate()} ${MONTHS[cell.date.getMonth()]}${
-            hasOcc ? `, ${occ.length} payment${occ.length !== 1 ? "s" : ""}` : ""
+            hasOcc ? `, ${occ.length} scheduled item${occ.length !== 1 ? "s" : ""}` : ""
           }`;
           return (
             <div
@@ -194,7 +193,7 @@ export default function SubscriptionsCalendar({ currency }: Props) {
 
       <AnimatePresence>
         {openDay && (
-          <Modal onClose={() => setOpenDay(null)} label="Payments due">
+          <Modal onClose={() => setOpenDay(null)} label="Scheduled items due">
             <div className={styles.popoverTitle}>Due {openDay}</div>
             {dayOccurrences.map((o, i) => (
               <div key={i} className={styles.popoverRow}>
@@ -203,9 +202,15 @@ export default function SubscriptionsCalendar({ currency }: Props) {
                     className={styles.popoverDot}
                     style={o.color ? { background: o.color } : { background: "var(--pl-accent)" }}
                   />
+                  {o.kind === "transfer" && <TransferMark />}
                   {o.name}
                 </span>
-                <span className={styles.popoverAmount}>{fmt(o.amount, currency)}</span>
+                <ScheduledAmount
+                  kind={o.kind}
+                  amount={o.amount}
+                  currency={currency}
+                  className={styles.popoverAmount}
+                />
               </div>
             ))}
           </Modal>

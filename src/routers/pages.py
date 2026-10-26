@@ -49,11 +49,14 @@ def root(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
 @router.get("/transactions")
 @router.get("/budget")
 @router.get("/goals")
+@router.get("/scheduled")
 @router.get("/subscriptions")
 @router.get("/settings")
 def spa_routes(session: Optional[str] = Cookie(None, alias=SESSION_COOKIE)):
     """Serve the same SPA shell for every in-app deep link so a refresh or
-    direct navigation to a client route loads the app rather than 404ing."""
+    direct navigation to a client route loads the app rather than 404ing.
+    ``/subscriptions`` is the Scheduled screen's old path, kept so saved links
+    still load the app (the client redirects it to ``/scheduled``)."""
     return _serve_spa(session)
 
 

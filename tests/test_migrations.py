@@ -964,3 +964,132 @@ def test_climb_from_each_intermediate_version(tmp_path, monkeypatch, start_versi
 
     init()  # re-run: the gated ladder must climb from start_version
     assert _read_schema_version(db_path) == SCHEMA_VERSION
+
+
+# ─── v15: scheduled-item kinds ───────────────────────────────────────────────
+# The subscriptions table exactly as _migrate_to_10 created it, before v15 added
+# `kind` / `to_account_id`. A v14 install carries this shape (and its rows).
+_V14_SUBSCRIPTIONS = """
+    CREATE TABLE subscriptions (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name         TEXT    NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        category     TEXT    NOT NULL DEFAULT '',
+        account_id   INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+        frequency    TEXT    NOT NULL
+                     CHECK(frequency IN ('weekly','biweekly','monthly','quarterly','annual')),
+        start_date   TEXT    NOT NULL,
+        end_date     TEXT,
+        color        TEXT    DEFAULT '',
+        notes        TEXT    DEFAULT '',
+        active       INTEGER NOT NULL DEFAULT 1,
+        created_at   TEXT    DEFAULT (datetime('now'))
+    );
+"""
+
+
+@pytest.fixture
+def stamped_v14_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 14 whose subscriptions table predates the
+    kind columns, holding a linked and an unlinked payment. init() must climb
+    it to v15 without losing either row."""
+    db_path = tmp_path / "v14.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, _set_schema_version
+
+    init()  # every other table at its current shape...
+    conn = sqlite3.connect(str(db_path))
+    try:
+        # ...then swap subscriptions back to its v14 shape and seed it.
+        conn.execute("DROP TABLE subscriptions")
+        conn.executescript(_V14_SUBSCRIPTIONS)
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES(1, 1, 'Current', 'current')"
+        )
+        conn.execute(
+            "INSERT INTO subscriptions(id, user_id, name, amount_cents, account_id,"
+            " frequency, start_date) VALUES"
+            "(1, 1, 'Netflix', 999, 1, 'monthly', '2024-01-15'),"
+            "(2, 1, 'Gym', 3500, NULL, 'monthly', '2024-02-01')"
+        )
+        _set_schema_version(conn, 14)
+        conn.commit()
+    finally:
+        conn.close()
+
+    init()
+    return db_path
+
+
+def test_v14_db_climbs_to_current_version(stamped_v14_db):
+    from db import SCHEMA_VERSION
+
+    assert _read_schema_version(stamped_v14_db) == SCHEMA_VERSION
+
+
+def test_v14_subscriptions_keep_rows_and_become_expenses(stamped_v14_db):
+    """_migrate_to_15 adds the kind columns; every existing row was a payment,
+    so it reads back as an expense with no destination account."""
+    assert {"kind", "to_account_id"} <= _table_columns(stamped_v14_db, "subscriptions")
+    conn = sqlite3.connect(str(stamped_v14_db))
+    try:
+        rows = conn.execute(
+            "SELECT id, name, amount_cents, account_id, kind, to_account_id"
+            " FROM subscriptions ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows == [
+        (1, "Netflix", 999, 1, "expense", None),
+        (2, "Gym", 3500, None, "expense", None),
+    ]
+
+
+def test_v15_kind_check_rejects_unknown_kind(stamped_v14_db):
+    """The CHECK added by the ALTER is built from constants.SUBSCRIPTION_KINDS."""
+    conn = sqlite3.connect(str(stamped_v14_db))
+    try:
+        conn.execute(
+            "INSERT INTO subscriptions(user_id, name, amount_cents, frequency,"
+            " start_date, kind) VALUES(1, 'Pay', 100, 'monthly', '2024-01-01', 'income')"
+        )
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO subscriptions(user_id, name, amount_cents, frequency,"
+                " start_date, kind) VALUES(1, 'X', 100, 'monthly', '2024-01-01', 'refund')"
+            )
+    finally:
+        conn.close()
+
+
+def test_migrated_subscriptions_match_fresh_install(stamped_v14_db, fresh_db):
+    """ALTER TABLE can only append, so the fresh-install DDL lists the new
+    columns last too — both routes end up with the same column order."""
+
+    def ordered(db_path: Path) -> list[str]:
+        conn = sqlite3.connect(str(db_path))
+        try:
+            return [
+                r[1]
+                for r in conn.execute("PRAGMA table_info(subscriptions)").fetchall()
+            ]
+        finally:
+            conn.close()
+
+    assert ordered(stamped_v14_db) == ordered(fresh_db)
+
+
+def test_gated_path_adds_subscription_kind(stamped_v1_db):
+    """A long-stamped install reaches the kind columns via the ladder too."""
+    assert {"kind", "to_account_id"} <= _table_columns(stamped_v1_db, "subscriptions")
+
+
+def test_legacy_path_has_subscription_kind(migrated_db):
+    assert {"kind", "to_account_id"} <= _table_columns(migrated_db, "subscriptions")

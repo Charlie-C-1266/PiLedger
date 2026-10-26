@@ -122,7 +122,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 14
+SCHEMA_VERSION: int = 15
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -252,6 +252,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
 
     # 14. Add accounts.institution / institution_name (who the account is with).
     _ensure_institution_columns(conn)
+
+    # 15. Add subscriptions.kind / to_account_id (income and transfers).
+    _ensure_subscription_kind_columns(conn)
 
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
@@ -516,14 +519,18 @@ def _migrate_to_9(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-# Recurring subscriptions / standing orders. Reminder-only in v1 — a row never
-# posts a transaction; `account_id` is just an optional label (and the hook a
-# future auto-posting feature would build on). Money is integer cents like every
-# other table; `next_due_date` is computed on read, never stored, so an elapsed
-# date can't go stale. The CHECK list is built from `constants.FREQUENCIES` so it
-# can't drift from the `schemas.Frequency` literal. Defined once and shared
-# between init() (fresh installs) and _migrate_to_10 (existing DBs).
+# Scheduled items (the `subscriptions` table): recurring payments, income and
+# transfers. Reminder-only for now — a row never posts a transaction;
+# `account_id` is the account money leaves (expense) or arrives in (income), and
+# a transfer also names `to_account_id`. `amount_cents` is always positive; the
+# `kind` gives the sign. Money is integer cents like every other table;
+# `next_due_date` is computed on read, never stored, so an elapsed date can't go
+# stale. The CHECK lists are built from `constants.FREQUENCIES` /
+# `constants.SUBSCRIPTION_KINDS` so they can't drift from the schema literals.
+# Defined once and shared between init() (fresh installs) and _migrate_to_10
+# (existing DBs); _migrate_to_15 adds the kind columns to tables made before.
 _FREQUENCY_CHECK = ", ".join(f"'{f}'" for f in constants.FREQUENCIES)
+_SUBSCRIPTION_KIND_CHECK = ", ".join(f"'{k}'" for k in constants.SUBSCRIPTION_KINDS)
 _SUBSCRIPTIONS_DDL = f"""
     CREATE TABLE IF NOT EXISTS subscriptions (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -538,10 +545,35 @@ _SUBSCRIPTIONS_DDL = f"""
         color        TEXT    DEFAULT '',
         notes        TEXT    DEFAULT '',
         active       INTEGER NOT NULL DEFAULT 1,
-        created_at   TEXT    DEFAULT (datetime('now'))
+        created_at   TEXT    DEFAULT (datetime('now')),
+        kind         TEXT    NOT NULL DEFAULT 'expense'
+                             CHECK(kind IN ({_SUBSCRIPTION_KIND_CHECK})),
+        to_account_id INTEGER REFERENCES accounts(id) ON DELETE SET NULL
     );
     CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
 """
+
+
+def _ensure_subscription_kind_columns(conn: sqlite3.Connection) -> None:
+    """Idempotently add subscriptions.kind + subscriptions.to_account_id.
+
+    Every existing row was a payment, so `kind` defaults to 'expense' and
+    `to_account_id` stays NULL. The columns sit after `created_at` because
+    ALTER TABLE can only append; the fresh-install DDL above matches that order
+    so both routes produce the same table.
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(subscriptions)").fetchall()}
+    if "kind" not in cols:
+        conn.execute(
+            "ALTER TABLE subscriptions ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'"
+            f" CHECK(kind IN ({_SUBSCRIPTION_KIND_CHECK}))"
+        )
+    if "to_account_id" not in cols:
+        conn.execute(
+            "ALTER TABLE subscriptions ADD COLUMN to_account_id INTEGER"
+            " REFERENCES accounts(id) ON DELETE SET NULL"
+        )
+    conn.commit()
 
 
 def _migrate_to_10(conn: sqlite3.Connection) -> None:
@@ -577,6 +609,14 @@ def _migrate_to_14(conn: sqlite3.Connection) -> None:
     held with, so accounts can be grouped by who they're with)."""
     _ensure_institution_columns(conn)
     _set_schema_version(conn, 14)
+    conn.commit()
+
+
+def _migrate_to_15(conn: sqlite3.Connection) -> None:
+    """Add subscriptions.kind / to_account_id so a scheduled item can be income
+    or a transfer between two accounts, not just a payment."""
+    _ensure_subscription_kind_columns(conn)
+    _set_schema_version(conn, 15)
     conn.commit()
 
 
@@ -732,6 +772,10 @@ def init() -> None:
         if version < 14:
             _migrate_to_14(conn)
             version = 14
+
+        if version < 15:
+            _migrate_to_15(conn)
+            version = 15
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)
