@@ -26,6 +26,7 @@ EXPECTED_ROUTES = {
     ("/api/accounts/{aid}/activity", "GET"),
     ("/api/accounts/{aid}/balance", "POST"),
     ("/api/accounts/{aid}/history", "GET"),
+    ("/api/accounts/{aid}/projection", "GET"),
     ("/api/auth/login", "POST"),
     ("/api/auth/logout", "POST"),
     ("/api/auth/me", "DELETE"),

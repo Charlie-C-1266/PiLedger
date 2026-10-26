@@ -1,7 +1,7 @@
 """Pydantic request and response models for the PiLedger API."""
 
 from datetime import datetime, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import (
     AfterValidator,
@@ -507,6 +507,67 @@ class AccountActivityOut(BaseModel):
     # Sum of the window's credits, and of its debits as a positive magnitude.
     total_in: float
     total_out: float
+
+
+# ─── Account projection (GET /api/accounts/{aid}/projection) ─────────────────
+# Every balance is in the account's own currency and is what the account
+# stores, so for a credit card or loan it is the projected amount owed. Dates
+# are ISO ``YYYY-MM-DD``.
+
+# A scheduled item's kind, or a projected monthly interest credit.
+ProjectionEventKind = Literal[SubscriptionKind, "interest"]
+
+
+class ProjectionPointOut(BaseModel):
+    # The closing balance on ``date``.
+    date: str
+    balance: float
+
+
+class ProjectionHorizonOut(BaseModel):
+    # ``months`` calendar months from today, month-end clamped on the server.
+    months: int
+    date: str
+    balance: float
+    # ``balance`` minus the start balance.
+    change: float
+
+
+class ProjectionEventOut(BaseModel):
+    date: str
+    # None for an interest credit.
+    subscription_id: Optional[int] = None
+    name: str
+    kind: ProjectionEventKind
+    frequency: Frequency
+    category: str
+    # The other account of a transfer ("To …" / "From …"), else None.
+    counterparty_name: Optional[str] = None
+    # Signed cash flow for this account: money out is negative.
+    amount: float
+    auto_post: bool
+    balance_after: float
+
+
+class ProjectionSummaryOut(BaseModel):
+    min_balance: float
+    # First day the lowest balance is reached.
+    min_date: str
+    # First day an asset account closes below zero; always None for debt.
+    first_negative_date: Optional[str] = None
+    end_balance: float
+
+
+class AccountProjectionOut(BaseModel):
+    account_id: int
+    currency: Currency
+    # Today, the first day of ``points``.
+    as_of: str
+    start_balance: float
+    points: list[ProjectionPointOut]
+    horizons: list[ProjectionHorizonOut]
+    events: list[ProjectionEventOut]
+    summary: ProjectionSummaryOut
 
 
 class SummaryOut(BaseModel):

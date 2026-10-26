@@ -1,13 +1,13 @@
-"""Accounts CRUD plus per-account balance history and recent activity.
+"""Accounts CRUD plus per-account balance history, activity and projection.
 
-Balance recording, history and the activity rollup live here alongside the
-account routes they hang off (`/api/accounts/{aid}/balance`, `/{aid}/history`,
-`/{aid}/activity`). The shared
+Balance recording, history, the activity rollup and the balance projection live
+here alongside the account routes they hang off (`/api/accounts/{aid}/balance`,
+`/{aid}/history`, `/{aid}/activity`, `/{aid}/projection`). The shared
 balance-adjustment helpers used by transactions/goals live in
-``services/accounts.py``, not here — these routes don't need them.
+``services/accounts.py``, and the projection maths in ``services/projection.py``.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated
 import sqlite3
 
@@ -21,12 +21,18 @@ from schemas import (
     AccountIn,
     AccountOut,
     AccountPatch,
+    AccountProjectionOut,
     BalanceEntryOut,
     BalanceIn,
     OkOut,
+    ProjectionEventOut,
+    ProjectionHorizonOut,
+    ProjectionPointOut,
+    ProjectionSummaryOut,
     validated_institution,
 )
 from services.accounts import LATEST_BALANCE_JOIN, latest_balance_cents
+from services.projection import ScheduledItem, project
 
 router = APIRouter(tags=["accounts"])
 
@@ -295,4 +301,148 @@ def get_activity(
         count=totals["n"],
         total_in=from_cents(totals["cin"]) or 0.0,
         total_out=from_cents(totals["cout"]) or 0.0,
+    )
+
+
+# ─── Balance projection ───────────────────────────────────────────────────────
+
+# The account page projects 12 months; P8's projections screen goes further.
+MAX_PROJECTION_MONTHS = 60
+
+
+# ── P2 HOOK: posting log and auto-post flag ───────────────────────────────────
+# Auto-posting (P2) adds the `subscription_postings` log of handled occurrences
+# (posted or skipped), a `services/posting.handled_dates(...)` helper and a
+# `subscriptions.auto_post` column. Until it lands, nothing is handled and every
+# item reads as a reminder. Whichever of P2 / this PR merges second points
+# `_handled_occurrences` at `handled_dates` (returning (subscription_id, date)
+# pairs) and reads `auto_post` straight from the row.
+def _handled_occurrences(
+    conn: sqlite3.Connection, subscription_ids: list[int]
+) -> set[tuple[int, date]]:
+    """The ``(subscription_id, occurrence date)`` pairs already posted or
+    skipped for these scheduled items. Empty until P2's posting log exists."""
+    return set()
+
+
+def _auto_post(row: sqlite3.Row) -> bool:
+    """Whether a scheduled item posts itself. False until P2 adds the column."""
+    return bool(row["auto_post"]) if "auto_post" in row.keys() else False
+
+
+# ── end P2 HOOK ───────────────────────────────────────────────────────────────
+
+
+def _scheduled_item(row: sqlite3.Row) -> ScheduledItem:
+    """Map a ``subscriptions`` row (joined to both account names) to the
+    projection's input."""
+    return ScheduledItem(
+        id=row["id"],
+        name=row["name"],
+        kind=row["kind"],
+        frequency=row["frequency"],
+        category=row["category"] or "",
+        amount_cents=row["amount_cents"],
+        start_date=date.fromisoformat(row["start_date"]),
+        end_date=date.fromisoformat(row["end_date"]) if row["end_date"] else None,
+        account_id=row["account_id"],
+        to_account_id=row["to_account_id"],
+        account_name=row["account_name"],
+        to_account_name=row["to_account_name"],
+        active=bool(row["active"]),
+        auto_post=_auto_post(row),
+    )
+
+
+def _money(cents: int) -> float:
+    """Integer cents as money, for the projection's always-present figures."""
+    return cents / 100
+
+
+@router.get("/api/accounts/{aid}/projection", response_model=AccountProjectionOut)
+def get_projection(
+    aid: int,
+    months: Annotated[int, Query(ge=1, le=MAX_PROJECTION_MONTHS)] = 12,
+    uid: int = Depends(require_auth),
+) -> AccountProjectionOut:
+    """Project one of the user's accounts (404 if not theirs) ``months`` ahead
+    (default 12) from its latest balance: a closing balance per day, the
+    1/3/6/12-month horizons that fit, every scheduled occurrence and interest
+    credit with the balance after it, and the low point.
+
+    Uses every active scheduled item touching the account, as its account or as
+    a transfer's destination, minus occurrences already handled. Figures are in
+    the account's own currency (no FX). Closed accounts still answer.
+    """
+    today = date.today()
+    with db() as conn:
+        acct = conn.execute(
+            "SELECT id, type, currency, interest_rate FROM accounts"
+            " WHERE id=? AND user_id=?",
+            (aid, uid),
+        ).fetchone()
+        if not acct:
+            raise HTTPException(404, "Not found")
+        start_cents = latest_balance_cents(conn, aid) or 0
+        rows = conn.execute(
+            "SELECT s.*, a.name AS account_name, t.name AS to_account_name"
+            " FROM subscriptions s"
+            " LEFT JOIN accounts a ON a.id = s.account_id AND a.user_id = s.user_id"
+            " LEFT JOIN accounts t ON t.id = s.to_account_id AND t.user_id = s.user_id"
+            " WHERE s.user_id=? AND (s.account_id=? OR s.to_account_id=?)",
+            (uid, aid, aid),
+        ).fetchall()
+        handled = _handled_occurrences(conn, [r["id"] for r in rows])
+    result = project(
+        account_id=aid,
+        account_type=acct["type"],
+        interest_rate=acct["interest_rate"],
+        start_balance_cents=start_cents,
+        items=[_scheduled_item(r) for r in rows],
+        today=today,
+        months=months,
+        handled=handled,
+    )
+    summary = result.summary
+    return AccountProjectionOut(
+        account_id=aid,
+        currency=acct["currency"] or "GBP",
+        as_of=today.isoformat(),
+        start_balance=_money(result.start_balance_cents),
+        points=[
+            ProjectionPointOut(date=p.date.isoformat(), balance=_money(p.balance_cents))
+            for p in result.points
+        ],
+        horizons=[
+            ProjectionHorizonOut(
+                months=h.months,
+                date=h.date.isoformat(),
+                balance=_money(h.balance_cents),
+                change=_money(h.change_cents),
+            )
+            for h in result.horizons
+        ],
+        events=[
+            ProjectionEventOut(
+                date=e.date.isoformat(),
+                subscription_id=e.subscription_id,
+                name=e.name,
+                kind=e.kind,
+                frequency=e.frequency,
+                category=e.category,
+                counterparty_name=e.counterparty_name,
+                amount=_money(e.amount_cents),
+                auto_post=e.auto_post,
+                balance_after=_money(e.balance_after_cents),
+            )
+            for e in result.events
+        ],
+        summary=ProjectionSummaryOut(
+            min_balance=_money(summary.min_balance_cents),
+            min_date=summary.min_date.isoformat(),
+            first_negative_date=summary.first_negative_date.isoformat()
+            if summary.first_negative_date
+            else None,
+            end_balance=_money(summary.end_balance_cents),
+        ),
     )
