@@ -18,7 +18,7 @@ _STRIDE_DAYS = {"weekly": 7, "biweekly": 14}
 _STEP_MONTHS = {"monthly": 1, "quarterly": 3, "annual": 12}
 
 
-def _add_months(anchor_day: int, year: int, month: int, months: int) -> date:
+def add_months(anchor_day: int, year: int, month: int, months: int) -> date:
     """The date ``months`` after ``(year, month)`` on ``anchor_day``, clamped to
     the target month's length (so a 31st anchor lands on Feb-28/29)."""
     total = year * 12 + (month - 1) + months
@@ -53,10 +53,10 @@ def next_occurrence(start: date, frequency: str, on_or_after: date) -> date:
             on_or_after.month - start.month
         )
         k = max(0, months_apart // step)
-        occ = _add_months(start.day, start.year, start.month, k * step)
+        occ = add_months(start.day, start.year, start.month, k * step)
         while occ < on_or_after:
             k += 1
-            occ = _add_months(start.day, start.year, start.month, k * step)
+            occ = add_months(start.day, start.year, start.month, k * step)
         return occ
     raise ValueError(f"unknown frequency: {frequency}")
 
