@@ -22,7 +22,7 @@ export default function Sidebar({ compact, username }: Props) {
         <NavItem to="/transactions" icon={<ListIcon />} label="Transactions" compact={compact} />
         <NavItem to="/budget" icon={<BudgetIcon />} label="Budget" compact={compact} />
         <NavItem to="/goals" icon={<FlagIcon />} label="Goals" compact={compact} />
-        <NavItem to="/subscriptions" icon={<RepeatIcon />} label="Subscriptions" compact={compact} />
+        <NavItem to="/scheduled" icon={<RepeatIcon />} label="Scheduled" compact={compact} />
       </nav>
       <div className={styles.spacer} />
       <NavItem to="/settings" icon={<SettingsIcon />} label="Settings" compact={compact} />

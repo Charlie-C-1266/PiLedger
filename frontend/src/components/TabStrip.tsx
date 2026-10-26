@@ -9,7 +9,7 @@ const tabs = [
   { to: "/transactions", icon: <ListIcon />, label: "Txns" },
   { to: "/budget", icon: <BudgetIcon />, label: "Budget" },
   { to: "/goals", icon: <FlagIcon />, label: "Goals" },
-  { to: "/subscriptions", icon: <RepeatIcon />, label: "Subs" },
+  { to: "/scheduled", icon: <RepeatIcon />, label: "Scheduled" },
   { to: "/settings", icon: <SettingsIcon />, label: "Settings" },
 ];
 

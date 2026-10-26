@@ -287,3 +287,20 @@
   font-variant-numeric: tabular-nums;
   color: var(--pl-text);
 }
+
+/* Scheduled-item kinds */
+
+/* Income is money in: the up colour, always alongside its "+" sign. Last in
+   the file so it wins over .amount / .popoverAmount at equal specificity. */
+.amountUp {
+  color: var(--pl-up);
+}
+
+/* The transfer marker before a transfer's name. */
+.kindIcon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  color: var(--pl-text-soft);
+  vertical-align: -2px;
+}

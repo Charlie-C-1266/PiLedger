@@ -12,6 +12,13 @@
   margin-top: 16px;
 }
 
+/* The Payment / Income / Transfer picker under the scheduled-item modal's
+   title: the same room above as a first field, sized to its options. */
+.kindPicker {
+  display: flex;
+  margin: 16px 0 12px;
+}
+
 .subtitle {
   font: 500 13px/1.4 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-soft);

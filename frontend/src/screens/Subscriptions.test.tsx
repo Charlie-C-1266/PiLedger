@@ -30,8 +30,11 @@ function makeSub(over: Partial<Subscription>): Subscription {
     name: "Sub",
     amount: 9.99,
     category: "",
+    kind: "expense",
     account_id: null,
     account_name: null,
+    to_account_id: null,
+    to_account_name: null,
     frequency: "monthly",
     start_date: "2024-01-15",
     end_date: null,
@@ -63,7 +66,49 @@ function renderScreen() {
   );
 }
 
-describe("Subscriptions screen", () => {
+describe("Scheduled screen", () => {
+  it("is titled Scheduled with an Add scheduled item button", () => {
+    setSubs([]);
+    renderScreen();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Scheduled" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "+ Add scheduled item" })
+    ).toBeInTheDocument();
+  });
+
+  it("shows income as a plus amount in the up colour", () => {
+    setSubs([
+      makeSub({ id: 1, name: "Salary", kind: "income", amount: 2500 }),
+      makeSub({ id: 2, name: "Netflix", kind: "expense", amount: 9.99 }),
+    ]);
+    renderScreen();
+    const income = screen.getByText("+£2,500.00");
+    expect(income.className).toMatch(/amountUp/);
+    const payment = screen.getByText("−£9.99");
+    expect(payment.className).not.toMatch(/amountUp/);
+  });
+
+  it("marks a transfer with the transfer icon and both accounts", () => {
+    setSubs([
+      makeSub({
+        name: "Savings pot",
+        kind: "transfer",
+        amount: 200,
+        account_id: 1,
+        account_name: "Current",
+        to_account_id: 2,
+        to_account_name: "Savings",
+      }),
+    ]);
+    renderScreen();
+    expect(screen.getByRole("img", { name: "Transfer" })).toBeInTheDocument();
+    expect(screen.getByText("Current → Savings")).toBeInTheDocument();
+    // A transfer only moves money between your own accounts: no sign.
+    expect(screen.getByText("£200.00").className).not.toMatch(/amountUp/);
+  });
+
   it("renders the subscriptions in the order the server returned them", () => {
     setSubs([
       makeSub({ id: 1, name: "Netflix", next_due_date: "2026-07-01" }),
@@ -75,10 +120,10 @@ describe("Subscriptions screen", () => {
     expect(names[1]).toHaveTextContent("Spotify");
   });
 
-  it("shows the empty state when there are no subscriptions", () => {
+  it("shows the empty state when nothing is scheduled", () => {
     setSubs([]);
     renderScreen();
-    expect(screen.getByText(/No subscriptions yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing scheduled yet/i)).toBeInTheDocument();
   });
 
   it("switches from the list to the calendar view via the toggle", async () => {

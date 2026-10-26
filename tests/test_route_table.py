@@ -84,6 +84,7 @@ EXPECTED_ROUTES = {
     ("/manifest.json", "GET"),
     ("/overview", "GET"),
     ("/redoc", "GET"),
+    ("/scheduled", "GET"),
     ("/settings", "GET"),
     ("/subscriptions", "GET"),
     ("/transactions", "GET"),

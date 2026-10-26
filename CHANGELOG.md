@@ -17,6 +17,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ### Added
 
+- The Subscriptions screen is now called Scheduled and can track regular income and transfers between accounts, not just payments.
 - Each account has its own page with its balance, details and recent transactions.
 
 ## [3.3.0] — 2026-08-24
