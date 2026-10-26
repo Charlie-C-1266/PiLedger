@@ -220,3 +220,84 @@ def test_another_users_account_is_not_found(alice, bob):
 
 def test_requires_auth(client):
     assert client.get("/api/accounts/1/projection").status_code == 401
+
+
+# ── Posting log (P2) ─────────────────────────────────────────────────────────
+
+
+def test_posted_and_skipped_occurrences_drop_out(alice):
+    """A skipped occurrence and one already posted (here early, via Post now)
+    are handled: neither appears as an event or moves the projected series —
+    the posted one is already in the starting balance."""
+    aid = _account(alice)
+    _balance(alice, aid, 1000.0)
+    today = date.today()
+    week, fortnight = today + timedelta(days=7), today + timedelta(days=14)
+    sid = _scheduled(
+        alice, account_id=aid, frequency="weekly", start_date=today.isoformat()
+    )
+    skip = alice.post(
+        f"/api/subscriptions/{sid}/skip", json={"date": today.isoformat()}
+    )
+    assert skip.status_code == 200, skip.text
+    post = alice.post(f"/api/subscriptions/{sid}/post", json={"date": week.isoformat()})
+    assert post.status_code == 200, post.text
+
+    body = alice.get(f"/api/accounts/{aid}/projection?months=1").json()
+
+    dates = [e["date"] for e in body["events"] if e["subscription_id"] == sid]
+    assert today.isoformat() not in dates
+    assert week.isoformat() not in dates
+    assert dates[0] == fortnight.isoformat()
+    points = {p["date"]: p["balance"] for p in body["points"]}
+    assert body["start_balance"] == 980.0  # Post now moved the real balance
+    assert points[today.isoformat()] == 980.0  # skipped: nothing out today
+    assert points[week.isoformat()] == 980.0  # posted: not taken twice
+    assert points[fortnight.isoformat()] == 960.0
+
+
+def test_undo_puts_the_occurrence_back(alice):
+    aid = _account(alice)
+    _balance(alice, aid, 1000.0)
+    today = date.today()
+    sid = _scheduled(
+        alice, account_id=aid, frequency="weekly", start_date=today.isoformat()
+    )
+    alice.post(f"/api/subscriptions/{sid}/skip", json={"date": today.isoformat()})
+    alice.delete(f"/api/subscriptions/{sid}/postings/{today.isoformat()}")
+
+    body = alice.get(f"/api/accounts/{aid}/projection?months=1").json()
+    assert body["events"][0]["date"] == today.isoformat()
+    assert body["points"][0]["balance"] == 980.0
+
+
+def test_auto_post_comes_through_on_events(alice):
+    aid = _account(alice)
+    _balance(alice, aid, 1000.0)
+    today = date.today()
+    reminder = _scheduled(
+        alice,
+        name="Window cleaner",
+        account_id=aid,
+        frequency="weekly",
+        start_date=(today + timedelta(days=2)).isoformat(),
+    )
+    auto = _scheduled(
+        alice,
+        name="Gym",
+        account_id=aid,
+        frequency="weekly",
+        start_date=today.isoformat(),
+        auto_post=True,
+    )
+    # Today's Gym occurrence posts; it then leaves the projection.
+    assert alice.post("/api/subscriptions/post-due").json() == {"posted": 1}
+
+    events = alice.get(f"/api/accounts/{aid}/projection?months=1").json()["events"]
+
+    flags = {e["subscription_id"]: set() for e in events}
+    for e in events:
+        flags[e["subscription_id"]].add(e["auto_post"])
+    assert flags == {reminder: {False}, auto: {True}}
+    gym = [e["date"] for e in events if e["subscription_id"] == auto]
+    assert gym[0] == (today + timedelta(days=7)).isoformat()

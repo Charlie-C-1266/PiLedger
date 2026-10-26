@@ -32,6 +32,7 @@ from schemas import (
     validated_institution,
 )
 from services.accounts import LATEST_BALANCE_JOIN, latest_balance_cents
+from services.posting import handled_dates
 from services.projection import ScheduledItem, project
 
 router = APIRouter(tags=["accounts"])
@@ -310,29 +311,6 @@ def get_activity(
 MAX_PROJECTION_MONTHS = 60
 
 
-# ── P2 HOOK: posting log and auto-post flag ───────────────────────────────────
-# Auto-posting (P2) adds the `subscription_postings` log of handled occurrences
-# (posted or skipped), a `services/posting.handled_dates(...)` helper and a
-# `subscriptions.auto_post` column. Until it lands, nothing is handled and every
-# item reads as a reminder. Whichever of P2 / this PR merges second points
-# `_handled_occurrences` at `handled_dates` (returning (subscription_id, date)
-# pairs) and reads `auto_post` straight from the row.
-def _handled_occurrences(
-    conn: sqlite3.Connection, subscription_ids: list[int]
-) -> set[tuple[int, date]]:
-    """The ``(subscription_id, occurrence date)`` pairs already posted or
-    skipped for these scheduled items. Empty until P2's posting log exists."""
-    return set()
-
-
-def _auto_post(row: sqlite3.Row) -> bool:
-    """Whether a scheduled item posts itself. False until P2 adds the column."""
-    return bool(row["auto_post"]) if "auto_post" in row.keys() else False
-
-
-# ── end P2 HOOK ───────────────────────────────────────────────────────────────
-
-
 def _scheduled_item(row: sqlite3.Row) -> ScheduledItem:
     """Map a ``subscriptions`` row (joined to both account names) to the
     projection's input."""
@@ -350,7 +328,7 @@ def _scheduled_item(row: sqlite3.Row) -> ScheduledItem:
         account_name=row["account_name"],
         to_account_name=row["to_account_name"],
         active=bool(row["active"]),
-        auto_post=_auto_post(row),
+        auto_post=bool(row["auto_post"]),
     )
 
 
@@ -392,7 +370,10 @@ def get_projection(
             " WHERE s.user_id=? AND (s.account_id=? OR s.to_account_id=?)",
             (uid, aid, aid),
         ).fetchall()
-        handled = _handled_occurrences(conn, [r["id"] for r in rows])
+        # Occurrences already posted or skipped are in the balance (or never
+        # will be), so the projection leaves them out.
+        by_item = handled_dates(conn, uid, [r["id"] for r in rows], start=today)
+        handled = {(sid, day) for sid, days in by_item.items() for day in days}
     result = project(
         account_id=aid,
         account_type=acct["type"],
