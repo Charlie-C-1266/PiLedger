@@ -100,13 +100,6 @@
   margin-bottom: 16px;
 }
 
-.deltaPill {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-
 .metaMute {
   font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);

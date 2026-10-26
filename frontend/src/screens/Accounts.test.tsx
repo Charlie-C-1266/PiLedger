@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import type { Account } from "../types";
 
@@ -12,9 +12,6 @@ vi.mock("../hooks/useAllHistory", () => ({ useAllHistory: vi.fn() }));
 vi.mock("../components/CardStack", () => ({ default: () => <div data-testid="stack" /> }));
 vi.mock("../components/charts/AccountHistoryChart", () => ({
   default: () => <div data-testid="history-chart" />,
-}));
-vi.mock("../components/EditAccountModal", () => ({
-  default: () => <div data-testid="edit-modal" />,
 }));
 
 import Accounts from "./Accounts";
@@ -151,5 +148,55 @@ describe("Accounts institution grouping", () => {
     for (const name of ["Everyday", "Chase Card", "Monzo Pot"]) {
       expect(within(container).getByText(name)).toBeInTheDocument();
     }
+  });
+});
+
+function AccountPageStub() {
+  const { id } = useParams();
+  return <div>Account page {id}</div>;
+}
+
+function renderWithRoutes(accounts: Account[]) {
+  vi.mocked(useAccounts).mockReturnValue({ data: accounts } as never);
+  vi.mocked(useSummary).mockReturnValue({ data: { base_currency: "GBP" } } as never);
+  vi.mocked(useAllHistory).mockReturnValue({ data: [], isPending: false } as never);
+  return render(
+    <MemoryRouter initialEntries={["/accounts"]}>
+      <ThemeProvider>
+        <Routes>
+          <Route path="/accounts" element={<Accounts />} />
+          <Route path="/accounts/:id" element={<AccountPageStub />} />
+        </Routes>
+      </ThemeProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe("Accounts tiles open the account page", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("links each tile to its account's page, named for the account", () => {
+    renderWithRoutes([CHASE_CURRENT, MONZO]);
+    expect(screen.getByRole("link", { name: "Everyday, £1,000.00" })).toHaveAttribute(
+      "href",
+      "/accounts/1",
+    );
+    expect(screen.getByRole("link", { name: "Monzo Pot, £500.00" })).toHaveAttribute(
+      "href",
+      "/accounts/3",
+    );
+  });
+
+  it("navigates on a plain click", async () => {
+    renderWithRoutes([CHASE_CURRENT, MONZO]);
+    await userEvent.click(screen.getByRole("link", { name: /Monzo Pot/ }));
+    expect(screen.getByText("Account page 3")).toBeInTheDocument();
+  });
+
+  it("navigates from the grouped view too", async () => {
+    renderWithRoutes([CHASE_CURRENT, CHASE_CARD]);
+    await userEvent.click(screen.getByRole("button", { name: "By institution" }));
+    await userEvent.click(screen.getByRole("link", { name: /Chase Card/ }));
+    expect(screen.getByText("Account page 2")).toBeInTheDocument();
   });
 });

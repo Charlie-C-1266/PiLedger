@@ -3,6 +3,7 @@ import { MotionConfig } from "motion/react";
 import Shell from "./components/Shell";
 import Overview from "./screens/Overview";
 import Accounts from "./screens/Accounts";
+import AccountPage from "./screens/AccountPage";
 import Transactions from "./screens/Transactions";
 import Budget from "./screens/Budget";
 import Goals from "./screens/Goals";
@@ -16,6 +17,7 @@ export default function App() {
         <Route element={<Shell />}>
           <Route path="/overview" element={<Overview />} />
           <Route path="/accounts" element={<Accounts />} />
+          <Route path="/accounts/:id" element={<AccountPage />} />
           <Route path="/transactions" element={<Transactions />} />
           <Route path="/budget" element={<Budget />} />
           <Route path="/goals" element={<Goals />} />

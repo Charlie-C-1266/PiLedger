@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { createAccount, recordBalance } from "../api/client";
 import { CURRENCIES } from "../lib/currency";
 import { INSTITUTION_GROUPS, OTHER } from "../lib/institutions";
+import { SUBTYPE_LABELS, SUBTYPES_BY_TYPE } from "../lib/accountTypes";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
@@ -18,64 +19,6 @@ const TYPES = [
   { value: "invest", label: "Investment" },
   { value: "loan", label: "Loan" },
 ];
-
-const SUBTYPE_LABELS: Record<string, string> = {
-  general: "General",
-  // Current
-  standard: "Standard",
-  joint: "Joint",
-  student: "Student",
-  premier: "Premier",
-  basic: "Basic",
-  business: "Business",
-  // Savings
-  cash_isa: "Cash ISA",
-  stocks_shares_isa: "Stocks & Shares ISA",
-  lifetime_isa: "Lifetime ISA",
-  junior_isa: "Junior ISA",
-  regular_saver: "Regular Saver",
-  easy_access: "Instant Access",
-  fixed_term_bond: "Fixed Term Bond",
-  notice_account: "Notice Account",
-  premium_bonds: "Premium Bonds",
-  sipp: "SIPP",
-  workplace_pension: "Workplace Pension",
-  // Loan
-  bank_loan: "Bank Loan",
-  mortgage: "Mortgage",
-  student_loan: "Student Loan",
-  car_finance: "Car Finance",
-  overdraft: "Overdraft",
-  bnpl: "Buy Now Pay Later",
-  // Credit
-  credit_card: "Credit Card",
-  store_card: "Store Card",
-  charge_card: "Charge Card",
-  // Invest
-  trading_account: "Trading Account",
-  crypto: "Crypto",
-};
-
-const SUBTYPES_BY_TYPE: Record<string, string[]> = {
-  current: ["general", "standard", "joint", "student", "premier", "basic", "business"],
-  savings: [
-    "general",
-    "easy_access",
-    "regular_saver",
-    "fixed_term_bond",
-    "notice_account",
-    "cash_isa",
-    "stocks_shares_isa",
-    "lifetime_isa",
-    "junior_isa",
-    "premium_bonds",
-    "sipp",
-    "workplace_pension",
-  ],
-  loan: ["general", "mortgage", "bank_loan", "student_loan", "car_finance", "overdraft", "bnpl"],
-  credit: ["general", "credit_card", "store_card", "charge_card"],
-  invest: ["general", "trading_account", "crypto"],
-};
 
 const DEFAULT_COLOR = "#6366f1";
 

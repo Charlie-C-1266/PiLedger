@@ -25,11 +25,18 @@ function bustedKeys(spy: ReturnType<typeof vi.spyOn>): Set<string> {
 }
 
 describe("useInvalidate ripple sets", () => {
-  it("accountChanged busts balances + every net-worth view (not transactions/budget)", () => {
+  it("accountChanged busts balances, the account page's activity + every net-worth view (not transactions/budget)", () => {
     const { result, spy } = setup();
     result.current.accountChanged();
     expect(bustedKeys(spy)).toEqual(
-      new Set(["accounts", "summary", "networth", "history-all", "projections"]),
+      new Set([
+        "accounts",
+        "account-activity",
+        "summary",
+        "networth",
+        "history-all",
+        "projections",
+      ]),
     );
   });
 
@@ -42,6 +49,7 @@ describe("useInvalidate ripple sets", () => {
       new Set([
         "transactions",
         "accounts",
+        "account-activity",
         "summary",
         "networth",
         "history-all",

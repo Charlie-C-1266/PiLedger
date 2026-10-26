@@ -1,0 +1,19 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.up {
+  color: var(--pl-up);
+  background: color-mix(in oklab, var(--pl-up), transparent 90%);
+}
+
+.down {
+  color: var(--pl-down);
+  background: color-mix(in oklab, var(--pl-down), transparent 90%);
+}

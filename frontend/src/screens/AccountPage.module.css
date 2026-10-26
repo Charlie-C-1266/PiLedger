@@ -1,0 +1,348 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Back link + header ─────────────────────────────────────────────── */
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 6px 8px 6px 2px;
+  margin: -6px 0 -6px -2px;
+  border-radius: 8px;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+  text-decoration: none;
+  transition: color 140ms;
+}
+
+.back:hover {
+  color: var(--pl-text);
+}
+
+.backIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.headId {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.titles {
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font: 700 28px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.6px;
+  color: var(--pl-text);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  margin-top: 4px;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 160ms, background 160ms;
+}
+
+.btnIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.btnPrimary {
+  background: var(--pl-accent);
+  color: #fff;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnSecondary {
+  background: var(--pl-surface-alt);
+  color: var(--pl-text);
+}
+
+.btnSecondary:hover {
+  background: var(--pl-rule);
+}
+
+.addPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--pl-accent-soft);
+  color: var(--pl-accent);
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 160ms;
+}
+
+.addPill:hover {
+  opacity: 0.85;
+}
+
+/* ── Grid: Overview's 1fr + 380px columns ───────────────────────────── */
+
+/* The right column spans both rows so a tall details card never pushes the
+   recent transactions down from under the balance card. */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-areas:
+    "balance side"
+    "recent side";
+  grid-template-rows: auto 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.balanceCard {
+  grid-area: balance;
+}
+
+.recentCard {
+  grid-area: recent;
+}
+
+.side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Stacked: balance → recent → details. */
+@media (max-width: 1079px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "balance"
+      "recent"
+      "side";
+    grid-template-rows: none;
+  }
+}
+
+.card {
+  background: var(--pl-surface);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: var(--pl-shadow);
+  min-width: 0;
+}
+
+/* ── Balance card ───────────────────────────────────────────────────── */
+
+.balanceTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.balanceFigures {
+  min-width: 0;
+}
+
+.micro {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.heroValue {
+  margin: 8px 0;
+  font: 700 46px/1.05 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -1.2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+}
+
+.balanceMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.metaMute {
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+/* ── Section headers + recent transactions ──────────────────────────── */
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font: 700 18px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.sectionSub {
+  margin-top: 2px;
+  font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.txnList {
+  display: flex;
+  flex-direction: column;
+}
+
+.txnDivider + .txnDivider {
+  border-top: 1px solid var(--pl-rule);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 32px 16px;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  text-align: center;
+}
+
+/* ── Right column ───────────────────────────────────────────────────── */
+
+.wideTile {
+  display: block;
+}
+
+/* ── Not found ──────────────────────────────────────────────────────── */
+
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.notFoundTitle {
+  font: 700 22px/1.2 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.4px;
+  color: var(--pl-text);
+}
+
+.notFoundText {
+  margin-bottom: 6px;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+/* ── Phones ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 719px) {
+  .card {
+    padding: 22px;
+  }
+
+  .headId {
+    gap: 12px;
+  }
+
+  .name {
+    font-size: 24px;
+  }
+
+  /* The header actions share one row at a 44px touch height. */
+  .actions {
+    width: 100%;
+  }
+
+  .actions .btn {
+    flex: 1;
+    min-height: 44px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .heroValue {
+    font-size: 36px;
+  }
+
+  .balanceTop {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sep {
+    display: none;
+  }
+
+  /* The header already names the account. */
+  .wideTile {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .addPill {
+    min-height: 44px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { useMoney } from "../privacy/useMoney";
@@ -7,19 +7,19 @@ import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
 import ModalActions from "./ModalActions";
-import RangePills from "./RangePills";
-import AccountHistoryChart from "./charts/AccountHistoryChart";
 import { useInvalidate } from "../hooks/useInvalidate";
-import { useAccountHistory } from "../hooks/useAccountHistory";
-import type { Account, AccountHistory, RangeKey } from "../types";
+import type { Account } from "../types";
 import styles from "./AddModal.module.css";
 
 interface Props {
   account: Account;
   onClose: () => void;
+  /** Called after the account is deleted (instead of `onClose`), so a caller
+   *  showing that account — its own page — can move somewhere that still exists. */
+  onDeleted?: () => void;
 }
 
-export default function EditAccountModal({ account, onClose }: Props) {
+export default function EditAccountModal({ account, onClose, onDeleted }: Props) {
   const { fmt } = useMoney();
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState(account.color || "#6366f1");
@@ -32,34 +32,14 @@ export default function EditAccountModal({ account, onClose }: Props) {
   );
   const [closed, setClosed] = useState(account.closed);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [historyRange, setHistoryRange] = useState<RangeKey>("90D");
   const inv = useInvalidate();
-  const {
-    data: history,
-    isPending: historyPending,
-    isError: historyError,
-  } = useAccountHistory(account.id, historyRange);
-
-  const historyAccounts: AccountHistory[] = useMemo(() => {
-    if (!history || history.length === 0) return [];
-    return [
-      {
-        id: account.id,
-        name: account.name,
-        color: account.color || "#6366f1",
-        type: account.type,
-        currency: account.currency,
-        history: history.map((h) => ({ balance: h.balance, date: h.recorded_at })),
-      },
-    ];
-  }, [history, account]);
 
   const deleteMutation = useMutation({
     mutationFn: () => removeAccount(account.id),
     onSuccess: () => {
       // Deleting an account cascades its transactions (and any budget spend).
       inv.transactionChanged();
-      onClose();
+      (onDeleted ?? onClose)();
     },
   });
 
@@ -197,26 +177,6 @@ export default function EditAccountModal({ account, onClose }: Props) {
           checked={closed}
           onChange={setClosed}
         />
-
-        <div className={styles.historySection}>
-          <div className={styles.historyHead}>
-            <span className={styles.colorLabel}>History</span>
-            <RangePills value={historyRange} onChange={setHistoryRange} />
-          </div>
-          {historyPending ? (
-            <div className={styles.historyState}>Loading balance history…</div>
-          ) : historyError ? (
-            <div className={styles.historyState}>
-              Couldn't load balance history.
-            </div>
-          ) : (
-            <AccountHistoryChart
-              accounts={historyAccounts}
-              currency={account.currency}
-              height={180}
-            />
-          )}
-        </div>
 
         {confirmingDelete ? (
           <div className={styles.footer}>

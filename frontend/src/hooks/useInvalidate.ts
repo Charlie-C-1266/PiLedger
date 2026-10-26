@@ -25,7 +25,14 @@ export function useInvalidate() {
       /** An account was created/edited or a balance was recorded: balances and
        *  every net-worth view derived from them change (but not transactions). */
       accountChanged: () =>
-        bust("accounts", "summary", "networth", "history-all", "projections"),
+        bust(
+          "accounts",
+          "account-activity",
+          "summary",
+          "networth",
+          "history-all",
+          "projections",
+        ),
 
       /** A transaction was created/edited/deleted, or a transfer was made — and
        *  also an account *deletion*, which cascades its transactions. Adjusts a
@@ -35,6 +42,7 @@ export function useInvalidate() {
         bust(
           "transactions",
           "accounts",
+          "account-activity",
           "summary",
           "networth",
           "history-all",

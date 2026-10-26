@@ -1,7 +1,8 @@
-"""Accounts CRUD plus per-account balance history.
+"""Accounts CRUD plus per-account balance history and recent activity.
 
-Balance recording and history live here alongside the account routes they
-hang off (`/api/accounts/{aid}/balance`, `/{aid}/history`). The shared
+Balance recording, history and the activity rollup live here alongside the
+account routes they hang off (`/api/accounts/{aid}/balance`, `/{aid}/history`,
+`/{aid}/activity`). The shared
 balance-adjustment helpers used by transactions/goals live in
 ``services/accounts.py``, not here — these routes don't need them.
 """
@@ -16,6 +17,7 @@ from constants import ISO_FMT, MAX_DAYS, SUBTYPES_BY_TYPE
 from db import db, from_cents, to_cents, utcnow_iso
 from auth import require_auth
 from schemas import (
+    AccountActivityOut,
     AccountIn,
     AccountOut,
     AccountPatch,
@@ -24,7 +26,7 @@ from schemas import (
     OkOut,
     validated_institution,
 )
-from services.accounts import LATEST_BALANCE_JOIN
+from services.accounts import LATEST_BALANCE_JOIN, latest_balance_cents
 
 router = APIRouter(tags=["accounts"])
 
@@ -238,3 +240,59 @@ def get_history(
         )
         for r in rows
     ]
+
+
+# The activity window is "the last N days" on the account page, so it stays
+# within a year rather than the decades /history allows.
+MAX_ACTIVITY_DAYS = 366
+
+
+@router.get("/api/accounts/{aid}/activity", response_model=AccountActivityOut)
+def get_activity(
+    aid: int,
+    days: Annotated[int, Query(ge=1, le=MAX_ACTIVITY_DAYS)] = 30,
+    uid: int = Depends(require_auth),
+) -> AccountActivityOut:
+    """Summarise one of the user's accounts (404 if not theirs) over the last
+    ``days`` (default 30): how its balance moved since the window opened, and
+    how many transactions it took and their totals in each direction.
+
+    The opening balance is the latest snapshot at or before ``since`` — the
+    balance the account actually had then — so a snapshot from before the
+    window counts, and an account whose history starts inside the window has
+    none (and so no ``change``).
+    """
+    with db() as conn:
+        if not conn.execute(
+            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
+        ).fetchone():
+            raise HTTPException(404, "Not found")
+        since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
+        opening = conn.execute(
+            "SELECT balance_cents FROM balance_history"
+            " WHERE account_id=? AND recorded_at<=?"
+            " ORDER BY recorded_at DESC, id DESC LIMIT 1",
+            (aid, since),
+        ).fetchone()
+        current_cents = latest_balance_cents(conn, aid)
+        totals = conn.execute(
+            "SELECT COUNT(*) AS n,"
+            " COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS cin,"
+            " COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS cout"
+            " FROM transactions WHERE account_id=? AND user_id=? AND occurred_at>=?",
+            (aid, uid, since),
+        ).fetchone()
+    opening_cents = opening["balance_cents"] if opening else None
+    change_cents = (
+        None
+        if opening_cents is None
+        else (current_cents if current_cents is not None else 0) - opening_cents
+    )
+    return AccountActivityOut(
+        since=since,
+        opening_balance=from_cents(opening_cents),
+        change=from_cents(change_cents),
+        count=totals["n"],
+        total_in=from_cents(totals["cin"]) or 0.0,
+        total_out=from_cents(totals["cout"]) or 0.0,
+    )

@@ -126,4 +126,12 @@ describe("AccountTile", () => {
     expect(screen.getByText("£****")).toBeInTheDocument();
     localStorage.clear();
   });
+
+  it("fills its column in the wide size used on the account page", () => {
+    const { container, rerender } = render(<AccountTile account={makeAccount()} />);
+    expect((container.firstElementChild as HTMLElement).className).not.toMatch(/wide/);
+
+    rerender(<AccountTile account={makeAccount()} wide />);
+    expect((container.firstElementChild as HTMLElement).className).toMatch(/wide/);
+  });
 });
