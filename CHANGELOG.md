@@ -17,6 +17,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Added
 
 - Tapping an account now shows a "History" section in its edit view with a balance-over-time chart (7D/30D/90D/1Y), so you can see how an individual account has trended.
+- The Subscriptions screen is now called Scheduled and can track regular income and transfers between accounts, not just payments.
 
 ## [3.3.0] — 2026-08-24
 

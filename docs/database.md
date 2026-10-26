@@ -153,7 +153,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 
 **Fresh databases** get the current-schema `CREATE TABLE IF NOT EXISTS` statements, then are stamped with the latest `SCHEMA_VERSION`.
 
-**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — fourteen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
+**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — fifteen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
 
 1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
 2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
@@ -169,6 +169,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version`.
 12. **`transactions.import_hash`** — added via `ALTER TABLE`, with its unique-if-not-null index (CSV import dedup).
 13. **`accounts.closed`** — added via `ALTER TABLE`, defaults to `0`.
 14. **`accounts.institution` + `accounts.institution_name`** — added via `ALTER TABLE`, both NULL on existing rows.
+15. **`subscriptions.kind` + `subscriptions.to_account_id`** — added via `ALTER TABLE`; `kind` defaults to `'expense'`, `to_account_id` is NULL.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
@@ -184,3 +185,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v12** — `accounts.closed` added, defaulting to `0` so existing accounts stay open.
 - **v13** — the `api_tokens` table is created (personal access tokens for headless clients).
 - **v14** — `accounts.institution` and `accounts.institution_name` added, both NULL on existing rows: the provider can't be inferred from an account's name, so it stays unrecorded until its owner sets it.
+- **v15** — `subscriptions.kind` (`'expense'`, `'income'` or `'transfer'`, defaulting to `'expense'` so every existing row stays a payment) and `subscriptions.to_account_id` (a transfer's destination, `ON DELETE SET NULL`) added, so scheduled items can be income or transfers.

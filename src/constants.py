@@ -94,6 +94,14 @@ FREQUENCIES: tuple[str, ...] = (
     "annual",
 )
 
+# What a scheduled item does with money: an `expense` leaves `account_id`, an
+# `income` arrives in it, and a `transfer` moves from `account_id` to
+# `to_account_id`. The stored amount is always positive; the kind gives the
+# sign. The tuple is derived from the Literal, and the `subscriptions.kind`
+# CHECK constraint is built from the tuple (db.py), so the three can't drift.
+SubscriptionKind = Literal["expense", "income", "transfer"]
+SUBSCRIPTION_KINDS: tuple[str, ...] = get_args(SubscriptionKind)
+
 # UK-market account sub-types. "general" is the catch-all for users who don't
 # want to record this level of detail and is valid for every parent type.
 # Storing the enum value (snake_case) keeps the API stable; the frontend owns

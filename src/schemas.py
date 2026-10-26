@@ -29,6 +29,7 @@ from constants import (
     MAX_RATE,
     MAX_RATE_FX,
     MIN_RATE_FX,
+    SubscriptionKind,
     SUBTYPES_BY_TYPE,
 )
 
@@ -326,11 +327,16 @@ class GoalPatch(_In):
 
 class SubscriptionIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
+    # Always positive — `kind` says whether it's money out, in, or moved.
     amount: Annotated[float, Field(gt=0, le=MAX_MONEY, allow_inf_nan=False)]
     category: Annotated[str, Field(max_length=100)] = ""
-    # Optional account this payment is associated with — reminder-only in v1, so
-    # it is purely a label (and the hook a future auto-posting feature builds on).
+    kind: SubscriptionKind = "expense"
+    # The account money leaves (expense, and a transfer's source) or arrives in
+    # (income). Optional for expense/income; a transfer needs it.
     account_id: Optional[int] = Field(default=None, ge=1)
+    # A transfer's destination. Required for a transfer and must be null for
+    # anything else; the pair is checked in the router (ownership + currency).
+    to_account_id: Optional[int] = Field(default=None, ge=1)
     frequency: Frequency
     start_date: IsoDateStr  # the anchor occurrence
     end_date: Optional[IsoDateStr] = None  # null = ongoing
@@ -347,9 +353,13 @@ class SubscriptionPatch(_In):
         default=None, gt=0, le=MAX_MONEY, allow_inf_nan=False
     )
     category: Optional[str] = Field(default=None, max_length=100)
+    kind: Optional[SubscriptionKind] = None
     # Set to an account id to link, or null to unlink. exclude_unset on update
     # honours an explicit null (unlink) while an omitted field is left unchanged.
+    # Any change to kind/account_id/to_account_id is re-checked against the
+    # stored row in the handler, since a partial patch carries only some of them.
     account_id: Optional[int] = Field(default=None, ge=1)
+    to_account_id: Optional[int] = Field(default=None, ge=1)
     frequency: Optional[Frequency] = None
     start_date: Optional[IsoDateStr] = None
     # null clears the end date (back to ongoing); omitted leaves it unchanged.
@@ -570,8 +580,11 @@ class SubscriptionOut(BaseModel):
     name: str
     amount: float
     category: str
+    kind: SubscriptionKind
     account_id: Optional[int] = None
     account_name: Optional[str] = None
+    to_account_id: Optional[int] = None
+    to_account_name: Optional[str] = None
     frequency: Frequency
     start_date: str
     end_date: Optional[str] = None
@@ -592,6 +605,9 @@ class SubscriptionOccurrenceOut(BaseModel):
     name: str
     amount: float
     color: str
+    kind: SubscriptionKind
+    account_id: Optional[int] = None
+    to_account_id: Optional[int] = None
 
 
 class NetWorthPointOut(BaseModel):
