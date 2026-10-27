@@ -40,7 +40,9 @@ export default function ProjectionPanel({ account }: { account: Account }) {
     () => (data && horizon ? buildChartSeries(data, history.data, horizon) : null),
     [data, history.data, horizon],
   );
-  const note = series && horizon ? lowNote(series, horizon.months, debt) : null;
+  // "Warn me below": the page's notes and tints use it, zero when unset.
+  const threshold = account.low_balance_threshold ?? 0;
+  const note = series && horizon ? lowNote(series, horizon.months, debt, threshold) : null;
 
   let body;
   if (!open) {
@@ -83,10 +85,18 @@ export default function ProjectionPanel({ account }: { account: Account }) {
               <strong className={styles.noteWarn}>Goes overdrawn on {dayShort(note.date)}.</strong>{" "}
             </>
           )}
+          {note?.kind === "buffer" && (
+            <>
+              <strong className={styles.noteWarn}>
+                Drops below your {fmt(note.threshold, account.currency)} buffer on{" "}
+                {dayShort(note.date)}.
+              </strong>{" "}
+            </>
+          )}
           {note?.kind === "low" && (
             <>
               Lowest point {note.phrase}:{" "}
-              <strong className={note.balance < 0 ? styles.noteWarn : styles.noteStrong}>
+              <strong className={note.balance < threshold ? styles.noteWarn : styles.noteStrong}>
                 {fmt(note.balance, account.currency)}
               </strong>{" "}
               on {dayShort(note.date)}

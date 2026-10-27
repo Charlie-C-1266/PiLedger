@@ -372,6 +372,55 @@ describe("AccountPage projection", () => {
     expect(warning.className).toMatch(/noteWarn/);
   });
 
+  it("warns when the balance drops below the account's buffer but stays in credit", () => {
+    renderPage("/accounts/12", {
+      accounts: [makeAccount({ low_balance_threshold: 200, interest_rate: 0 })],
+      projection: makeProjection({
+        start: 400,
+        events: [{ date: addDays(AS_OF, 19), name: "Council tax", amount: -250 }],
+      }),
+    });
+    const warning = screen.getByText("Drops below your £200.00 buffer on 14 Nov.");
+    expect(warning.className).toMatch(/noteWarn/);
+    expect(screen.queryByText(/Goes overdrawn/)).not.toBeInTheDocument();
+    // The Upcoming row's "after" uses the same buffer.
+    expect(screen.getByText("£150.00 after").className).toMatch(/low/);
+  });
+
+  it("still says overdrawn when the balance goes below zero past the buffer", () => {
+    renderPage("/accounts/12", {
+      accounts: [makeAccount({ low_balance_threshold: 200 })],
+      projection: makeProjection({
+        start: 400,
+        events: [
+          { date: addDays(AS_OF, 5), name: "Council tax", amount: -250 },
+          { date: addDays(AS_OF, 19), name: "Car insurance", amount: -486 },
+        ],
+      }),
+    });
+    expect(screen.getByText("Goes overdrawn on 14 Nov.").className).toMatch(/noteWarn/);
+    expect(screen.queryByText(/buffer/)).not.toBeInTheDocument();
+  });
+
+  it("masks the buffer amount in privacy mode", () => {
+    localStorage.setItem(STORAGE_KEY, "hidden");
+    renderPage("/accounts/12", {
+      accounts: [makeAccount({ low_balance_threshold: 200 })],
+      projection: makeProjection({
+        start: 400,
+        events: [{ date: addDays(AS_OF, 19), name: "Council tax", amount: -250 }],
+      }),
+    });
+    expect(screen.getByText("Drops below your £**** buffer on 14 Nov.")).toBeInTheDocument();
+  });
+
+  it("leaves the tile's low-balance chip to the note on the account page", () => {
+    renderPage("/accounts/12", {
+      accounts: [makeAccount({ low_balance: { date: "2026-11-14", balance: 150 } })],
+    });
+    expect(screen.queryByText(/^Low by/)).not.toBeInTheDocument();
+  });
+
   it("draws a flat line plus interest when nothing is scheduled", () => {
     renderPage("/accounts/12", {
       projection: makeProjection({

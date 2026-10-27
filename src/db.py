@@ -123,7 +123,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 16
+SCHEMA_VERSION: int = 17
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -261,6 +261,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     #     itself is created by init() before this runs).
     _ensure_subscription_auto_post_columns(conn)
 
+    # 17. Add accounts.low_balance_threshold_cents ("Warn me below").
+    _ensure_low_balance_threshold_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -354,6 +357,18 @@ def _ensure_institution_columns(conn: sqlite3.Connection) -> None:
     if "institution_name" not in cols:
         conn.execute("ALTER TABLE accounts ADD COLUMN institution_name TEXT")
     conn.commit()
+
+
+def _ensure_low_balance_threshold_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add accounts.low_balance_threshold_cents — the User's
+    "Warn me below" amount for an asset account. NULL on every existing row,
+    which warns only when the account is projected below zero."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()}
+    if "low_balance_threshold_cents" not in cols:
+        conn.execute(
+            "ALTER TABLE accounts ADD COLUMN low_balance_threshold_cents INTEGER"
+        )
+        conn.commit()
 
 
 def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
@@ -685,6 +700,14 @@ def _migrate_to_16(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_17(conn: sqlite3.Connection) -> None:
+    """Add accounts.low_balance_threshold_cents (the per-account low-balance
+    warning amount; NULL warns only below zero)."""
+    _ensure_low_balance_threshold_column(conn)
+    _set_schema_version(conn, 17)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -721,7 +744,8 @@ def init() -> None:
                 color         TEXT    DEFAULT '#6366f1',
                 counts_to_net_worth INTEGER NOT NULL DEFAULT 1,
                 closed        INTEGER NOT NULL DEFAULT 0,
-                created_at    TEXT    DEFAULT (datetime('now'))
+                created_at    TEXT    DEFAULT (datetime('now')),
+                low_balance_threshold_cents INTEGER
             );
             CREATE TABLE IF NOT EXISTS exchange_rates (
                 user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -846,6 +870,10 @@ def init() -> None:
         if version < 16:
             _migrate_to_16(conn)
             version = 16
+
+        if version < 17:
+            _migrate_to_17(conn)
+            version = 17
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

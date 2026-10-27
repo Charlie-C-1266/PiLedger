@@ -14,9 +14,10 @@ import styles from "./UpcomingRow.module.css";
 interface Props {
   event: BalanceProjectionEvent;
   currency: string;
-  /** Tint "£x after" when the balance after this event is below zero. Off for
+  /** Tint "£x after" when the balance after this event is below this amount:
+   * the account's "Warn me below" amount, or zero when it has none. Null for
    * debt accounts, whose balance is the amount owed. */
-  warnBelowZero?: boolean;
+  warnBelow?: number | null;
   /** Replaces the name, e.g. "Due Mon 9 Nov 2026" in the actions dialog. */
   title?: string;
   /** Opens the item's actions. Without it the row is plain (projected interest,
@@ -37,7 +38,7 @@ interface Props {
 export default function UpcomingRow({
   event,
   currency,
-  warnBelowZero = true,
+  warnBelow = 0,
   title,
   onOpen,
   ref,
@@ -46,7 +47,7 @@ export default function UpcomingRow({
   const { pressing, handlers } = useLongPress(onOpen);
   const { day, month } = dayParts(event.date);
   const amount = signedAmount(event.amount, currency, fmt);
-  const low = warnBelowZero && event.balance_after < 0;
+  const low = warnBelow != null && event.balance_after < warnBelow;
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "Enter" && e.key !== " ") return;

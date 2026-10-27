@@ -11,7 +11,8 @@ interface Props {
   /** The account the page is about, named in the hints. */
   accountName: string;
   currency: string;
-  warnBelowZero?: boolean;
+  /** Passed to the row: tint its "after" below this amount; null for debt. */
+  warnBelow?: number | null;
   /** The item's next occurrence after this one, if the projection has it. */
   nextDate: string | null;
   /** A Post now or Skip is in flight: further clicks are ignored. */
@@ -34,7 +35,7 @@ export default function UpcomingActions({
   event,
   accountName,
   currency,
-  warnBelowZero = true,
+  warnBelow = 0,
   nextDate,
   busy = false,
   onPostNow,
@@ -90,7 +91,7 @@ export default function UpcomingActions({
           <UpcomingRow
             event={event}
             currency={currency}
-            warnBelowZero={warnBelowZero}
+            warnBelow={warnBelow}
             title={`Due ${dayWithWeekday(event.date)}`}
           />
         </div>

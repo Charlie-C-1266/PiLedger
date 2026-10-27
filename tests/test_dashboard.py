@@ -7,6 +7,20 @@ Tests for the three dashboard aggregation endpoints:
 
 import math
 
+import pytest
+
+from services.projection import monthly_interest_cents
+
+
+def _with_aer_interest(balance: float, aer: float, months: int) -> float:
+    """``balance`` after ``months`` monthly AER credits, each rounded to the
+    cent as the projection engine does. Any ``months`` calendar months from
+    today hold exactly ``months`` 1sts after today, whatever today is."""
+    cents = round(balance * 100)
+    for _ in range(months):
+        cents += monthly_interest_cents(cents, aer)
+    return cents / 100
+
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 
@@ -336,8 +350,9 @@ def test_projections_1yr_compound_interest_calculation(alice):
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 8000.0})
     proj = alice.get("/api/projections").json()[0]
 
-    expected = round(8000.0 * math.pow(1 + (4.1 / 100) / 12, 12), 2)
-    assert proj["1yr"] == expected
+    # The rate is an AER: twelve monthly credits compound back up to it.
+    assert proj["1yr"] == _with_aer_interest(8000.0, 4.1, 12)
+    assert proj["1yr"] == pytest.approx(8000.0 * 1.041, abs=0.05)
 
 
 def test_projections_5yr_compound_interest_calculation(alice):
@@ -347,9 +362,8 @@ def test_projections_5yr_compound_interest_calculation(alice):
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 10_000.0})
     proj = alice.get("/api/projections").json()[0]
 
-    monthly_rate = (3.5 / 100) / 12
-    expected = round(10_000.0 * math.pow(1 + monthly_rate, 60), 2)
-    assert proj["5yr"] == expected
+    assert proj["5yr"] == _with_aer_interest(10_000.0, 3.5, 60)
+    assert proj["5yr"] == pytest.approx(10_000.0 * math.pow(1.035, 5), abs=0.25)
 
 
 def test_projections_points_length_matches_months_parameter(alice):
@@ -400,6 +414,158 @@ def test_projections_user_isolation(alice, bob):
     ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 5000.0})
     assert bob.get("/api/projections").json() == []
+
+
+# ── Projections window parity with the account page ─────────────────────────
+
+
+def _in_months(n: int):
+    from datetime import date
+
+    from services.subscriptions import add_months
+
+    today = date.today()
+    return add_months(today.day, today.year, today.month, n)
+
+
+def _savings_with_schedule(alice) -> tuple[int, int]:
+    """A savings account at 3.9% AER fed by a monthly transfer from a current
+    account, with a quarterly withdrawal of its own. Returns both ids."""
+    from datetime import date, timedelta
+
+    current = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    savings = alice.post(
+        "/api/accounts",
+        json={"name": "Rainy day", "type": "savings", "interest_rate": 3.9},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{current}/balance", json={"balance": 2000.0})
+    alice.post(f"/api/accounts/{savings}/balance", json={"balance": 4321.09})
+    start = date.today() + timedelta(days=2)
+    for body in (
+        {
+            "name": "Save",
+            "amount": 250.0,
+            "kind": "transfer",
+            "account_id": current,
+            "to_account_id": savings,
+            "frequency": "monthly",
+        },
+        {
+            "name": "Car fund",
+            "amount": 400.0,
+            "account_id": savings,
+            "frequency": "quarterly",
+        },
+    ):
+        resp = alice.post(
+            "/api/subscriptions", json={**body, "start_date": start.isoformat()}
+        )
+        assert resp.status_code == 201, resp.text
+    return current, savings
+
+
+def test_projections_window_matches_the_account_page(alice):
+    _, savings = _savings_with_schedule(alice)
+
+    [window] = alice.get("/api/projections?months=60").json()
+    page = alice.get(f"/api/accounts/{savings}/projection?months=60").json()
+    by_date = {p["date"]: p["balance"] for p in page["points"]}
+    horizons = {h["months"]: h["balance"] for h in page["horizons"]}
+
+    assert window["id"] == savings
+    assert window["initial_balance"] == page["start_balance"] == 4321.09
+    assert window["1yr"] == horizons[12]
+    assert window["2yr"] == by_date[_in_months(24).isoformat()]
+    assert window["5yr"] == by_date[_in_months(60).isoformat()]
+    # Every monthly point after today is that day's closing balance on the page.
+    assert len(window["points"]) == 61
+    for m, point in enumerate(window["points"][1:], start=1):
+        assert point["date"] == _in_months(m).isoformat()
+        assert point["balance"] == by_date[point["date"]]
+    for months in (1, 3, 6):
+        assert window["points"][months]["balance"] == horizons[months]
+
+
+def test_projections_window_counts_transfers_in_and_aer_interest(alice):
+    from datetime import date, timedelta
+
+    current = alice.post(
+        "/api/accounts", json={"name": "Current", "type": "current"}
+    ).json()["id"]
+    savings = alice.post(
+        "/api/accounts", json={"name": "Pot", "type": "savings"}
+    ).json()["id"]
+    alice.post(f"/api/accounts/{savings}/balance", json={"balance": 1000.0})
+    alice.post(
+        "/api/subscriptions",
+        json={
+            "name": "Save",
+            "amount": 100.0,
+            "kind": "transfer",
+            "account_id": current,
+            "to_account_id": savings,
+            "frequency": "monthly",
+            # From tomorrow, any year ahead holds exactly 12 occurrences.
+            "start_date": (date.today() + timedelta(days=1)).isoformat(),
+        },
+    )
+    [window] = alice.get("/api/projections").json()
+    assert window["1yr"] == 2200.0  # no rate: just the twelve transfers in
+
+    alice.put(f"/api/accounts/{savings}", json={"interest_rate": 5.0})
+    [window] = alice.get("/api/projections").json()
+    assert window["1yr"] > 2200.0
+    page = alice.get(f"/api/accounts/{savings}/projection").json()
+    assert window["1yr"] == page["horizons"][-1]["balance"]
+
+
+def test_projections_window_points_keep_their_monthly_shape(alice):
+    _savings_with_schedule(alice)
+    [window] = alice.get("/api/projections?months=12").json()
+    assert set(window) == {
+        "id",
+        "name",
+        "color",
+        "currency",
+        "initial_balance",
+        "interest_rate",
+        "1yr",
+        "2yr",
+        "5yr",
+        "points",
+    }
+    assert len(window["points"]) == 13
+    # Milestones beyond the requested horizon are still worked out.
+    assert window["5yr"] > 0
+    assert window["points"][0] == {
+        "date": _in_months(0).isoformat(),
+        "balance": 4321.09,
+    }
+
+
+def test_projections_window_leaves_out_closed_savings(alice):
+    aid = alice.post(
+        "/api/accounts",
+        json={"name": "Old ISA", "type": "savings", "interest_rate": 2.0},
+    ).json()["id"]
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 500.0})
+    assert len(alice.get("/api/projections").json()) == 1
+
+    alice.put(f"/api/accounts/{aid}", json={"closed": True})
+    assert alice.get("/api/projections").json() == []
+
+
+def test_projections_window_ignores_another_users_schedule(alice, bob):
+    aid = alice.post("/api/accounts", json={"name": "Pot", "type": "savings"}).json()[
+        "id"
+    ]
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    bob.post("/api/accounts", json={"name": "Bob pot", "type": "savings"})
+    [window] = alice.get("/api/projections").json()
+    assert window["1yr"] == 1000.0
+    assert [p["name"] for p in bob.get("/api/projections").json()] == ["Bob pot"]
 
 
 # ── Net-worth history ────────────────────────────────────────────────────────

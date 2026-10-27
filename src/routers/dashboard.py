@@ -2,11 +2,12 @@
 
 These are read-only rollups over accounts + balance history. Cross-currency
 totals are converted into the user's base currency via ``services/currency``.
+The savings projections run the account page's engine (``services/projection``)
+so the two always agree.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated
-import math
 
 from fastapi import APIRouter, Depends, Query
 
@@ -17,10 +18,14 @@ from schemas import (
     HistoryAccountOut,
     HistoryPointOut,
     NetWorthPointOut,
+    ProjectionPointOut,
+    SavingsProjectionOut,
     SummaryOut,
 )
 from services.accounts import LATEST_BALANCE_JOIN
 from services.currency import convert_to_base, load_rates
+from services.projection import monthly_points
+from services.projection_inputs import load_schedule, project_account
 
 router = APIRouter(tags=["dashboard"])
 
@@ -230,52 +235,68 @@ def networth_history(
     return points
 
 
-@router.get("/api/projections")
+# The Projections window's 1/2/5-year milestones, in months.
+MILESTONE_MONTHS = (12, 24, 60)
+
+
+@router.get("/api/projections", response_model=list[SavingsProjectionOut])
 def get_projections(
     months: Annotated[int, Query(ge=1, le=MAX_MONTHS)] = 24,
     uid: int = Depends(require_auth),
-) -> list[dict]:
-    """Project each savings account's balance forward under monthly compounding
-    of its interest rate, for ``months`` ahead (default 24).
+) -> list[SavingsProjectionOut]:
+    """Project each open savings account ``months`` ahead (default 24) for the
+    savings Projections window, with the same engine as the account page: AER
+    interest credited on each 1st plus every active scheduled item touching the
+    account (transfers in among them), minus occurrences already handled.
 
-    Returns the full monthly series plus 1/2/5-year milestones per account. Each
-    account's figures stay in its own currency (no base conversion here).
+    Returns one point per month (month 0 is the current balance) and the 1/2/5
+    year milestones, which are worked out whatever ``months`` is; the 1-year
+    figure is the account page's 12-month horizon. Each account's figures stay
+    in its own currency (no base conversion here). Closed accounts don't
+    project, as on their page.
     """
+    today = date.today()
     with db() as conn:
         rows = conn.execute(
             f"""
-            SELECT a.id, a.name, a.interest_rate, a.color, a.currency, b.balance_cents
+            SELECT a.id, a.name, a.type, a.interest_rate, a.color, a.currency,
+                   b.balance_cents
             FROM accounts a
             {LATEST_BALANCE_JOIN}
-            WHERE a.type = 'savings' AND a.user_id = ?
+            WHERE a.type = 'savings' AND a.closed = 0 AND a.user_id = ?
+            ORDER BY a.created_at
         """,
             (uid,),
         ).fetchall()
+        if not rows:
+            return []
+        schedule = load_schedule(conn, uid, today)
 
-    now = datetime.now(timezone.utc)
-    projections: list[dict] = []
+    horizon = max(months, MILESTONE_MONTHS[-1])
+    projections: list[SavingsProjectionOut] = []
     for row in rows:
-        bal = from_cents(row["balance_cents"]) or 0.0
-        mr = (row["interest_rate"] / 100) / 12
-        points = [
-            {
-                "date": (now + timedelta(days=m * 30.44)).strftime("%Y-%m-%d"),
-                "balance": round(bal * math.pow(1 + mr, m), 2),
-            }
-            for m in range(months + 1)
-        ]
+        result = project_account(
+            row, row["balance_cents"] or 0, schedule, today, months=horizon
+        )
+        monthly = monthly_points(result, today, horizon)
+        one, two, five = (monthly[m].balance_cents / 100 for m in MILESTONE_MONTHS)
         projections.append(
-            {
-                "id": row["id"],
-                "name": row["name"],
-                "color": row["color"],
-                "currency": row["currency"] or "GBP",
-                "initial_balance": bal,
-                "interest_rate": row["interest_rate"],
-                "1yr": round(bal * math.pow(1 + mr, 12), 2),
-                "2yr": round(bal * math.pow(1 + mr, 24), 2),
-                "5yr": round(bal * math.pow(1 + mr, 60), 2),
-                "points": points,
-            }
+            SavingsProjectionOut(
+                id=row["id"],
+                name=row["name"],
+                color=row["color"],
+                currency=row["currency"] or "GBP",
+                initial_balance=result.start_balance_cents / 100,
+                interest_rate=row["interest_rate"] or 0.0,
+                one_year=one,
+                two_year=two,
+                five_year=five,
+                points=[
+                    ProjectionPointOut(
+                        date=p.date.isoformat(), balance=p.balance_cents / 100
+                    )
+                    for p in monthly[: months + 1]
+                ],
+            )
         )
     return projections

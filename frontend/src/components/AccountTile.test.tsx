@@ -25,6 +25,37 @@ function makeAccount(overrides: Partial<Account> = {}): Account {
   };
 }
 
+describe("AccountTile low-balance chip", () => {
+  const low = { date: "2099-01-14", balance: 150 };
+
+  it("shows a warn chip worded with the first low day", () => {
+    render(<AccountTile account={makeAccount({ low_balance: low })} />);
+    const chip = screen.getByText("Low by 14 Jan");
+    expect(chip.className).toMatch(/lowBadge/);
+  });
+
+  it("shows nothing when the account isn't projected to run low", () => {
+    render(<AccountTile account={makeAccount({ low_balance: null })} />);
+    expect(screen.queryByText(/^Low/)).not.toBeInTheDocument();
+  });
+
+  it("sits beside the Set aside badge", () => {
+    render(
+      <AccountTile
+        account={makeAccount({ counts_to_net_worth: false, low_balance: low })}
+        badge
+      />,
+    );
+    expect(screen.getByText("Low by 14 Jan")).toBeInTheDocument();
+    expect(screen.getByText("Set aside")).toBeInTheDocument();
+  });
+
+  it("is left off the account page's wide tile", () => {
+    render(<AccountTile account={makeAccount({ low_balance: low })} wide />);
+    expect(screen.queryByText("Low by 14 Jan")).not.toBeInTheDocument();
+  });
+});
+
 describe("AccountTile", () => {
   it("shows a Closed badge for a closed account, even without the badge prop", () => {
     render(<AccountTile account={makeAccount({ closed: true })} />);

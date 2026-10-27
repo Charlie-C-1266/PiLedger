@@ -63,9 +63,17 @@
   white-space: nowrap;
 }
 
-.badge {
+/* The pills in the bottom-right corner, stacked when there's more than one. */
+.badges {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
   margin-bottom: 2px;
+}
+
+.badge {
   padding: 3px 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
@@ -73,6 +81,13 @@
   letter-spacing: 0.6px;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+/* "Low by 14 Jan": the same pill on a solid card fill, so pl-warn text keeps
+   its contrast whatever the account colour behind it. */
+.lowBadge {
+  background: var(--pl-surface);
+  color: var(--pl-warn);
 }
 
 .cardNum {
