@@ -224,10 +224,17 @@ def record_balance(
 def get_history(
     aid: int,
     days: Annotated[int, Query(ge=1, le=MAX_DAYS)] = 90,
+    opening: bool = False,
     uid: int = Depends(require_auth),
 ) -> list[BalanceEntryOut]:
     """Return the balance-history points for one of the user's accounts (404 if
-    not theirs) over the last ``days`` (default 90), oldest first."""
+    not theirs) over the last ``days`` (default 90), oldest first.
+
+    With ``opening=true`` the list starts with the balance the account had when
+    the window opened: its latest snapshot from before the window, stamped at
+    the window's start, so a chart's line begins at the window's edge. Nothing
+    is added when no earlier snapshot exists or one sits exactly on the edge.
+    """
     with db() as conn:
         if not conn.execute(
             "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
@@ -239,7 +246,17 @@ def get_history(
             " WHERE account_id=? AND recorded_at>=? ORDER BY recorded_at",
             (aid, since),
         ).fetchall()
-    return [
+        before = (
+            conn.execute(
+                "SELECT balance_cents, notes FROM balance_history"
+                " WHERE account_id=? AND recorded_at<?"
+                " ORDER BY recorded_at DESC, id DESC LIMIT 1",
+                (aid, since),
+            ).fetchone()
+            if opening and not (rows and rows[0]["recorded_at"] == since)
+            else None
+        )
+    entries = [
         BalanceEntryOut(
             balance=from_cents(r["balance_cents"]) or 0.0,
             notes=r["notes"],
@@ -247,6 +264,16 @@ def get_history(
         )
         for r in rows
     ]
+    if before:
+        entries.insert(
+            0,
+            BalanceEntryOut(
+                balance=from_cents(before["balance_cents"]) or 0.0,
+                notes=before["notes"],
+                recorded_at=since,
+            ),
+        )
+    return entries
 
 
 # The activity window is "the last N days" on the account page, so it stays

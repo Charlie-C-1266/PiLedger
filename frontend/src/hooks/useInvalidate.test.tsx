@@ -25,13 +25,15 @@ function bustedKeys(spy: ReturnType<typeof vi.spyOn>): Set<string> {
 }
 
 describe("useInvalidate ripple sets", () => {
-  it("accountChanged busts balances, the account page's activity + every net-worth view (not transactions/budget)", () => {
+  it("accountChanged busts balances, the account page's activity, history and projection + every net-worth view (not transactions/budget)", () => {
     const { result, spy } = setup();
     result.current.accountChanged();
     expect(bustedKeys(spy)).toEqual(
       new Set([
         "accounts",
         "account-activity",
+        "account-history",
+        "account-projection",
         "summary",
         "networth",
         "history-all",
@@ -50,6 +52,8 @@ describe("useInvalidate ripple sets", () => {
         "transactions",
         "accounts",
         "account-activity",
+        "account-history",
+        "account-projection",
         "summary",
         "networth",
         "history-all",
@@ -78,10 +82,14 @@ describe("useInvalidate ripple sets", () => {
     );
   });
 
-  it("subscriptionChanged busts the list and the calendar occurrences", () => {
+  it("subscriptionChanged busts the list, the calendar occurrences and account projections", () => {
+    // A schedule edit (or a Post now / Skip) moves every projected balance the
+    // item touches, so the account page's chart and Upcoming list must refetch.
     const { result, spy } = setup();
     result.current.subscriptionChanged();
-    expect(bustedKeys(spy)).toEqual(new Set(["subscriptions", "occurrences"]));
+    expect(bustedKeys(spy)).toEqual(
+      new Set(["subscriptions", "occurrences", "account-projection"]),
+    );
   });
   it("baseCurrencyChanged busts every figure denominated in the base currency", () => {
     // Switching base re-scales the stored rates server-side and re-denominates

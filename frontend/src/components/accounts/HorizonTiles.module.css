@@ -1,0 +1,86 @@
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Selected: a 2px accent border (border + inset ring), no fill change, so every
+   text pair keeps its contrast on the card surface. */
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--pl-rule);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--pl-text);
+  font-family: "Plus Jakarta Sans", sans-serif;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.tile:hover {
+  border-color: color-mix(in oklab, var(--pl-text-mute), transparent 50%);
+}
+
+.tile[aria-checked="true"] {
+  border-color: var(--pl-accent);
+  box-shadow: inset 0 0 0 1px var(--pl-accent);
+}
+
+.label {
+  font: 600 11px/1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--pl-text-mute);
+}
+
+.value {
+  font: 700 17px/1.1 "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.delta {
+  font: 600 12px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.up {
+  color: var(--pl-up);
+}
+
+.down {
+  color: var(--pl-down);
+}
+
+.date {
+  font: 500 11px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  white-space: nowrap;
+}
+
+@media (max-width: 719px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tile {
+    min-height: 44px;
+  }
+}

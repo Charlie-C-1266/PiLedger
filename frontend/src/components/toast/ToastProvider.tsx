@@ -7,14 +7,26 @@ import {
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CheckIcon } from "../icons";
-import { ToastContext, type Toast, type ToastVariant } from "./ToastContext";
+import {
+  ToastContext,
+  type Toast,
+  type ToastOptions,
+  type ToastVariant,
+} from "./ToastContext";
 import styles from "./Toast.module.css";
 
+type Durations = Record<ToastVariant, number> & {
+  /** A toast with an action (Undo) stays at least this long, to be reachable. */
+  action?: number;
+};
+
 // Errors linger longer than confirmations — they carry information the user may
-// need to read, whereas a success is just reassurance.
-const DURATION: Record<ToastVariant, number> = {
+// need to read, whereas a success is just reassurance. A toast with an action
+// stays longest, so there's time to reach its button.
+const DURATION: Required<Durations> = {
   success: 3500,
   error: 6000,
+  action: 8000,
 };
 
 function ErrorIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -35,13 +47,16 @@ function ErrorIcon(props: React.SVGProps<SVGSVGElement>) {
  *
  * `durations` overrides the per-variant lifetimes — mainly a testing seam so a
  * suite can drive the auto-dismiss without waiting seconds of wall-clock.
+ *
+ * A toast can carry one action button (e.g. Undo): clicking it dismisses the
+ * toast and runs the action.
  */
 export function ToastProvider({
   children,
   durations = DURATION,
 }: {
   children: ReactNode;
-  durations?: Record<ToastVariant, number>;
+  durations?: Durations;
 }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(0);
@@ -58,12 +73,16 @@ export function ToastProvider({
   }, []);
 
   const push = useCallback(
-    (message: string, variant: ToastVariant) => {
+    (message: string, variant: ToastVariant, opts?: ToastOptions) => {
       const id = nextId.current++;
-      setToasts((list) => [...list, { id, message, variant }]);
+      const action = opts?.action;
+      setToasts((list) => [...list, { id, message, variant, action }]);
+      const lifetime = action
+        ? Math.max(durations[variant], durations.action ?? DURATION.action)
+        : durations[variant];
       timers.current.set(
         id,
-        setTimeout(() => dismiss(id), durations[variant])
+        setTimeout(() => dismiss(id), lifetime)
       );
     },
     [dismiss, durations]
@@ -71,8 +90,10 @@ export function ToastProvider({
 
   const value = useMemo(
     () => ({
-      success: (message: string) => push(message, "success"),
-      error: (message: string) => push(message, "error"),
+      success: (message: string, opts?: ToastOptions) =>
+        push(message, "success", opts),
+      error: (message: string, opts?: ToastOptions) =>
+        push(message, "error", opts),
       dismiss,
     }),
     [push, dismiss]
@@ -107,6 +128,18 @@ export function ToastProvider({
                 )}
               </span>
               <span className={styles.message}>{t.message}</span>
+              {t.action && (
+                <button
+                  type="button"
+                  className={styles.action}
+                  onClick={() => {
+                    dismiss(t.id);
+                    t.action?.onClick();
+                  }}
+                >
+                  {t.action.label}
+                </button>
+              )}
               <button
                 type="button"
                 className={styles.close}

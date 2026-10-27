@@ -49,6 +49,23 @@ describe("useAccountHistory", () => {
     expect(getAccountHistory).toHaveBeenCalledWith(1, 365);
   });
 
+  it("asks for the opening point under its own cache key", async () => {
+    vi.mocked(getAccountHistory).mockResolvedValue([]);
+    const { result } = renderHook(
+      () => useAccountHistory(1, "90D", { opening: true }),
+      { wrapper: makeWrapper() },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getAccountHistory).toHaveBeenCalledWith(1, 90, { opening: true });
+  });
+
+  it("doesn't fetch when disabled", () => {
+    renderHook(() => useAccountHistory(1, "90D", { enabled: false }), {
+      wrapper: makeWrapper(),
+    });
+    expect(getAccountHistory).not.toHaveBeenCalled();
+  });
+
   it("keys the query by account id, so switching accounts refetches", async () => {
     vi.mocked(getAccountHistory).mockResolvedValue([]);
     const { result, rerender } = renderHook(

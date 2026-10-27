@@ -28,6 +28,8 @@ export function useInvalidate() {
         bust(
           "accounts",
           "account-activity",
+          "account-history",
+          "account-projection",
           "summary",
           "networth",
           "history-all",
@@ -43,6 +45,8 @@ export function useInvalidate() {
           "transactions",
           "accounts",
           "account-activity",
+          "account-history",
+          "account-projection",
           "summary",
           "networth",
           "history-all",
@@ -53,9 +57,11 @@ export function useInvalidate() {
       /** A goal was created/edited/deleted. */
       goalChanged: () => bust("goals"),
 
-      /** A subscription was created/edited/deleted: the list and any expanded
-       *  calendar occurrences both go stale. */
-      subscriptionChanged: () => bust("subscriptions", "occurrences"),
+      /** A subscription was created/edited/deleted: the list, any expanded
+       *  calendar occurrences and the account projections built from it go
+       *  stale. */
+      subscriptionChanged: () =>
+        bust("subscriptions", "occurrences", "account-projection"),
 
       /** A budget income/group/envelope changed (structure or allocation). */
       budgetChanged: () => bust("budget"),

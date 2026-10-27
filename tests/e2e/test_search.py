@@ -6,12 +6,13 @@ session cookie), then drives the search overlay from the desktop header:
 account/goal matches come from the cached lists, transaction matches come from
 the server-side `?search=` query, selecting a transaction deep-links to
 `/transactions?q=<term>` with the list pre-filtered, and selecting an account
-opens that account's own page.
+opens that account's own page — its projection and Upcoming card included.
 """
 
 from __future__ import annotations
 
 import re
+from datetime import date, timedelta
 
 from playwright.sync_api import expect
 
@@ -49,6 +50,21 @@ def _seed(page) -> int:
 def test_search_matches_accounts_and_goals(signed_in_page) -> None:
     page = signed_in_page
     account_id = _seed(page)
+    # A reminder due in five days, so the account page has something upcoming.
+    # Created after _seed's reload; the account page fetches its projection
+    # fresh when it opens.
+    due = date.today() + timedelta(days=5)
+    item = page.request.post(
+        "/api/subscriptions",
+        data={
+            "name": "Gym membership",
+            "amount": 35,
+            "frequency": "monthly",
+            "start_date": due.isoformat(),
+            "account_id": account_id,
+        },
+    )
+    assert item.ok, item.text()
 
     page.get_by_role("button", name="Search").click()
     dialog = page.get_by_role("dialog", name="Search")
@@ -70,6 +86,31 @@ def test_search_matches_accounts_and_goals(signed_in_page) -> None:
     recent = page.get_by_role("region", name="Recent transactions")
     expect(recent.get_by_text("Tesco Express")).to_be_visible()
     expect(recent.get_by_text("Last 30 days · 1 transaction")).to_be_visible()
+
+    # The projection: four horizon tiles (3 months picked) over the chart.
+    horizons = page.get_by_role("radiogroup", name="Projected balance")
+    expect(horizons.get_by_role("radio")).to_have_count(4)
+    expect(
+        horizons.get_by_role("radio", name=re.compile("In 3 months"))
+    ).to_be_checked()
+    expect(page.get_by_role("group", name=re.compile("Balance chart"))).to_be_visible()
+
+    # Upcoming lists the reminder; Skip takes it out, and the toast's Undo
+    # brings it back. Each step waits for the list to redraw before the next.
+    upcoming = page.get_by_role("region", name="Upcoming")
+    row = upcoming.get_by_role("button", name=re.compile("^Gym membership"))
+    expect(row).to_be_visible()
+    row.click()
+    dialog = page.get_by_role("dialog", name="Gym membership")
+    expect(
+        dialog.get_by_text("Reminder only: it won't post by itself.")
+    ).to_be_visible()
+    dialog.get_by_role("button", name=re.compile("Skip this one")).click()
+    toast = page.get_by_role("status").filter(has_text="Gym membership skipped for")
+    expect(toast).to_contain_text(f"Gym membership skipped for {due.day} {due:%b}")
+    expect(row).to_have_count(0)
+    toast.get_by_role("button", name="Undo").click()
+    expect(row).to_be_visible()
 
     # "View all" lands on Transactions filtered to this account.
     recent.get_by_role("link", name=re.compile("View all")).click()
