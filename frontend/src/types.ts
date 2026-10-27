@@ -33,6 +33,9 @@ export interface Transaction {
   category: string;
   note: string;
   transfer_id?: string | null;
+  /** The scheduled item that created this row (auto-posted or "Post now");
+   * null for anything entered by hand. */
+  subscription_id?: number | null;
   created_at: string;
 }
 
@@ -121,6 +124,12 @@ export interface Subscription {
   active: boolean;
   /** Computed server-side: next due date on/after today, or null if inactive/elapsed. */
   next_due_date?: string | null;
+  /** Automatic: each occurrence posts itself as a real transaction. Off means
+   * a reminder (only shown and projected). */
+  auto_post?: boolean;
+  /** The first day auto-post may post (the day it was switched on); null
+   * while it's off. Earlier dates are never back-filled. */
+  auto_post_from?: string | null;
   created_at: string;
 }
 
@@ -134,6 +143,8 @@ export interface SubscriptionOccurrence {
   kind: SubscriptionKind;
   account_id?: number | null;
   to_account_id?: number | null;
+  /** From the posting log: null while the date is still to come or unhandled. */
+  status?: "posted" | "skipped" | null;
 }
 
 export interface Summary {

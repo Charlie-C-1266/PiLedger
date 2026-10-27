@@ -6,6 +6,8 @@ interface Props {
   hint?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  /** Greys the switch out; the hint should say why. */
+  disabled?: boolean;
 }
 
 /**
@@ -13,7 +15,13 @@ interface Props {
  * `role="switch"` pattern. Extracted from the "Count toward net worth" toggle
  * duplicated verbatim in AddAccountModal / EditAccountModal.
  */
-export default function ToggleSwitch({ label, hint, checked, onChange }: Props) {
+export default function ToggleSwitch({
+  label,
+  hint,
+  checked,
+  onChange,
+  disabled = false,
+}: Props) {
   return (
     <div className={styles.toggleRow}>
       <span className={styles.toggleText}>
@@ -26,6 +34,7 @@ export default function ToggleSwitch({ label, hint, checked, onChange }: Props) 
         aria-checked={checked}
         aria-label={label}
         className={`${styles.toggleSwitch} ${checked ? styles.toggleSwitchOn : ""}`}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
       >
         <span className={styles.toggleKnob} />

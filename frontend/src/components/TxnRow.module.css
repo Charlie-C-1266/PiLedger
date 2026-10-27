@@ -73,6 +73,18 @@
   color: var(--pl-text-mute);
 }
 
+/* The repeat mark on a row a scheduled item posted, in the sub-line's ink. */
+.scheduled {
+  display: inline-flex;
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
+.scheduled svg {
+  width: 12px;
+  height: 12px;
+}
+
 .account {
   font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-soft);

@@ -41,6 +41,19 @@ describe("TxnRow", () => {
     expect(screen.getByText("−£12.50")).toBeInTheDocument();
   });
 
+  it("marks a row a scheduled item posted with the repeat icon", () => {
+    renderRow({ txn: { ...TXN, subscription_id: 3 } });
+    const mark = screen.getByRole("img", { name: "Posted from a schedule" });
+    expect(mark).toHaveAttribute("title", "Posted from a schedule");
+  });
+
+  it("has no repeat icon on a row entered by hand", () => {
+    renderRow({ txn: { ...TXN, subscription_id: null } });
+    expect(
+      screen.queryByRole("img", { name: "Posted from a schedule" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("has no account column, and so no link, without an account name", () => {
     renderRow();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();

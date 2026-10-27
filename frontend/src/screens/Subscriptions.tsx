@@ -2,12 +2,18 @@ import { useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useSubscriptions } from "../hooks/useSubscriptions";
 import { useSummary } from "../hooks/useSummary";
+import { useAccounts } from "../hooks/useAccounts";
+import { closedPostingAccount } from "../lib/scheduled";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import SegmentedControl from "../components/SegmentedControl";
 import SubscriptionsCalendar from "../components/SubscriptionsCalendar";
 import AddSubscriptionModal from "../components/AddSubscriptionModal";
-import ScheduledAmount, { TransferMark } from "../components/ScheduledAmount";
-import type { Subscription } from "../types";
+import ScheduledAmount, {
+  AutoBadge,
+  ClosedAccountWarning,
+  TransferMark,
+} from "../components/ScheduledAmount";
+import type { Account, Subscription } from "../types";
 import styles from "./Subscriptions.module.css";
 
 type View = "list" | "calendar";
@@ -30,15 +36,18 @@ function dueLabel(sub: Subscription): { text: string; cls: string } {
 
 function SubscriptionRow({
   sub,
+  accounts,
   currency,
   onEdit,
 }: {
   sub: Subscription;
+  accounts: Account[] | undefined;
   currency: string;
   onEdit: (s: Subscription) => void;
 }) {
   const due = dueLabel(sub);
   const isTransfer = sub.kind === "transfer";
+  const closed = sub.auto_post ? closedPostingAccount(sub, accounts) : null;
   return (
     <div
       className={styles.card}
@@ -52,6 +61,7 @@ function SubscriptionRow({
         </span>
         <span className={styles.meta}>
           <span className={styles.freqBadge}>{sub.frequency}</span>
+          {sub.auto_post && <AutoBadge />}
           {isTransfer ? (
             <span>
               {sub.account_name ?? "No account"} →{" "}
@@ -62,6 +72,7 @@ function SubscriptionRow({
           )}
           {sub.category && <span>{sub.category}</span>}
         </span>
+        {closed && <ClosedAccountWarning name={closed.name} />}
       </div>
       <div className={styles.cardRight}>
         <ScheduledAmount
@@ -79,6 +90,7 @@ function SubscriptionRow({
 export default function Subscriptions() {
   const { data: subscriptions } = useSubscriptions();
   const { data: summary } = useSummary();
+  const { data: accounts } = useAccounts();
   const currency = summary?.base_currency ?? "GBP";
   const [view, setView] = useState<View>("list");
   const [showAdd, setShowAdd] = useState(false);
@@ -111,6 +123,7 @@ export default function Subscriptions() {
               <SubscriptionRow
                 key={s.id}
                 sub={s}
+                accounts={accounts}
                 currency={currency}
                 onEdit={setEditSub}
               />

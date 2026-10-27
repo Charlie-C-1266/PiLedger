@@ -281,3 +281,9 @@
 .toggleSwitchOn .toggleKnob {
   transform: translateX(18px);
 }
+
+/* Unavailable until its precondition is met; the hint says what that is. */
+.toggleSwitch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

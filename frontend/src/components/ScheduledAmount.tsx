@@ -35,3 +35,18 @@ export function TransferMark() {
     </span>
   );
 }
+
+/** Marks an automatic item: one that posts itself. Reminders have none. */
+export function AutoBadge() {
+  return (
+    <span className={styles.autoBadge} title="Posts automatically">
+      Auto
+    </span>
+  );
+}
+
+/** Warns that an automatic item can't post because an account it posts to
+ * (`name`) is closed: the posting run passes it by until that changes. */
+export function ClosedAccountWarning({ name }: { name: string }) {
+  return <span className={styles.closedWarn}>Won't post: {name} is closed</span>;
+}
