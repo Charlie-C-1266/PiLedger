@@ -14,6 +14,7 @@ import type {
   Goal,
   ImportDateFormat,
   ImportMapping,
+  ImportMatchChoice,
   ImportPreview,
   ImportResult,
   NetWorthPoint,
@@ -266,12 +267,21 @@ export const createTransfer = (data: {
 export const previewImport = (csv_text: string) =>
   post<ImportPreview>("/api/transactions/import/preview", { csv_text });
 
-export const commitImport = (data: {
+export interface ImportRequest {
   csv_text: string;
   account_id: number;
   mapping: ImportMapping;
   date_format?: ImportDateFormat;
-}) => post<ImportResult>("/api/transactions/import/commit", data);
+}
+
+/** The preview again, now with an account and mapping, so it also lists the
+ * rows matching a transaction a schedule already posted. */
+export const previewImportMatches = (data: ImportRequest) =>
+  post<ImportPreview>("/api/transactions/import/preview", data);
+
+export const commitImport = (
+  data: ImportRequest & { match_choices?: ImportMatchChoice[] }
+) => post<ImportResult>("/api/transactions/import/commit", data);
 
 // Goals
 

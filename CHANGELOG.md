@@ -24,6 +24,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Scheduled items can be set to post automatically, with an Auto badge and a repeat icon on the transactions they create.
 - Account pages show projected balances over 1, 3, 6 and 12 months and the scheduled transactions coming up, with Post now, Skip and Undo.
 
+### Changed
+
+- CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
+
 ## [3.3.0] — 2026-08-24
 
 ### Added
