@@ -300,6 +300,7 @@ export const createSubscription = (data: {
   color?: string;
   notes?: string;
   active?: boolean;
+  auto_post?: boolean;
 }) => post<Subscription>("/api/subscriptions", data);
 
 export const updateSubscription = (id: number, data: Partial<Subscription>) =>

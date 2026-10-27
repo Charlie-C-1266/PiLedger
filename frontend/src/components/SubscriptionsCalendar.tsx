@@ -1,9 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { useOccurrences } from "../hooks/useSubscriptions";
+import { useOccurrences, useSubscriptions } from "../hooks/useSubscriptions";
+import { useAccounts } from "../hooks/useAccounts";
+import { closedPostingAccount } from "../lib/scheduled";
 import Modal from "./Modal";
-import ScheduledAmount, { TransferMark } from "./ScheduledAmount";
-import type { SubscriptionOccurrence } from "../types";
+import ScheduledAmount, {
+  AutoBadge,
+  ClosedAccountWarning,
+  TransferMark,
+} from "./ScheduledAmount";
+import { CheckIcon } from "./icons";
+import type { Subscription, SubscriptionOccurrence } from "../types";
 import styles from "../screens/Subscriptions.module.css";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -21,6 +28,75 @@ function isoKey(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+/** The cell's accessible name: the day, then how many items fall on it and
+ * how many of those are already posted or skipped. */
+function cellLabel(date: Date, occ: SubscriptionOccurrence[]): string {
+  const day = `${date.getDate()} ${MONTHS[date.getMonth()]}`;
+  if (!occ.length) return day;
+  const parts = [`${occ.length} scheduled item${occ.length !== 1 ? "s" : ""}`];
+  for (const status of ["posted", "skipped"] as const) {
+    const n = occ.filter((o) => o.status === status).length;
+    if (n) parts.push(`${n} ${status}`);
+  }
+  return `${day}, ${parts.join(", ")}`;
+}
+
+/** One occurrence in a day cell: a dot while it's still to come, a tick once
+ * it's posted (done), and a faded hollow ring when it was skipped. */
+function OccurrenceDot({ occ }: { occ: SubscriptionOccurrence }) {
+  const tint = occ.color || undefined;
+  if (occ.status === "posted") {
+    return (
+      <CheckIcon
+        className={styles.dotPosted}
+        style={tint ? { color: tint } : undefined}
+        strokeWidth={3}
+        aria-hidden="true"
+      />
+    );
+  }
+  if (occ.status === "skipped") {
+    return (
+      <span
+        className={`${styles.dot} ${styles.dotSkipped}`}
+        style={tint ? { borderColor: tint } : undefined}
+      />
+    );
+  }
+  return (
+    <span className={styles.dot} style={tint ? { background: tint } : undefined} />
+  );
+}
+
+/** What the day popover says about an occurrence under its name: whether it's
+ * been posted or skipped, or — while it's still to come — that its automatic
+ * item can't post because an account is closed. */
+function OccurrenceStatus({
+  occ,
+  sub,
+  closedName,
+}: {
+  occ: SubscriptionOccurrence;
+  sub: Subscription | undefined;
+  closedName: string | null;
+}) {
+  if (occ.status === "posted") {
+    return (
+      <span className={styles.statusPosted}>
+        <CheckIcon aria-hidden="true" />
+        Posted
+      </span>
+    );
+  }
+  if (occ.status === "skipped") {
+    return <span className={styles.statusSkipped}>Skipped</span>;
+  }
+  if (sub?.auto_post && closedName) {
+    return <ClosedAccountWarning name={closedName} />;
+  }
+  return null;
 }
 
 interface Props {
@@ -71,6 +147,14 @@ export default function SubscriptionsCalendar({ currency }: Props) {
   const windowStart = cells[0].key;
   const windowEnd = cells[GRID_CELLS - 1].key;
   const { data: occurrences } = useOccurrences(windowStart, windowEnd);
+  // Occurrences carry only the item's id; the item itself says whether it's
+  // automatic, and the accounts whether it has anywhere open to post.
+  const { data: subscriptions } = useSubscriptions();
+  const { data: accounts } = useAccounts();
+  const subById = useMemo(
+    () => new Map((subscriptions ?? []).map((s) => [s.id, s])),
+    [subscriptions]
+  );
 
   const byDate = useMemo(() => {
     const map: Record<string, SubscriptionOccurrence[]> = {};
@@ -152,9 +236,7 @@ export default function SubscriptionsCalendar({ currency }: Props) {
         {cells.map((cell, i) => {
           const occ = byDate[cell.key] ?? [];
           const hasOcc = occ.length > 0;
-          const label = `${cell.date.getDate()} ${MONTHS[cell.date.getMonth()]}${
-            hasOcc ? `, ${occ.length} scheduled item${occ.length !== 1 ? "s" : ""}` : ""
-          }`;
+          const label = cellLabel(cell.date, occ);
           return (
             <div
               key={cell.key}
@@ -175,11 +257,7 @@ export default function SubscriptionsCalendar({ currency }: Props) {
               {hasOcc && (
                 <div className={styles.dots}>
                   {occ.slice(0, MAX_DOTS).map((o, j) => (
-                    <span
-                      key={j}
-                      className={styles.dot}
-                      style={o.color ? { background: o.color } : undefined}
-                    />
+                    <OccurrenceDot key={j} occ={o} />
                   ))}
                   {occ.length > MAX_DOTS && (
                     <span className={styles.moreBadge}>+{occ.length - MAX_DOTS}</span>
@@ -195,24 +273,41 @@ export default function SubscriptionsCalendar({ currency }: Props) {
         {openDay && (
           <Modal onClose={() => setOpenDay(null)} label="Scheduled items due">
             <div className={styles.popoverTitle}>Due {openDay}</div>
-            {dayOccurrences.map((o, i) => (
-              <div key={i} className={styles.popoverRow}>
-                <span className={styles.popoverName}>
-                  <span
-                    className={styles.popoverDot}
-                    style={o.color ? { background: o.color } : { background: "var(--pl-accent)" }}
+            {dayOccurrences.map((o, i) => {
+              const sub = subById.get(o.subscription_id);
+              const closed = closedPostingAccount(o, accounts);
+              return (
+                <div
+                  key={i}
+                  className={`${styles.popoverRow} ${
+                    o.status === "skipped" ? styles.popoverSkipped : ""
+                  }`}
+                >
+                  <div className={styles.popoverInfo}>
+                    <span className={styles.popoverName}>
+                      <span
+                        className={styles.popoverDot}
+                        style={o.color ? { background: o.color } : { background: "var(--pl-accent)" }}
+                      />
+                      {o.kind === "transfer" && <TransferMark />}
+                      {o.name}
+                      {sub?.auto_post && <AutoBadge />}
+                    </span>
+                    <OccurrenceStatus
+                      occ={o}
+                      sub={sub}
+                      closedName={closed?.name ?? null}
+                    />
+                  </div>
+                  <ScheduledAmount
+                    kind={o.kind}
+                    amount={o.amount}
+                    currency={currency}
+                    className={styles.popoverAmount}
                   />
-                  {o.kind === "transfer" && <TransferMark />}
-                  {o.name}
-                </span>
-                <ScheduledAmount
-                  kind={o.kind}
-                  amount={o.amount}
-                  currency={currency}
-                  className={styles.popoverAmount}
-                />
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </Modal>
         )}
       </AnimatePresence>
