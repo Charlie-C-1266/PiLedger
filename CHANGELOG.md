@@ -31,6 +31,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 - CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
 - The savings Projections window now uses the same projection as account pages, including scheduled transfers and AER interest.
+- The guide and docs now cover scheduled transactions, automatic posting and the account page; the guide's Subscriptions page is now Scheduled (old links still open it).
 
 ## [3.3.0] — 2026-08-24
 

@@ -82,7 +82,7 @@ A scheduled item that posts itself adds its transaction on the due date, so when
 
 Matched rows are listed as, for example, **Matches scheduled: Netflix (12 Nov)**, each with a switch that starts on:
 
-- **On** — the row and the scheduled transaction are the same payment. No new transaction is added; the posted one takes the bank's date and description, and the balance doesn't change.
+- **On** — the row and the scheduled transaction are the same payment. No new transaction is added; the posted one takes the bank's date and description, and the balance doesn't change. (A scheduled transfer keeps its own date and description, because transfers can't be edited; it's just marked as imported.)
 - **Off** — the row is imported as a new transaction, as it would be without the match.
 
 A payment whose amount varies (an energy or phone bill) only matches when this month's amount is exactly the scheduled one. Manually-entered transactions are never matched. Re-importing the same file stays safe: matched rows are recognised as already imported and skipped.

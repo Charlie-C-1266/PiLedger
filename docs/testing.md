@@ -23,6 +23,12 @@ uv run pytest -q -k "isolation"       # name-filtered subset
 
 The two shared fixtures `alice` and `bob` both depend on a single per-test `app` fixture instance, so they share one database — which is what the isolation tests need (one user must not see another's data).
 
+`tests/conftest.py` sets `PILEDGER_AUTOPOST_TIME=off` before the app is imported, so a `TestClient` never runs an auto-post catch-up or starts the daily timer behind a test's back. Tests that exercise posting call `post_due` or the API directly; `tests/test_autopost.py` switches the timer back on for its own tests.
+
+### End-to-end suite
+
+`tests/e2e/conftest.py` starts a real `uvicorn` server in a subprocess on a free port, against a fresh SQLite file in a pytest temp directory, and points Playwright at it. The server's output goes to `server.log` in that same temp directory (under `/tmp/pytest-of-<user>/` on Linux), which is the first place to look when an e2e test fails on a server error. It's written to a file deliberately: piping it back to the test process without reading it let the pipe's buffer fill with access-log lines, after which every request hung until Playwright's 30-second timeout.
+
 ## Manual smoke tests (curl)
 
 The pytest suite is the source of truth; the curl recipes below remain useful for spot-checking a running deployment from another host.

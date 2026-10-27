@@ -119,12 +119,23 @@ def test_api_docs_serves_csv_import_guide(client):
     assert "# Importing Transactions from CSV" in r.text
 
 
-def test_api_docs_serves_subscriptions_guide(client):
-    """The user-facing subscriptions guide is on the allowlist and publicly
-    served — the in-app guide nav links straight to it."""
-    r = client.get("/api/docs/subscriptions")
+def test_api_docs_serves_scheduled_guide(client):
+    """The user-facing Scheduled guide (formerly "Subscriptions") is on the
+    allowlist and publicly served — the in-app guide nav links straight to it.
+    The old slug is gone from the server; guide.js maps saved
+    ``/guide#subscriptions`` links to it (tests/e2e/test_guide.py)."""
+    r = client.get("/api/docs/scheduled")
     assert r.status_code == 200
-    assert "# Subscriptions" in r.text
+    assert "# Scheduled" in r.text
+    assert client.get("/api/docs/subscriptions").status_code == 404
+
+
+def test_api_docs_serves_accounts_guide(client):
+    """The user-facing account-page guide is on the allowlist and publicly
+    served — the in-app guide nav links straight to it."""
+    r = client.get("/api/docs/accounts")
+    assert r.status_code == 200
+    assert "# Accounts" in r.text
 
 
 def test_every_doc_slug_has_a_file(client):
