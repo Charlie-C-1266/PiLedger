@@ -27,6 +27,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 ### Changed
 
 - CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
+- The guide and docs now cover scheduled transactions, automatic posting and the account page; the guide's Subscriptions page is now Scheduled (old links still open it).
 
 ## [3.3.0] — 2026-08-24
 

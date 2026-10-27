@@ -10,11 +10,13 @@ A self-hosted personal finance dashboard for tracking current, savings, and loan
 
 - **Multi-account tracking** — current, savings, loan, credit, and investment accounts with per-account currencies
 - **Transaction log** — searchable, filterable transaction history with automatic balance adjustments
-- **CSV import** — bulk-import transactions from a bank or card CSV export, with column mapping and automatic duplicate detection on re-import
-- **Scheduled** — track recurring payments, income and transfers between your accounts (subscriptions, salary, standing orders), with due dates as a list or a scrollable month calendar; reminder-only, so nothing posts to your accounts on its own
+- **CSV import** — bulk-import transactions from a bank or card CSV export, with column mapping, automatic duplicate detection on re-import, and matching to payments a schedule already posted so they aren't counted twice
+- **Scheduled** — recurring payments, income and transfers between your accounts (subscriptions, salary, standing orders), with due dates as a list or a scrollable month calendar; each item either posts itself to your accounts on its due date or stays a reminder, and any due date can be posted early, skipped or undone
+- **Account pages** — one page per account with its balance and 30-day change, share of net worth, details, recent transactions, projected balances 1, 3, 6 and 12 months ahead (from scheduled transactions and interest), and what's due in the next 30 days
+- **Low-balance warnings** — a chip on an account's tile when it's projected to drop below zero, or below your own "Warn me below" amount, in the next 30 days
 - **Savings goals** — named targets with progress tracking, monthly contributions, ETA, and compound-interest projections charted per goal
 - **Balance history** — timestamped snapshots with step-line charts over selectable time windows
-- **Savings projections** — compound-interest forecasting at 1, 2, and 5 year horizons
+- **Savings projections** — each savings account's balance projected 1, 2, and 5 years ahead from its interest and scheduled transfers
 - **Envelope budget** — income sources, fixed and flexible spending groups, per-category envelopes with live actual-vs-budgeted tracking, and a safe-to-spend figure for discretionary spend
 - **Multi-currency** — user-selected base currency with manual exchange rates; net-worth totals convert automatically
 - **Net-worth control** — accounts can be set aside from the net-worth headline (e.g. pension, investment) so the overview figure stays actionable
@@ -54,6 +56,10 @@ It connects to a running PiLedger instance with a **personal access token** inst
 | Guide | Description |
 |---|---|
 | [Getting Started](docs/getting-started.md) | Docker, uv, and pip install paths |
+| [Accounts](docs/accounts.md) | The account page, projected balances, and the Upcoming card |
+| [Scheduled](docs/scheduled.md) | Recurring payments, income and transfers; automatic posting |
+| [Budgeting](docs/budgeting.md) | Zero-based envelope budgeting |
+| [CSV Import](docs/csv-import.md) | Importing a bank or card statement |
 | [Architecture](docs/architecture.md) | System design, requirements, file structure |
 | [API Reference](docs/api-reference.md) | Every endpoint with request/response shapes |
 | [Database Schema](docs/database.md) | Tables, columns, and migration history |

@@ -45,7 +45,9 @@ npm run build      # outputs to ../src/static/dist/
 | `PILEDGER_DB` | `piledger.db` at the project root | Absolute or relative path to the SQLite database file. Useful for pointing different environments (dev / staging / prod) at different databases without editing source. |
 | `COOKIE_SECURE` | `false` | When set to `true` / `1` / `yes`, the session cookie is issued with the `Secure` flag so it is only transmitted over HTTPS. Enable this whenever you front the app with a TLS-terminating proxy. |
 | `PILEDGER_LOGIN_RATE_LIMIT` | `5/minute` | SlowAPI rate-limit string for `POST /api/auth/login`. Accepts slowapi syntax like `10/minute`, `100/hour`. |
-| `PILEDGER_AUTOPOST_TIME` | `00:05` | When scheduled items with auto-post on are posted each day, as server-local `HH:MM` (24-hour). The server also catches up at startup, so dates missed while it was off are posted when it comes back. `off` disables both; `POST /api/subscriptions/post-due` still posts on request (e.g. from your own cron). |
+| `PILEDGER_AUTOPOST_TIME` | `00:05` | When scheduled items with auto-post on are posted each day, as server-local `HH:MM` (24-hour). The server also catches up at startup, so dates missed while it was off are posted when it comes back. `off` disables both; `POST /api/subscriptions/post-due` still posts on request (e.g. from your own cron). An unrecognised value stops the server at startup with an error, so a typo can't silently switch posting off. |
+
+**Time zone.** Auto-posting decides what "today" is from the server's local clock, and the daily run fires at that local time, until per-user time zones exist. A Docker container runs in UTC unless you give it a time zone, so in the default setup `00:05` means 00:05 UTC (01:05 in a UK summer).
 
 ## Running the server
 

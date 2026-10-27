@@ -12,8 +12,12 @@ function toggleGuideSidebar() {
   document.getElementById('guide-sidebar').classList.toggle('open');
 }
 
+// Guides that were renamed, so saved /guide#old-slug links still open them.
+const RENAMED_DOCS = new Map([['subscriptions', 'scheduled']]);
+
 async function loadDoc(slug) {
   if (!slug) return;
+  slug = RENAMED_DOCS.get(slug) ?? slug;
 
   document.querySelectorAll('.guide-nav-link').forEach(a =>
     a.classList.toggle('active', a.dataset.slug === slug)
