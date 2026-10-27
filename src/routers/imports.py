@@ -16,20 +16,30 @@ computed from (account_id, occurred_at, amount_cents, merchant), so
 re-uploading an overlapping export skips the already-imported rows instead
 of duplicating them. Identical rows within one export (e.g. two same-day
 fares) are disambiguated by their occurrence count so both import.
+
+A row may also be a payment a schedule already posted (``services/posting``).
+Given the account and the confirmed mapping, the preview reports which rows
+match one (``services/import_matching``) so the user can switch each match off;
+commit re-runs the same matching, and a match left on claims the posted
+transaction instead of inserting the payment a second time.
 """
 
 import sqlite3
 from collections import Counter
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
 
-from constants import MAX_IMPORT_ROWS
-from db import db, to_cents
+from constants import ImportDateFormat, MAX_IMPORT_ROWS
+from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
     ImportCommitIn,
     ImportCommitOut,
+    ImportMappingIn,
+    ImportMatch,
+    ImportMatchedRow,
     ImportPreviewIn,
     ImportPreviewOut,
     ImportRowError,
@@ -43,6 +53,8 @@ from services.csv_import import (
     parse_occurred_at,
     suggest_mapping,
 )
+from services.import_matching import ImportRow, claim_transaction, find_matches
+from services.posting import write_transaction
 
 router = APIRouter(tags=["imports"])
 
@@ -52,25 +64,79 @@ PREVIEW_ROWS = 20
 # category, note).
 _ParsedRow = tuple[int, str, str, str, str]
 
+# A parsed row with its 1-based CSV row number and its dedup hash.
+_HashedRow = tuple[int, _ParsedRow, str]
 
-@router.post("/api/transactions/import/preview", response_model=ImportPreviewOut)
-def preview_import(
-    data: ImportPreviewIn, uid: int = Depends(require_auth)
-) -> ImportPreviewOut:
-    """Parse a CSV and return a sample of rows plus a suggested column mapping."""
-    columns, rows = parse_csv(data.csv_text)
+
+def _read_csv(csv_text: str) -> tuple[list[str], list[list[str]]]:
+    """Split the CSV, rejecting one with no header or too many rows."""
+    columns, rows = parse_csv(csv_text)
     if not columns:
         raise HTTPException(400, "CSV has no header row")
     if len(rows) > MAX_IMPORT_ROWS:
         raise HTTPException(
             400, f"CSV has {len(rows)} rows; the limit is {MAX_IMPORT_ROWS}"
         )
+    return columns, rows
+
+
+@router.post("/api/transactions/import/preview", response_model=ImportPreviewOut)
+def preview_import(
+    data: ImportPreviewIn, uid: int = Depends(require_auth)
+) -> ImportPreviewOut:
+    """Parse a CSV and return a sample of rows plus a suggested column mapping.
+
+    Given an account and a mapping as well, also list the rows that match a
+    transaction a schedule already posted to that account."""
+    columns, rows = _read_csv(data.csv_text)
+    matches: list[ImportMatchedRow] = []
+    if data.account_id is not None and data.mapping is not None:
+        hashed, _ = _parse_and_hash(
+            rows,
+            _column_index(columns, data.mapping),
+            data.account_id,
+            data.date_format,
+        )
+        with db() as conn:
+            require_open_account(conn, data.account_id, uid)
+            found = find_matches(conn, uid, data.account_id, _match_rows(hashed))
+        for row_no, (amount_cents, occurred_at, merchant, _, _), _ in hashed:
+            m = found.get(row_no)
+            if m is None:
+                continue
+            matches.append(
+                ImportMatchedRow(
+                    row=row_no,
+                    date=occurred_at[:10],
+                    merchant=merchant,
+                    amount=from_cents(amount_cents) or 0.0,
+                    match=ImportMatch(
+                        transaction_id=m.transaction_id,
+                        name=m.name,
+                        date=m.day.isoformat(),
+                    ),
+                )
+            )
     return ImportPreviewOut(
         columns=columns,
         sample_rows=rows[:PREVIEW_ROWS],
         row_count=len(rows),
         suggested_mapping=suggest_mapping(columns),
+        matches=matches,
     )
+
+
+def _column_index(columns: list[str], mapping: ImportMappingIn) -> dict[str, int]:
+    """Each mapped field's column position; 400 if a column isn't in the CSV."""
+    try:
+        return {
+            field: columns.index(name)
+            for field, name in mapping.model_dump(exclude_none=True).items()
+        }
+    except ValueError as e:
+        raise HTTPException(
+            400, f"Mapping references a column not in the CSV: {e}"
+        ) from e
 
 
 def _parse_row(
@@ -106,77 +172,106 @@ def _parse_row(
     )
 
 
+def _parse_and_hash(
+    rows: list[list[str]],
+    idx: dict[str, int],
+    account_id: int,
+    date_format: ImportDateFormat,
+) -> tuple[list[_HashedRow], list[ImportRowError]]:
+    """Parse every row, collecting per-row errors, and give each good row its
+    dedup hash. Identical rows are numbered by occurrence so both import."""
+    hashed: list[_HashedRow] = []
+    errors: list[ImportRowError] = []
+    seen: Counter[tuple[int, str, str]] = Counter()
+    for i, row in enumerate(rows, start=1):
+        try:
+            parsed = _parse_row(row, idx, account_id, date_format)
+        except (ValidationError, ValueError, IndexError) as e:
+            errors.append(ImportRowError(row=i, message=str(e)))
+            continue
+        amount_cents, occurred_at, merchant, _, _ = parsed
+        key = (amount_cents, occurred_at, merchant)
+        row_hash = import_row_hash(
+            account_id, occurred_at, amount_cents, merchant, seen[key]
+        )
+        seen[key] += 1
+        hashed.append((i, parsed, row_hash))
+    return hashed, errors
+
+
+def _match_rows(hashed: list[_HashedRow]) -> list[ImportRow]:
+    """The rows in the shape the matcher takes."""
+    return [
+        ImportRow(
+            row=row_no,
+            day=date.fromisoformat(parsed[1][:10]),
+            amount_cents=parsed[0],
+            import_hash=row_hash,
+        )
+        for row_no, parsed, row_hash in hashed
+    ]
+
+
 @router.post("/api/transactions/import/commit", response_model=ImportCommitOut)
 def commit_import(
     data: ImportCommitIn, uid: int = Depends(require_auth)
 ) -> ImportCommitOut:
     """Re-parse the CSV with a confirmed mapping and insert one transaction per
     row, skipping rows that dedup against an existing import and collecting
-    per-row errors rather than failing the whole import."""
-    columns, rows = parse_csv(data.csv_text)
-    if not columns:
-        raise HTTPException(400, "CSV has no header row")
-    if len(rows) > MAX_IMPORT_ROWS:
-        raise HTTPException(
-            400, f"CSV has {len(rows)} rows; the limit is {MAX_IMPORT_ROWS}"
-        )
+    per-row errors rather than failing the whole import.
 
-    try:
-        idx = {
-            field: columns.index(name)
-            for field, name in data.mapping.model_dump(exclude_none=True).items()
-        }
-    except ValueError as e:
-        raise HTTPException(
-            400, f"Mapping references a column not in the CSV: {e}"
-        ) from e
+    A row that matches a transaction a schedule already posted claims it
+    instead (unless the user switched that match off), so the payment isn't
+    counted twice. Claims and inserts land in one SQLite transaction."""
+    columns, rows = _read_csv(data.csv_text)
+    idx = _column_index(columns, data.mapping)
+    hashed, errors = _parse_and_hash(rows, idx, data.account_id, data.date_format)
+    declined = {c.row for c in data.match_choices if not c.claim}
 
-    parsed_rows: list[_ParsedRow] = []
-    errors: list[ImportRowError] = []
-    for i, row in enumerate(rows, start=1):
-        try:
-            parsed_rows.append(_parse_row(row, idx, data.account_id, data.date_format))
-        except (ValidationError, ValueError, IndexError) as e:
-            errors.append(ImportRowError(row=i, message=str(e)))
-
-    seen: Counter[tuple[int, str, str]] = Counter()
     imported = 0
+    matched = 0
     skipped = 0
     with db() as conn:
         require_open_account(conn, data.account_id, uid)
-        for (
-            amount_cents,
-            occurred_at,
-            merchant,
-            category,
-            note,
-        ) in parsed_rows:
-            key = (amount_cents, occurred_at, merchant)
-            row_hash = import_row_hash(
-                data.account_id, occurred_at, amount_cents, merchant, seen[key]
-            )
-            seen[key] += 1
-            try:
-                conn.execute(
-                    "INSERT INTO transactions(user_id, account_id, amount_cents,"
-                    " occurred_at, merchant, category, note, import_hash)"
-                    " VALUES(?,?,?,?,?,?,?,?)",
-                    (
-                        uid,
-                        data.account_id,
-                        amount_cents,
-                        occurred_at,
-                        merchant,
-                        category,
-                        note,
-                        row_hash,
-                    ),
-                )
-            except sqlite3.IntegrityError:
-                skipped += 1
-                continue
-            adjust_account_balance(conn, data.account_id, amount_cents)
-            imported += 1
-        conn.commit()
+        with write_transaction(conn):
+            found = find_matches(conn, uid, data.account_id, _match_rows(hashed))
+            for row_no, parsed, row_hash in hashed:
+                amount_cents, occurred_at, merchant, category, note = parsed
+                match = found.get(row_no)
+                if match is not None and row_no not in declined:
+                    try:
+                        claimed = claim_transaction(
+                            conn, uid, match, row_hash, occurred_at, merchant
+                        )
+                    except sqlite3.IntegrityError:
+                        skipped += 1
+                        continue
+                    if claimed:
+                        matched += 1
+                        continue
+                    # Claimed by another import meanwhile: insert as usual.
+                try:
+                    conn.execute(
+                        "INSERT INTO transactions(user_id, account_id, amount_cents,"
+                        " occurred_at, merchant, category, note, import_hash)"
+                        " VALUES(?,?,?,?,?,?,?,?)",
+                        (
+                            uid,
+                            data.account_id,
+                            amount_cents,
+                            occurred_at,
+                            merchant,
+                            category,
+                            note,
+                            row_hash,
+                        ),
+                    )
+                except sqlite3.IntegrityError:
+                    skipped += 1
+                    continue
+                adjust_account_balance(conn, data.account_id, amount_cents)
+                imported += 1
 
-    return ImportCommitOut(imported=imported, skipped_duplicates=skipped, errors=errors)
+    return ImportCommitOut(
+        imported=imported, matched=matched, skipped_duplicates=skipped, errors=errors
+    )

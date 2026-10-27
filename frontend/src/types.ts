@@ -64,6 +64,27 @@ export interface ImportPreview {
   sample_rows: string[][];
   row_count: number;
   suggested_mapping: Partial<Record<keyof ImportMapping, string | null>>;
+  /** Rows matching a transaction a schedule already posted; filled only when
+   * the preview was sent an account and a mapping. */
+  matches: ImportMatchedRow[];
+}
+
+/** A CSV row (1-based) that matches a transaction a schedule already posted:
+ * the bank's date, description and amount, plus the posted transaction (its
+ * id, the scheduled item's name and its date). Dates are `YYYY-MM-DD`. */
+export interface ImportMatchedRow {
+  row: number;
+  date: string;
+  merchant: string;
+  amount: number;
+  match: { transaction_id: number; name: string; date: string };
+}
+
+/** The user's choice for a matched row: claim the posted transaction, or
+ * import the row as a new one. */
+export interface ImportMatchChoice {
+  row: number;
+  claim: boolean;
 }
 
 export interface ImportRowError {
@@ -73,6 +94,8 @@ export interface ImportRowError {
 
 export interface ImportResult {
   imported: number;
+  /** Rows that claimed a scheduled transaction instead of adding a new one. */
+  matched: number;
   skipped_duplicates: number;
   errors: ImportRowError[];
 }

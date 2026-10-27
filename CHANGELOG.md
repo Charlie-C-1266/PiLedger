@@ -22,6 +22,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Per-account balance projection from scheduled transactions and interest (API).
 - Scheduled payments, income and transfers can post themselves on their due date, keeping account balances up to date.
 
+### Changed
+
+- CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
+
 ## [3.3.0] — 2026-08-24
 
 ### Added

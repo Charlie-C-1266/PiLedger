@@ -24,6 +24,7 @@ from constants import (
     InstitutionSlug,
     ISO_FMT,
     MAX_IMPORT_CSV_CHARS,
+    MAX_IMPORT_ROWS,
     MAX_INSTITUTION_NAME,
     MAX_MONEY,
     MAX_RATE,
@@ -288,6 +289,26 @@ class ImportMappingIn(_In):
 
 class ImportPreviewIn(_In):
     csv_text: Annotated[str, Field(min_length=1, max_length=MAX_IMPORT_CSV_CHARS)]
+    # With a target account and a confirmed mapping, the preview also lists
+    # the rows that match a transaction a schedule already posted.
+    account_id: Optional[int] = Field(default=None, ge=1)
+    mapping: Optional[ImportMappingIn] = None
+    date_format: ImportDateFormat = "iso"
+
+    @model_validator(mode="after")
+    def _check_match_inputs(self) -> "ImportPreviewIn":
+        """Matching needs both the account and the mapping."""
+        if (self.account_id is None) != (self.mapping is None):
+            raise ValueError("provide 'account_id' and 'mapping' together, or neither")
+        return self
+
+
+class ImportMatchChoice(_In):
+    """The user's choice for one matched row: claim the scheduled transaction
+    it matches, or import the row as a new transaction."""
+
+    row: Annotated[int, Field(ge=1)]
+    claim: bool
 
 
 class ImportCommitIn(_In):
@@ -295,6 +316,12 @@ class ImportCommitIn(_In):
     account_id: Annotated[int, Field(ge=1)]
     mapping: ImportMappingIn
     date_format: ImportDateFormat = "iso"
+    # One entry per matched row the user decided on. A matched row with no
+    # entry claims its match, so a client that never asks still avoids
+    # importing a scheduled payment twice.
+    match_choices: list[ImportMatchChoice] = Field(
+        default_factory=list, max_length=MAX_IMPORT_ROWS
+    )
 
 
 class GoalIn(_In):
@@ -639,11 +666,33 @@ class TransactionOut(BaseModel):
     created_at: str
 
 
+class ImportMatch(BaseModel):
+    """The scheduled transaction a CSV row matches: its id, the scheduled
+    item's name and the transaction's date (``YYYY-MM-DD``)."""
+
+    transaction_id: int
+    name: str
+    date: str
+
+
+class ImportMatchedRow(BaseModel):
+    """A CSV row (1-based, as in the error list) that matches a transaction a
+    schedule already posted, with the bank's date, description and amount."""
+
+    row: int
+    date: str
+    merchant: str
+    amount: float
+    match: ImportMatch
+
+
 class ImportPreviewOut(BaseModel):
     columns: list[str]
     sample_rows: list[list[str]]
     row_count: int
     suggested_mapping: dict[str, Optional[str]]
+    # Filled only when the preview was given an account and a mapping.
+    matches: list[ImportMatchedRow] = Field(default_factory=list)
 
 
 class ImportRowError(BaseModel):
@@ -653,6 +702,8 @@ class ImportRowError(BaseModel):
 
 class ImportCommitOut(BaseModel):
     imported: int
+    # Rows that claimed a scheduled transaction instead of adding a new one.
+    matched: int = 0
     skipped_duplicates: int
     errors: list[ImportRowError]
 
