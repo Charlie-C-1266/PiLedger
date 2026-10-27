@@ -24,6 +24,8 @@ import TransferModal from "../components/TransferModal";
 import TxnRow from "../components/TxnRow";
 import UpdateBalanceModal from "../components/UpdateBalanceModal";
 import { ChevronLeftIcon, PlusIcon, TransferIcon } from "../components/icons";
+import ProjectionPanel from "./account/ProjectionPanel";
+import UpcomingCard from "./account/UpcomingCard";
 import {
   formatLongDate,
   formatUpdated,
@@ -104,6 +106,8 @@ function AccountPageSkeleton() {
           <Skeleton width={120} height={11} radius={4} />
           <Skeleton width={240} height={46} radius={10} style={{ margin: "10px 0" }} />
           <Skeleton width={300} height={22} radius={999} />
+          <Skeleton height={74} radius={14} style={{ marginTop: 28 }} />
+          <Skeleton height={240} radius={12} style={{ marginTop: 24 }} />
         </div>
         <div className={`${styles.card} ${styles.recentCard}`}>
           <Skeleton width={180} height={18} radius={6} />
@@ -314,6 +318,7 @@ function AccountPageBody({ account }: { account: Account }) {
                 Update balance
               </button>
             </div>
+            <ProjectionPanel account={account} />
           </section>
         </StaggerItem>
 
@@ -380,7 +385,10 @@ function AccountPageBody({ account }: { account: Account }) {
           <div className={styles.wideTile} aria-hidden="true">
             <AccountTile account={account} wide badge />
           </div>
-          <section className={styles.card} aria-labelledby="account-details-title">
+          <section
+            className={`${styles.card} ${styles.detailsCard}`}
+            aria-labelledby="account-details-title"
+          >
             <div className={styles.sectionHeader} style={{ marginBottom: 6 }}>
               <h2 className={styles.sectionTitle} id="account-details-title">
                 Account details
@@ -388,6 +396,7 @@ function AccountPageBody({ account }: { account: Account }) {
             </div>
             <DetailList items={details} />
           </section>
+          <UpcomingCard account={account} />
         </StaggerItem>
       </div>
 

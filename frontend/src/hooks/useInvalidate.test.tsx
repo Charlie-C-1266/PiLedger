@@ -25,13 +25,15 @@ function bustedKeys(spy: ReturnType<typeof vi.spyOn>): Set<string> {
 }
 
 describe("useInvalidate ripple sets", () => {
-  it("accountChanged busts balances, the account page's activity + every net-worth view (not transactions/budget)", () => {
+  it("accountChanged busts balances, the account page's activity, history and projection + every net-worth view (not transactions/budget)", () => {
     const { result, spy } = setup();
     result.current.accountChanged();
     expect(bustedKeys(spy)).toEqual(
       new Set([
         "accounts",
         "account-activity",
+        "account-history",
+        "account-projection",
         "summary",
         "networth",
         "history-all",
@@ -50,6 +52,8 @@ describe("useInvalidate ripple sets", () => {
         "transactions",
         "accounts",
         "account-activity",
+        "account-history",
+        "account-projection",
         "summary",
         "networth",
         "history-all",
@@ -80,8 +84,9 @@ describe("useInvalidate ripple sets", () => {
 
   it("subscriptionChanged busts the list, the calendar and the whole transaction ripple", () => {
     // Scheduled items now create transactions (auto-post, Post now) and tag
-    // them, so a change to one must refresh balances and transaction lists
-    // too — whatever transactionChanged covers, now or later.
+    // them, so a change to one must refresh balances, transaction lists and
+    // the account projections built from schedules — whatever
+    // transactionChanged covers, now or later.
     const { result, spy } = setup();
     result.current.transactionChanged();
     const transactionKeys = bustedKeys(spy);
@@ -96,6 +101,7 @@ describe("useInvalidate ripple sets", () => {
       "transactions",
       "accounts",
       "account-activity",
+      "account-projection",
       "summary",
       "history-all",
     ]) {

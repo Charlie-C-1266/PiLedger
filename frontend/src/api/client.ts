@@ -4,6 +4,7 @@ import type {
   AccountBalanceEntry,
   AccountHistory,
   AccountProjection,
+  BalanceProjection,
   Budget,
   BudgetEnvelope,
   BudgetGroup,
@@ -24,6 +25,7 @@ import type {
   Subscription,
   SubscriptionKind,
   SubscriptionOccurrence,
+  SubscriptionPosting,
   Summary,
   Token,
   TokenCreated,
@@ -174,14 +176,26 @@ export const recordBalance = (
   });
 
 // Balance-history points for a single account over the last `days` (default
-// 90), oldest first. Balance stays in the account's own currency.
-export const getAccountHistory = (accountId: number, days = 90) =>
-  json<AccountBalanceEntry[]>(`/api/accounts/${accountId}/history?days=${days}`);
+// 90), oldest first. Balance stays in the account's own currency. `opening`
+// adds the balance the account had as the window opened, stamped at its start.
+export const getAccountHistory = (
+  accountId: number,
+  days = 90,
+  opts?: { opening?: boolean },
+) =>
+  json<AccountBalanceEntry[]>(
+    `/api/accounts/${accountId}/history?days=${days}${opts?.opening ? "&opening=true" : ""}`,
+  );
 
 // How one account moved over the last `days` (default 30): the change since
 // then and the window's transaction count and totals.
 export const getAccountActivity = (accountId: number, days = 30) =>
   json<AccountActivity>(`/api/accounts/${accountId}/activity?days=${days}`);
+
+// One account's projected balance `months` ahead (default 12): a balance per
+// day, the 1/3/6/12-month horizons and the scheduled events behind them.
+export const getAccountProjection = (accountId: number, months = 12) =>
+  json<BalanceProjection>(`/api/accounts/${accountId}/projection?months=${months}`);
 
 // Summary
 
@@ -318,6 +332,16 @@ export const updateSubscription = (id: number, data: Partial<Subscription>) =>
 
 export const deleteSubscription = (id: number) =>
   del<{ ok: boolean }>(`/api/subscriptions/${id}`);
+
+// Post now / Skip one occurrence (`date` is its due date, ISO), and Undo either.
+export const postOccurrence = (sid: number, date: string) =>
+  post<SubscriptionPosting>(`/api/subscriptions/${sid}/post`, { date });
+
+export const skipOccurrence = (sid: number, date: string) =>
+  post<SubscriptionPosting>(`/api/subscriptions/${sid}/skip`, { date });
+
+export const undoOccurrence = (sid: number, date: string) =>
+  del<{ ok: boolean }>(`/api/subscriptions/${sid}/postings/${date}`);
 
 // Categories
 

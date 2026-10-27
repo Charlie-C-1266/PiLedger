@@ -47,8 +47,37 @@
 
 .message {
   flex: 1;
+  min-width: 0;
   color: var(--pl-text);
   font: 600 14px/1.35 "Plus Jakarta Sans", sans-serif;
+}
+
+/* An action such as Undo: underlined body text rather than accent, so it reads
+   in both themes and doesn't compete with the message. */
+.action {
+  flex-shrink: 0;
+  margin: -6px -2px -6px 0;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--pl-text);
+  font: 600 13px/1 "Plus Jakarta Sans", sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: background 140ms;
+}
+
+.action:hover {
+  background: var(--pl-surface-alt);
+}
+
+@media (pointer: coarse) {
+  .action {
+    min-height: 44px;
+    padding: 0 12px;
+  }
 }
 
 .close {

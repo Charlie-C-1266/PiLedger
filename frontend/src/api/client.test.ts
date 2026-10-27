@@ -183,6 +183,24 @@ describe("range / window query params", () => {
     );
   });
 
+  it("asks for an account-history opening point only when told to", async () => {
+    fetchMock.mockResolvedValue(okJson([]));
+    await api.getAccountHistory(5, 90, { opening: true });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/accounts/5/history?days=90&opening=true",
+      undefined,
+    );
+  });
+
+  it("defaults an account's balance projection to 12 months", async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    await api.getAccountProjection(5);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/accounts/5/projection?months=12",
+      undefined,
+    );
+  });
+
   it("defaults an account's activity window to 30 days", async () => {
     fetchMock.mockResolvedValue(okJson({}));
     await api.getAccountActivity(5);
@@ -286,5 +304,38 @@ describe("exportData", () => {
     await api.exportData();
 
     expect(getAnchor()?.download).toBe("piledger-export.json");
+  });
+});
+
+describe("occurrence postings (Post now / Skip / Undo)", () => {
+  const json = { "Content-Type": "application/json" };
+
+  it("posts one occurrence now, naming its due date", async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    await api.postOccurrence(4, "2026-11-09");
+    expect(fetchMock).toHaveBeenCalledWith("/api/subscriptions/4/post", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ date: "2026-11-09" }),
+    });
+  });
+
+  it("skips one occurrence", async () => {
+    fetchMock.mockResolvedValue(okJson({}));
+    await api.skipOccurrence(4, "2026-11-09");
+    expect(fetchMock).toHaveBeenCalledWith("/api/subscriptions/4/skip", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ date: "2026-11-09" }),
+    });
+  });
+
+  it("undoes a posting by deleting that date's log row", async () => {
+    fetchMock.mockResolvedValue(okJson({ ok: true }));
+    await api.undoOccurrence(4, "2026-11-09");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/subscriptions/4/postings/2026-11-09",
+      { method: "DELETE" },
+    );
   });
 });

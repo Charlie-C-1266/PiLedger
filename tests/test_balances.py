@@ -2,6 +2,10 @@
 Tests for recording balance snapshots and retrieving balance history.
 """
 
+from datetime import datetime, timedelta, timezone
+
+from constants import ISO_FMT
+
 
 # ── Recording ─────────────────────────────────────────────────────────────────
 
@@ -155,3 +159,64 @@ def test_deleting_account_removes_its_history(alice):
     alice.delete(f"/api/accounts/{aid}")
     # Account gone → attempting to read its history returns 404
     assert alice.get(f"/api/accounts/{aid}/history").status_code == 404
+
+
+# ── History with an opening point (?opening=true) ─────────────────────────────
+
+
+def _days_ago(days: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
+
+
+def _account_with(alice, readings: list[tuple[float, str | None]]) -> int:
+    """An account whose history is ``readings`` — (balance, recorded_at or None
+    for now) — recorded in the order given."""
+    aid = alice.post("/api/accounts", json={"name": "X", "type": "current"}).json()[
+        "id"
+    ]
+    for balance, recorded_at in readings:
+        body: dict[str, object] = {"balance": balance}
+        if recorded_at:
+            body["recorded_at"] = recorded_at
+        alice.post(f"/api/accounts/{aid}/balance", json=body)
+    return aid
+
+
+def test_history_opening_prepends_the_balance_at_the_window_start(alice):
+    aid = _account_with(
+        alice, [(100.0, _days_ago(60)), (150.0, _days_ago(40)), (200.0, None)]
+    )
+    entries = alice.get(f"/api/accounts/{aid}/history?days=30&opening=true").json()
+    # The latest reading before the window (150, 40 days ago) opens it, stamped
+    # at the window's start; the reading inside the window follows.
+    assert [e["balance"] for e in entries] == [150.0, 200.0]
+    opened = datetime.strptime(entries[0]["recorded_at"], ISO_FMT).replace(
+        tzinfo=timezone.utc
+    )
+    expected = datetime.now(timezone.utc) - timedelta(days=30)
+    assert abs((opened - expected).total_seconds()) < 60
+
+
+def test_history_opening_is_opt_in(alice):
+    aid = _account_with(alice, [(100.0, _days_ago(60)), (200.0, None)])
+    entries = alice.get(f"/api/accounts/{aid}/history?days=30").json()
+    assert [e["balance"] for e in entries] == [200.0]
+
+
+def test_history_opening_with_only_older_readings(alice):
+    # Nothing recorded inside the window: the opening point alone carries the
+    # balance up to the window's edge.
+    aid = _account_with(alice, [(100.0, _days_ago(90))])
+    entries = alice.get(f"/api/accounts/{aid}/history?days=30&opening=true").json()
+    assert [e["balance"] for e in entries] == [100.0]
+
+
+def test_history_opening_adds_nothing_when_history_starts_inside_the_window(alice):
+    aid = _account_with(alice, [(100.0, _days_ago(10)), (200.0, None)])
+    entries = alice.get(f"/api/accounts/{aid}/history?days=30&opening=true").json()
+    assert [e["balance"] for e in entries] == [100.0, 200.0]
+
+
+def test_history_opening_on_an_empty_account(alice):
+    aid = _account_with(alice, [])
+    assert alice.get(f"/api/accounts/{aid}/history?opening=true").json() == []

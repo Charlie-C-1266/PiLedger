@@ -28,6 +28,8 @@ export function useInvalidate() {
         bust(
           "accounts",
           "account-activity",
+          "account-history",
+          "account-projection",
           "summary",
           "networth",
           "history-all",
@@ -43,6 +45,8 @@ export function useInvalidate() {
           "transactions",
           "accounts",
           "account-activity",
+          "account-history",
+          "account-projection",
           "summary",
           "networth",
           "history-all",
@@ -56,7 +60,8 @@ export function useInvalidate() {
       /** A scheduled item was created/edited/deleted: the list and any
        *  expanded calendar occurrences go stale. Items now create transactions
        *  (auto-post, Post now) and tag them with the item, so a change to one
-       *  also carries the whole transactionChanged ripple. */
+       *  also carries the whole transactionChanged ripple — which includes
+       *  the account projections built from scheduled items. */
       subscriptionChanged: () => {
         bust("subscriptions", "occurrences");
         ripple.transactionChanged();

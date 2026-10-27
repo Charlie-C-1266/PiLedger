@@ -164,15 +164,42 @@
   min-width: 0;
 }
 
-/* Stacked: balance → recent → details. */
+/* Stacked: balance → upcoming → recent → details. The right column dissolves
+   (display: contents) so its cards can be ordered among the left column's. */
 @media (max-width: 1079px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "balance"
-      "recent"
-      "side";
+    grid-template-areas: none;
     grid-template-rows: none;
+  }
+
+  .balanceCard,
+  .recentCard {
+    grid-area: auto;
+  }
+
+  .side {
+    display: contents;
+  }
+
+  .balanceCard {
+    order: 1;
+  }
+
+  .upcomingCard {
+    order: 2;
+  }
+
+  .recentCard {
+    order: 3;
+  }
+
+  .wideTile {
+    order: 4;
+  }
+
+  .detailsCard {
+    order: 5;
   }
 }
 
@@ -222,6 +249,114 @@
 .metaMute {
   font: 500 12px/1.4 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text-mute);
+}
+
+/* ── Projected balance (inside the balance card) ────────────────────── */
+
+.projection {
+  margin-top: 26px;
+}
+
+.chartKey {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.keyItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 12px/1 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.keyLine {
+  width: 18px;
+  height: 0;
+  border-top: 2.2px solid var(--pl-accent);
+}
+
+.keyLineProjected {
+  border-top-style: dashed;
+}
+
+.tileSkeletons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.chartArea {
+  margin-top: 24px;
+}
+
+.note {
+  margin-top: 14px;
+  font: 500 12px/1.45 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.noteStrong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-text-soft);
+}
+
+.noteWarn {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pl-warn);
+}
+
+.noProjection {
+  padding: 28px 16px;
+  border: 1px dashed var(--pl-rule);
+  border-radius: 14px;
+  font: 500 13px/1.5 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+  text-align: center;
+}
+
+/* ── Upcoming ───────────────────────────────────────────────────────── */
+
+.upcomingList {
+  display: flex;
+  flex-direction: column;
+}
+
+.upcomingList > * + * {
+  border-top: 1px solid var(--pl-rule);
+}
+
+.cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pl-rule);
+}
+
+.cardFootLabel {
+  font: 500 12px/1.3 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-mute);
+}
+
+.cardFootValue {
+  font: 700 14px/1 "Plus Jakarta Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.up {
+  color: var(--pl-up);
+}
+
+.down {
+  color: var(--pl-down);
 }
 
 /* ── Section headers + recent transactions ──────────────────────────── */
@@ -322,6 +457,10 @@
 
   .heroValue {
     font-size: 36px;
+  }
+
+  .tileSkeletons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .balanceTop {

@@ -2,13 +2,32 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import type { Account, AccountActivity, Rates, Summary, Transaction } from "../types";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type {
+  Account,
+  AccountActivity,
+  BalanceProjection,
+  Rates,
+  Summary,
+  Transaction,
+} from "../types";
 
 vi.mock("../hooks/useAccounts", () => ({ useAccounts: vi.fn() }));
 vi.mock("../hooks/useAccountActivity", () => ({ useAccountActivity: vi.fn() }));
 vi.mock("../hooks/useSummary", () => ({ useSummary: vi.fn() }));
 vi.mock("../hooks/useRates", () => ({ useRates: vi.fn() }));
 vi.mock("../hooks/useTransactions", () => ({ useTransactions: vi.fn() }));
+vi.mock("../hooks/useAccountProjection", () => ({ useAccountProjection: vi.fn() }));
+vi.mock("../hooks/useAccountHistory", () => ({ useAccountHistory: vi.fn() }));
+// The chart has its own tests (it needs Recharts' layout); the stub reports
+// which horizon it was asked to draw.
+vi.mock("../components/charts/ProjectionChart", () => ({
+  default: ({ months, series }: { months: number; series: { rows: unknown[] } }) => (
+    <div data-testid="projection-chart">
+      {months} months · {series.rows.length} days
+    </div>
+  ),
+}));
 // The dialogs have their own tests; stubs here just report what they were opened with.
 vi.mock("../components/EditAccountModal", () => ({
   default: ({ account }: { account: Account }) => (
@@ -38,6 +57,10 @@ import { useAccountActivity } from "../hooks/useAccountActivity";
 import { useSummary } from "../hooks/useSummary";
 import { useRates } from "../hooks/useRates";
 import { useTransactions } from "../hooks/useTransactions";
+import { useAccountProjection } from "../hooks/useAccountProjection";
+import { useAccountHistory } from "../hooks/useAccountHistory";
+import { ToastProvider } from "../components/toast/ToastProvider";
+import { AS_OF, addDays, makeProjection } from "../test/projectionFixture";
 
 function makeAccount(over: Partial<Account> = {}): Account {
   return {
@@ -96,7 +119,17 @@ interface Setup {
   total?: number;
   rates?: Rates;
   transactions?: Transaction[];
+  projection?: BalanceProjection;
+  projectionPending?: boolean;
 }
+
+const PROJECTION = makeProjection({
+  start: 5978.11,
+  events: [
+    { date: addDays(AS_OF, 3), name: "Netflix", amount: -10.99, subscription_id: 4 },
+    { date: addDays(AS_OF, 33), name: "Salary", amount: 2850, subscription_id: 5 },
+  ],
+});
 
 function renderPage(path: string, setup: Setup = {}) {
   const accounts = "accounts" in setup ? setup.accounts : [makeAccount()];
@@ -117,15 +150,24 @@ function renderPage(path: string, setup: Setup = {}) {
     data: setup.transactions ?? [makeTxn(1), makeTxn(2, { amount: 400 }), makeTxn(3)],
     isPending: false,
   } as never);
+  vi.mocked(useAccountProjection).mockReturnValue({
+    data: setup.projectionPending ? undefined : (setup.projection ?? PROJECTION),
+    isPending: setup.projectionPending ?? false,
+  } as never);
+  vi.mocked(useAccountHistory).mockReturnValue({ data: [], isPending: false } as never);
   return render(
-    <PrivacyProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/accounts/:id" element={<AccountPage />} />
-          <Route path="/accounts" element={<div>Accounts screen</div>} />
-        </Routes>
-      </MemoryRouter>
-    </PrivacyProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <ToastProvider>
+        <PrivacyProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route path="/accounts/:id" element={<AccountPage />} />
+              <Route path="/accounts" element={<div>Accounts screen</div>} />
+            </Routes>
+          </MemoryRouter>
+        </PrivacyProvider>
+      </ToastProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -282,6 +324,89 @@ describe("AccountPage balance card", () => {
       .find((el) => el.hasAttribute("data-direction"));
     expect(pill).toHaveAttribute("data-direction", "up");
     expect(screen.getByText("12.4% of your £**** net worth")).toBeInTheDocument();
+  });
+});
+
+describe("AccountPage projection", () => {
+  const note = () => screen.getByText(/Projections use this account's/);
+
+  it("requests one 12-month projection and a 90-day history with its opening", () => {
+    renderPage("/accounts/12");
+    expect(useAccountProjection).toHaveBeenCalledWith(12, { enabled: true });
+    expect(useAccountHistory).toHaveBeenCalledWith(12, "90D", { opening: true, enabled: true });
+  });
+
+  it("shows the four horizons with 3 months selected, and redraws on another", async () => {
+    renderPage("/accounts/12");
+    expect(screen.getByRole("heading", { name: "Projected balance" })).toBeInTheDocument();
+    const group = screen.getByRole("radiogroup", { name: "Projected balance" });
+    expect(within(group).getAllByRole("radio")).toHaveLength(4);
+    expect(within(group).getByRole("radio", { name: /In 3 months/ })).toBeChecked();
+    expect(screen.getByTestId("projection-chart")).toHaveTextContent("3 months");
+
+    await userEvent.click(within(group).getByRole("radio", { name: /In 12 months/ }));
+    expect(screen.getByTestId("projection-chart")).toHaveTextContent("12 months");
+  });
+
+  it("gives the lowest point and what the projection includes, with the rate", () => {
+    renderPage("/accounts/12", { accounts: [makeAccount({ interest_rate: 4.1 })] });
+    expect(note()).toHaveTextContent(
+      "Lowest point in the next 3 months: £5,967.12 on 29 Oct. Projections use this account's scheduled transactions and 4.10% interest, paid monthly. One-off spending isn't predicted.",
+    );
+  });
+
+  it("warns when the selected horizon goes overdrawn", async () => {
+    renderPage("/accounts/12", {
+      projection: makeProjection({
+        start: 120,
+        events: [{ date: "2027-01-27", name: "Car insurance", amount: -486 }],
+      }),
+    });
+    // 27 Jan is a day past the 3-month horizon (26 Jan), so that view is fine…
+    expect(screen.queryByText(/Goes overdrawn/)).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /In 6 months/ })).toHaveTextContent("−£366.00");
+
+    // …and the 6-month one warns.
+    await userEvent.click(screen.getByRole("radio", { name: /In 6 months/ }));
+    const warning = screen.getByText("Goes overdrawn on 27 Jan.");
+    expect(warning.className).toMatch(/noteWarn/);
+  });
+
+  it("draws a flat line plus interest when nothing is scheduled", () => {
+    renderPage("/accounts/12", {
+      projection: makeProjection({
+        start: 5978.11,
+        events: [{ date: "2026-11-01", name: "Interest", amount: 4.97, kind: "interest" }],
+      }),
+    });
+    expect(screen.getByText("Nothing scheduled in the next 30 days.")).toBeInTheDocument();
+    expect(note()).toHaveTextContent(
+      "Lowest point in the next 3 months: £5,978.11 on 26 Oct (today).",
+    );
+    expect(screen.getByText("From scheduled transactions and interest")).toBeInTheDocument();
+  });
+
+  it("shows skeletons while the projection loads", () => {
+    renderPage("/accounts/12", { projectionPending: true });
+    expect(screen.getByText("Loading projection")).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+  });
+
+  it("doesn't project a closed account, or ask for one", () => {
+    renderPage("/accounts/12", { accounts: [makeAccount({ closed: true })] });
+    expect(screen.getByText("Closed accounts don't project")).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("projection-chart")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Upcoming" })).not.toBeInTheDocument();
+    expect(useAccountProjection).toHaveBeenCalledWith(12, { enabled: false });
+    expect(useAccountHistory).toHaveBeenCalledWith(12, "90D", { opening: true, enabled: false });
+  });
+
+  it("lists what's coming up in the right column", () => {
+    renderPage("/accounts/12");
+    const upcoming = screen.getByRole("region", { name: "Upcoming" });
+    expect(within(upcoming).getByRole("button", { name: /^Netflix, −£10\.99 on 29 Oct 2026/ }));
+    expect(within(upcoming).queryByText("Salary")).not.toBeInTheDocument();
   });
 });
 

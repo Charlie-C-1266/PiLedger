@@ -89,11 +89,16 @@ def live_server(tmp_path_factory):
         "warning",
     ]
 
+    # The server's output goes to a file beside the DB, never an unread pipe:
+    # the app logs one access line per request, and once a pipe's ~64 KB buffer
+    # filled, the next log write blocked the event loop and every later request
+    # hung until Playwright's 30s timeout — failing whichever test ran last.
+    log_file = (db_path.parent / "server.log").open("wb")
     proc = subprocess.Popen(
         cmd,
         cwd=str(REPO_ROOT),
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=log_file,
         stderr=subprocess.STDOUT,
     )
     try:
@@ -106,6 +111,7 @@ def live_server(tmp_path_factory):
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait(timeout=5)
+        log_file.close()
 
 
 @pytest.fixture(scope="session")

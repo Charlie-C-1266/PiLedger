@@ -9,6 +9,9 @@ interface Props {
   size?: "default" | "wide";
   /** Accessible name, for dialogs without an otherwise-wired heading. */
   label?: string;
+  /** Ids of the elements that name and describe the dialog. */
+  labelledBy?: string;
+  describedBy?: string;
 }
 
 /**
@@ -22,6 +25,8 @@ export default function Modal({
   children,
   size = "default",
   label,
+  labelledBy,
+  describedBy,
 }: Props) {
   const reduce = useReducedMotion();
 
@@ -80,6 +85,8 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={label}
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
       >
         {children}
       </motion.div>

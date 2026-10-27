@@ -258,6 +258,74 @@ export interface AccountProjection {
   points: ProjectionPoint[];
 }
 
+/** One day's projected closing balance on the account page's chart. */
+export interface BalanceProjectionPoint {
+  date: string;
+  balance: number;
+}
+
+/** The projected balance `months` from today (the server clamps month ends). */
+export interface BalanceProjectionHorizon {
+  months: number;
+  date: string;
+  balance: number;
+  /** `balance` minus today's balance. */
+  change: number;
+}
+
+/** A scheduled item's kind, or a projected monthly interest credit. */
+export type BalanceProjectionEventKind = SubscriptionKind | "interest";
+
+/** One scheduled occurrence (or interest credit) in an account's projection,
+ * with the account's balance after it. */
+export interface BalanceProjectionEvent {
+  date: string;
+  /** Null for an interest credit, which isn't a scheduled item. */
+  subscription_id: number | null;
+  name: string;
+  kind: BalanceProjectionEventKind;
+  frequency: Frequency;
+  category: string;
+  /** The other account of a transfer, else null. */
+  counterparty_name: string | null;
+  /** Signed for this account: money out is negative. */
+  amount: number;
+  auto_post: boolean;
+  balance_after: number;
+}
+
+export interface BalanceProjectionSummary {
+  min_balance: number;
+  min_date: string;
+  /** First day an asset account closes below zero; always null for debt. */
+  first_negative_date: string | null;
+  end_balance: number;
+}
+
+/** One account's projected balance, from `GET /api/accounts/{aid}/projection`.
+ * Figures stay in the account's own currency; for a debt account they are the
+ * amount owed. Posted and skipped occurrences are already left out. */
+export interface BalanceProjection {
+  account_id: number;
+  currency: Currency;
+  /** Today, the first day of `points`. */
+  as_of: string;
+  start_balance: number;
+  points: BalanceProjectionPoint[];
+  horizons: BalanceProjectionHorizon[];
+  events: BalanceProjectionEvent[];
+  summary: BalanceProjectionSummary;
+}
+
+/** One handled occurrence in a scheduled item's posting log (Post now / Skip). */
+export interface SubscriptionPosting {
+  subscription_id: number;
+  date: string;
+  status: "posted" | "skipped";
+  transaction_id: number | null;
+  transfer_id: string | null;
+}
+
 /** One manual FX rate: 1 unit of `currency` = `rate` units of the base currency. */
 export interface Rate {
   currency: Currency;
