@@ -39,6 +39,7 @@ Financial accounts. Each row belongs to exactly one user.
 | `color` | TEXT | Hex colour used in chart lines and card borders |
 | `counts_to_net_worth` | INTEGER | `1` = counts toward the Accessible net-worth headline, `0` = set aside (e.g. a pension or SIPP); defaults to `1`. See [ADR-0003](adr/0003-accessible-net-worth-user-flag.md) |
 | `closed` | INTEGER | `1` = closed: history is kept but the account takes no new transactions, transfers, imports or scheduled postings; defaults to `0` |
+| `low_balance_threshold_cents` | INTEGER | The "Warn me below" amount in integer cents: the account is flagged when its projection drops under it within 30 days. NULL = unset, which warns only below zero. Asset accounts only (the API refuses one on a loan or credit account) |
 | `created_at` | TEXT | UTC ISO-8601 |
 
 ## `balance_history`
@@ -186,7 +187,7 @@ The posting log: one row per occurrence of a scheduled item that has been dealt 
 
 ## `meta`
 
-Key-value infrastructure table. Currently holds a single row: `schema_version` (16 at the time of writing: `SCHEMA_VERSION` in `db.py`).
+Key-value infrastructure table. Currently holds a single row: `schema_version` (17 at the time of writing: `SCHEMA_VERSION` in `db.py`).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -199,7 +200,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version` (
 
 **Fresh databases** get the current-schema `CREATE TABLE IF NOT EXISTS` statements, then are stamped with the latest `SCHEMA_VERSION`.
 
-**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — sixteen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
+**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — seventeen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
 
 1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
 2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
@@ -217,6 +218,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version` (
 14. **`accounts.institution` + `accounts.institution_name`** — added via `ALTER TABLE`, both NULL on existing rows.
 15. **`subscriptions.kind` + `subscriptions.to_account_id`** — added via `ALTER TABLE`; `kind` defaults to `'expense'`, `to_account_id` is NULL.
 16. **`subscriptions.auto_post` + `subscriptions.auto_post_from`** — added via `ALTER TABLE`; `auto_post` defaults to `0` (every existing item stays a reminder), `auto_post_from` is NULL.
+17. **`accounts.low_balance_threshold_cents`** — added via `ALTER TABLE`, NULL on existing rows.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
@@ -234,3 +236,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v14** — `accounts.institution` and `accounts.institution_name` added, both NULL on existing rows: the provider can't be inferred from an account's name, so it stays unrecorded until its owner sets it.
 - **v15** — `subscriptions.kind` (`'expense'`, `'income'` or `'transfer'`, defaulting to `'expense'` so every existing row stays a payment) and `subscriptions.to_account_id` (a transfer's destination, `ON DELETE SET NULL`) added, so scheduled items can be income or transfers.
 - **v16** — scheduled items can post themselves. `subscriptions.auto_post` (default `0`, so nothing starts posting on upgrade) and `subscriptions.auto_post_from` (the first day auto-post may post — the day it was switched on, so the past is never back-filled) added, and the `subscription_postings` log created: one row per handled occurrence (`posted` or `skipped`), unique on `(subscription_id, occurrence_date)` so a date is never posted twice. Its `transaction_id` is `ON DELETE SET NULL`, so deleting an auto-posted transaction doesn't bring it back; deleting the scheduled item deletes its postings but keeps its transactions.
+- **v17** — `accounts.low_balance_threshold_cents` (the "Warn me below" amount) added, NULL on existing accounts so they keep warning only below zero.
