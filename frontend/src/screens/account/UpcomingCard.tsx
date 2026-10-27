@@ -105,7 +105,9 @@ export default function UpcomingCard({ account }: { account: Account }) {
   const scheduled = soon?.events.filter(isScheduled) ?? [];
   const shown = soon?.events.slice(0, UPCOMING_LIMIT) ?? [];
   const more = (soon?.events.length ?? 0) - shown.length;
-  const warn = !isDebt(account);
+  // Tint any "after" under the account's "Warn me below" amount (zero when
+  // unset); debt balances are owed, so they never tint.
+  const warn = isDebt(account) ? null : (account.low_balance_threshold ?? 0);
 
   let body;
   if (projection.isPending) {
@@ -134,7 +136,7 @@ export default function UpcomingCard({ account }: { account: Account }) {
               }}
               event={event}
               currency={account.currency}
-              warnBelowZero={warn}
+              warnBelow={warn}
               onOpen={isScheduled(event) ? () => open(event, index) : undefined}
             />
           ))}
@@ -185,7 +187,7 @@ export default function UpcomingCard({ account }: { account: Account }) {
             event={acting}
             accountName={account.name}
             currency={account.currency}
-            warnBelowZero={warn}
+            warnBelow={warn}
             nextDate={data ? nextOccurrence(data.events, acting) : null}
             busy={actions.busy}
             onPostNow={() => void act(actions.postNow)}

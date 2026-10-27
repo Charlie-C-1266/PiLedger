@@ -6,6 +6,7 @@ import {
   eventSubline,
   historyDaysFor,
   includesNote,
+  lowBalanceLabel,
   lowNote,
   monthEnds,
   nextOccurrence,
@@ -162,6 +163,64 @@ describe("lowNote", () => {
   it("has nothing to say about a debt", () => {
     const p = makeProjection({ start: 500 });
     expect(lowNote(buildChartSeries(p, undefined, horizon(p, 3)), 3, true)).toBeNull();
+    expect(lowNote(buildChartSeries(p, undefined, horizon(p, 3)), 3, true, 900)).toBeNull();
+  });
+
+  it("says when the balance drops below the buffer but stays in credit", () => {
+    const p = makeProjection({
+      start: 400,
+      events: [{ date: addDays(AS_OF, 12), name: "Rent", amount: -250 }],
+    });
+    const series = buildChartSeries(p, undefined, horizon(p, 3));
+    expect(lowNote(series, 3, false, 200)).toEqual({
+      kind: "buffer",
+      threshold: 200,
+      date: addDays(AS_OF, 12),
+    });
+    // Without a buffer it's just the lowest point.
+    expect(lowNote(series, 3, false)).toMatchObject({ kind: "low", balance: 150 });
+  });
+
+  it("prefers overdrawn over the buffer when the balance goes below zero", () => {
+    const p = makeProjection({
+      start: 400,
+      events: [
+        { date: addDays(AS_OF, 4), name: "Rent", amount: -250 },
+        { date: addDays(AS_OF, 12), name: "Car", amount: -300 },
+      ],
+    });
+    const series = buildChartSeries(p, undefined, horizon(p, 3));
+    expect(lowNote(series, 3, false, 200)).toEqual({ kind: "overdrawn", date: addDays(AS_OF, 12) });
+  });
+
+  it("gives the lowest point when the balance starts under the buffer", () => {
+    const p = makeProjection({
+      start: 150,
+      events: [{ date: addDays(AS_OF, 12), name: "Rent", amount: -50 }],
+    });
+    const series = buildChartSeries(p, undefined, horizon(p, 3));
+    expect(lowNote(series, 3, false, 200)).toMatchObject({ kind: "low", balance: 100 });
+  });
+
+  it("doesn't warn when the balance only touches the buffer", () => {
+    const p = makeProjection({
+      start: 400,
+      events: [{ date: addDays(AS_OF, 12), name: "Rent", amount: -200 }],
+    });
+    const series = buildChartSeries(p, undefined, horizon(p, 3));
+    expect(lowNote(series, 3, false, 200)).toMatchObject({ kind: "low", balance: 200 });
+  });
+});
+
+describe("lowBalanceLabel", () => {
+  it("names the first low day", () => {
+    expect(lowBalanceLabel({ date: "2027-01-14", balance: 150 }, "2026-12-20")).toBe(
+      "Low by 14 Jan",
+    );
+  });
+
+  it("says now when the account is already low", () => {
+    expect(lowBalanceLabel({ date: "2026-12-20", balance: 150 }, "2026-12-20")).toBe("Low now");
   });
 });
 

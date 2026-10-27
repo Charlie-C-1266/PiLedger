@@ -4,6 +4,7 @@ import type {
   BalanceProjectionEvent,
   BalanceProjectionHorizon,
   Frequency,
+  LowBalance,
 } from "../../types";
 
 /**
@@ -310,21 +311,37 @@ export function monthEnds(series: ChartSeries): ChartRow[] {
 export type LowNote =
   /** "Goes overdrawn on 27 Jan." */
   | { kind: "overdrawn"; date: string }
+  /** "Drops below your £200 buffer on 14 Jan." */
+  | { kind: "buffer"; threshold: number; date: string }
   /** "Lowest point in the next 3 months: £x on 2 Nov." */
   | { kind: "low"; phrase: string; balance: number; date: string; today: boolean };
 
 /**
  * What the note under the chart says about the selected horizon. An account
  * that's in credit today but dips below zero "goes overdrawn" on its first
- * negative day; otherwise the note gives the lowest point. Debt accounts hold
- * the amount owed, where neither reading applies, so they get none.
+ * negative day. Short of that, one that starts at or above its "Warn me below"
+ * `threshold` but dips under it "drops below your buffer" on the first such
+ * day. Otherwise the note gives the lowest point. Debt accounts hold the
+ * amount owed, where none of these readings apply, so they get none.
  */
-export function lowNote(series: ChartSeries, months: number, isDebt: boolean): LowNote | null {
+export function lowNote(
+  series: ChartSeries,
+  months: number,
+  isDebt: boolean,
+  threshold = 0,
+): LowNote | null {
   if (isDebt) return null;
   const { rows, todayIndex } = series;
-  if (rowValue(rows[todayIndex]) >= 0) {
-    const negative = rows.findIndex((r, k) => k > todayIndex && rowValue(r) < 0);
+  const start = rowValue(rows[todayIndex]);
+  const firstBelow = (limit: number) =>
+    rows.findIndex((r, k) => k > todayIndex && rowValue(r) < limit);
+  if (start >= 0) {
+    const negative = firstBelow(0);
     if (negative >= 0) return { kind: "overdrawn", date: rows[negative].date };
+  }
+  if (threshold > 0 && start >= threshold) {
+    const below = firstBelow(threshold);
+    if (below >= 0) return { kind: "buffer", threshold, date: rows[below].date };
   }
   const low = lowPoint(series);
   return {
@@ -342,4 +359,11 @@ export function includesNote(rate: number | null | undefined, isDebt: boolean): 
   const interest =
     !isDebt && rate && rate > 0 ? ` and ${rate.toFixed(2)}% interest, paid monthly` : "";
   return `Projections use this account's scheduled transactions${interest}. One-off spending isn't predicted.`;
+}
+
+/** The tile chip for an account projected to run low: "Low by 14 Jan", or
+ * "Low now" when it's already under its threshold. `today` is a local
+ * `YYYY-MM-DD`. */
+export function lowBalanceLabel(low: LowBalance, today: string = isoDay(new Date())): string {
+  return low.date <= today ? "Low now" : `Low by ${dayShort(low.date)}`;
 }

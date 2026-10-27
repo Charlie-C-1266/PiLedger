@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance, removeAccount, updateAccount } from "../api/client";
 import { useMoney } from "../privacy/useMoney";
 import { INSTITUTION_GROUPS, OTHER } from "../lib/institutions";
+import { currencySymbol } from "../lib/currency";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
@@ -19,9 +20,22 @@ interface Props {
   onDeleted?: () => void;
 }
 
+/** The "Warn me below" input as an amount: null when left empty, NaN when it
+ * isn't a non-negative number. Thousands separators are allowed. */
+function parseThreshold(raw: string): number | null {
+  const text = raw.trim().replace(/,/g, "");
+  if (!text) return null;
+  const value = Number(text);
+  return Number.isFinite(value) && value >= 0 ? value : NaN;
+}
+
 export default function EditAccountModal({ account, onClose, onDeleted }: Props) {
   const { fmt } = useMoney();
+  const thresholdId = useId();
   const [balance, setBalance] = useState("");
+  const [threshold, setThreshold] = useState(
+    account.low_balance_threshold != null ? String(account.low_balance_threshold) : ""
+  );
   const [color, setColor] = useState(account.color || "#6366f1");
   const [institution, setInstitution] = useState(account.institution ?? "");
   const [institutionName, setInstitutionName] = useState(
@@ -61,6 +75,12 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
       updateAccount(account.id, { closed: nextClosed }),
   });
 
+  // Null clears it back to warning only below zero.
+  const thresholdMutation = useMutation({
+    mutationFn: (value: number | null) =>
+      updateAccount(account.id, { low_balance_threshold: value }),
+  });
+
   // Sent as a pair: the API rejects a custom name on a catalogue slug and
   // requires one on "other", so switching between them has to move both fields
   // in the same request.
@@ -74,6 +94,11 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
 
   const customName = institutionName.trim();
   const needsCustomName = institution === OTHER;
+  // The low-balance warning reads "projected to run low", which only fits
+  // money held: credit cards and loans don't get one.
+  const warnsLow = account.type !== "credit" && account.type !== "loan";
+  const thresholdValue = parseThreshold(threshold);
+  const thresholdInvalid = Number.isNaN(thresholdValue);
 
   const handleSave = async () => {
     const colorChanged = color !== (account.color || "#6366f1");
@@ -82,16 +107,20 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
     const institutionChanged =
       institution !== (account.institution ?? "") ||
       (needsCustomName && customName !== (account.institution_name ?? ""));
+    const thresholdChanged =
+      warnsLow && thresholdValue !== (account.low_balance_threshold ?? null);
     const balanceParsed = parseFloat(balance);
     const hasBalance = !isNaN(balanceParsed);
 
     if (needsCustomName && !customName) return;
+    if (warnsLow && thresholdInvalid) return;
     if (
       !hasBalance &&
       !colorChanged &&
       !flagChanged &&
       !closedChanged &&
-      !institutionChanged
+      !institutionChanged &&
+      !thresholdChanged
     )
       return;
 
@@ -100,6 +129,7 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
     if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
     if (closedChanged) await closedMutation.mutateAsync(closed);
     if (institutionChanged) await institutionMutation.mutateAsync();
+    if (thresholdChanged) await thresholdMutation.mutateAsync(thresholdValue);
 
     inv.accountChanged();
     onClose();
@@ -111,6 +141,7 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
     flagMutation.isPending ||
     closedMutation.isPending ||
     institutionMutation.isPending ||
+    thresholdMutation.isPending ||
     deleteMutation.isPending;
 
   return (
@@ -163,6 +194,33 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
         )}
 
         <ColorPicker value={color} onChange={setColor} />
+
+        {warnsLow && (
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor={thresholdId}>
+              Warn me below
+            </label>
+            <input
+              id={thresholdId}
+              className={styles.input}
+              placeholder={`${currencySymbol(account.currency)}0.00`}
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
+              aria-describedby={`${thresholdId}-hint`}
+              aria-invalid={thresholdInvalid || undefined}
+            />
+            <span
+              className={`${styles.fieldHint} ${thresholdInvalid ? styles.fieldError : ""}`}
+              id={`${thresholdId}-hint`}
+            >
+              {thresholdInvalid
+                ? "Enter an amount of zero or more, or leave it empty."
+                : `Show a warning when this account is projected to fall below this amount. Leave empty to warn only below ${currencySymbol(account.currency)}0.`}
+            </span>
+          </div>
+        )}
 
         <ToggleSwitch
           label="Count toward net worth"

@@ -3,7 +3,9 @@ Edge-case and boundary tests: unusual values, multi-step flows,
 and scenarios that sit at the boundary of normal operation.
 """
 
-import math
+import pytest
+
+from services.projection import monthly_interest_cents
 
 
 # ── Balance boundary values ───────────────────────────────────────────────────
@@ -68,8 +70,12 @@ def test_interest_rate_fractional_precision(alice):
     ).json()["id"]
     alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
     proj = alice.get("/api/projections?months=12").json()[0]
-    expected = round(1000.0 * math.pow(1 + (4.75 / 100) / 12, 12), 2)
-    assert proj["1yr"] == expected
+    # 4.75% AER: twelve monthly credits, each rounded to the cent.
+    cents = 100_000
+    for _ in range(12):
+        cents += monthly_interest_cents(cents, 4.75)
+    assert proj["1yr"] == cents / 100
+    assert proj["1yr"] == pytest.approx(1047.50, abs=0.05)
 
 
 def test_high_interest_rate_does_not_crash(alice):

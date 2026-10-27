@@ -80,6 +80,8 @@ HEX_COLOR_PATTERN = r"^#[0-9a-fA-F]{6}$"
 # ─── Domain enums ─────────────────────────────────────────────────────────────
 
 AccountType = Literal["current", "savings", "loan", "credit", "invest"]
+# Account types whose stored balance is the amount owed rather than held.
+DEBT_TYPES: frozenset[str] = frozenset({"credit", "loan"})
 RangeKey = Literal["7D", "30D", "90D", "1Y"]
 RANGE_TO_DAYS: dict[str, int] = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365}
 

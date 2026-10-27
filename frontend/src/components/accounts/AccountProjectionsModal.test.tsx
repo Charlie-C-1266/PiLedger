@@ -103,7 +103,15 @@ describe("AccountProjectionsModal", () => {
   it("prompts to add a savings account when there are none", () => {
     mockProjections([]);
     renderModal();
-    expect(screen.getByText(/add a savings account with an interest rate/i)).toBeInTheDocument();
+    expect(screen.getByText(/add a savings account to see/i)).toBeInTheDocument();
+  });
+
+  it("says the figures come from scheduled transactions and interest", () => {
+    mockProjections([projA]);
+    renderModal();
+    expect(
+      screen.getByText(/from scheduled transactions and interest/i),
+    ).toBeInTheDocument();
   });
 
   it("renders a milestone card and a line per account", () => {

@@ -38,9 +38,9 @@ Personal access tokens for headless clients (CLI, scheduled scripts, an MCP serv
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/api/accounts` | — | Array of account objects, each with `current_balance` and `last_updated` joined from the latest `balance_history` row |
-| `POST` | `/api/accounts` | `{name, type, subtype?, institution?, institution_name?, currency?, interest_rate?, color?}` | Created account object. `subtype` defaults to `general` and must be valid for the given `type` (see the `SUBTYPES_BY_TYPE` map in `constants.py`); `currency` defaults to `GBP`. |
-| `PUT` | `/api/accounts/{id}` | `{name?, subtype?, institution?, institution_name?, currency?, interest_rate?, color?}` | Updated account object. `type` is not editable after creation. Sending `institution: null` clears the provider; every other field is left unchanged when null. |
+| `GET` | `/api/accounts` | — | Array of account objects, each with `current_balance` and `last_updated` joined from the latest `balance_history` row, plus `low_balance_threshold` and `low_balance` (`{date, balance}` of the first day in the next 30 that an open asset account is projected below its threshold, zero when unset; else null) |
+| `POST` | `/api/accounts` | `{name, type, subtype?, institution?, institution_name?, currency?, interest_rate?, color?, low_balance_threshold?}` | Created account object. `subtype` defaults to `general` and must be valid for the given `type` (see the `SUBTYPES_BY_TYPE` map in `constants.py`); `currency` defaults to `GBP`. |
+| `PUT` | `/api/accounts/{id}` | `{name?, subtype?, institution?, institution_name?, currency?, interest_rate?, color?, low_balance_threshold?}` | Updated account object. `type` is not editable after creation. Sending `institution: null` clears the provider and `low_balance_threshold: null` clears the warning amount (≥ 0, asset accounts only: 400 on credit/loan); every other field is left unchanged when null. |
 | `DELETE` | `/api/accounts/{id}` | — | `{ok}` |
 
 Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
@@ -67,7 +67,7 @@ Account `type` must be one of: `current`, `savings`, `loan`, `credit`, `invest`.
 | `GET` | `/api/summary` | — | `{total, total_current, total_savings, total_loans, total_credit, total_invest, assets, debts, savings_rate, account_count, base_currency, missing_rates}` — `total` is **net worth** (`assets − debts`). `assets` = current + savings + invest; `debts` = loans + credit. `savings_rate` is savings as a percentage of assets. `missing_rates` is an array of currency codes that have no exchange rate configured. |
 | `GET` | `/api/history/all` | `?days=90` | Array of `{id, name, color, type, history[]}` for accounts that have at least one entry in the window |
 | `GET` | `/api/history/networth` | `?range=7D\|30D\|90D\|1Y` | Array of `{date, value}` net-worth data points over the selected range, converted to the user's base currency. Used by the Overview net-worth chart. |
-| `GET` | `/api/projections` | `?months=24` | Array of projection objects for each savings account; includes pre-computed `1yr`, `2yr`, `5yr` values and a full `points[]` array for charting |
+| `GET` | `/api/projections` | `?months=24` | Array of projection objects for each open savings account, from the same projection as `/api/accounts/{id}/projection` (scheduled items and AER interest); includes pre-computed `1yr`, `2yr`, `5yr` values and a monthly `points[]` array for charting |
 
 ## Budget (zero-based envelopes)
 

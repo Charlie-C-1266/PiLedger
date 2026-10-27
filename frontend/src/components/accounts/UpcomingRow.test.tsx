@@ -43,8 +43,18 @@ describe("UpcomingRow", () => {
     expect(screen.getByText("−£112.40 after").className).toMatch(/low/);
   });
 
+  it("tints the balance after when it goes below the account's warning amount", () => {
+    renderRow({ event: { ...NETFLIX, balance_after: 150 }, warnBelow: 200 });
+    expect(screen.getByText("£150.00 after").className).toMatch(/low/);
+  });
+
+  it("leaves a balance at or above the warning amount untinted", () => {
+    renderRow({ event: { ...NETFLIX, balance_after: 200 }, warnBelow: 200 });
+    expect(screen.getByText("£200.00 after").className).not.toMatch(/low/);
+  });
+
   it("doesn't tint a debt account's balance (the amount owed)", () => {
-    renderRow({ event: { ...NETFLIX, balance_after: -112.4 }, warnBelowZero: false });
+    renderRow({ event: { ...NETFLIX, balance_after: -112.4 }, warnBelow: null });
     expect(screen.getByText("−£112.40 after").className).not.toMatch(/low/);
   });
 

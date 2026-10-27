@@ -24,10 +24,12 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Scheduled payments, income and transfers can post themselves on their due date, keeping account balances up to date.
 - Scheduled items can be set to post automatically, with an Auto badge and a repeat icon on the transactions they create.
 - Account pages show projected balances over 1, 3, 6 and 12 months and the scheduled transactions coming up, with Post now, Skip and Undo.
+- Accounts can have a low-balance warning amount; Accounts and Overview flag any account projected to fall below it in the next 30 days.
 
 ### Changed
 
 - CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
+- The savings Projections window now uses the same projection as account pages, including scheduled transfers and AER interest.
 - The guide and docs now cover scheduled transactions, automatic posting and the account page; the guide's Subscriptions page is now Scheduled (old links still open it).
 
 ## [3.3.0] — 2026-08-24

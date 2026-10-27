@@ -4,7 +4,8 @@ Balance recording, history, the activity rollup and the balance projection live
 here alongside the account routes they hang off (`/api/accounts/{aid}/balance`,
 `/{aid}/history`, `/{aid}/activity`, `/{aid}/projection`). The shared
 balance-adjustment helpers used by transactions/goals live in
-``services/accounts.py``, and the projection maths in ``services/projection.py``.
+``services/accounts.py``, the projection maths in ``services/projection.py`` and
+its database loading in ``services/projection_inputs.py``.
 """
 
 from datetime import date, datetime, timedelta, timezone
@@ -13,7 +14,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from constants import ISO_FMT, MAX_DAYS, SUBTYPES_BY_TYPE
+from constants import DEBT_TYPES, ISO_FMT, MAX_DAYS, SUBTYPES_BY_TYPE
 from db import db, from_cents, to_cents, utcnow_iso
 from auth import require_auth
 from schemas import (
@@ -24,21 +25,25 @@ from schemas import (
     AccountProjectionOut,
     BalanceEntryOut,
     BalanceIn,
+    LowBalanceOut,
     OkOut,
     ProjectionEventOut,
     ProjectionHorizonOut,
     ProjectionPointOut,
     ProjectionSummaryOut,
+    check_low_balance_threshold,
     validated_institution,
 )
 from services.accounts import LATEST_BALANCE_JOIN, latest_balance_cents
-from services.posting import handled_dates
-from services.projection import ScheduledItem, project
+from services.projection import LOW_BALANCE_DAYS, first_below
+from services.projection_inputs import Schedule, load_schedule, project_account
 
 router = APIRouter(tags=["accounts"])
 
 
-def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
+def _account_row_to_out(
+    row: sqlite3.Row, low_balance: LowBalanceOut | None = None
+) -> AccountOut:
     """Map an ``accounts`` row to ``AccountOut``, filling sensible defaults for
     legacy NULLs and surfacing the joined latest balance when present."""
     return AccountOut(
@@ -59,13 +64,49 @@ def _account_row_to_out(row: sqlite3.Row) -> AccountOut:
         if "current_balance_cents" in row.keys()
         else None,
         last_updated=row["last_updated"] if "last_updated" in row.keys() else None,
+        low_balance_threshold=from_cents(row["low_balance_threshold_cents"]),
+        low_balance=low_balance,
     )
+
+
+def _threshold_cents(threshold: float | None) -> int | None:
+    """A "Warn me below" amount in cents; None (unset) stays None."""
+    return None if threshold is None else to_cents(threshold)
+
+
+def _low_balance(
+    row: sqlite3.Row, schedule: Schedule, today: date
+) -> LowBalanceOut | None:
+    """When an open asset account is projected to close below its threshold
+    (zero when unset) in today and the next ``LOW_BALANCE_DAYS``, the first
+    such day and its balance; otherwise None. ``row`` carries the joined
+    ``current_balance_cents``."""
+    if row["closed"] or row["type"] in DEBT_TYPES:
+        return None
+    projection = project_account(
+        row,
+        row["current_balance_cents"] or 0,
+        schedule,
+        today,
+        days=LOW_BALANCE_DAYS,
+    )
+    low = first_below(projection.points, row["low_balance_threshold_cents"] or 0)
+    if low is None:
+        return None
+    return LowBalanceOut(date=low.date.isoformat(), balance=_money(low.balance_cents))
 
 
 @router.get("/api/accounts", response_model=list[AccountOut])
 def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
     """List the user's accounts, each joined to its most recent balance-history
-    entry (current balance + when it was last updated), oldest first."""
+    entry (current balance + when it was last updated), oldest first.
+
+    Each open asset account also carries ``low_balance`` when its projection
+    over the next 30 days dips below its "Warn me below" amount (zero when
+    unset). The schedule is loaded once and each account projected over that
+    short window, so the list stays one cheap pass per account.
+    """
+    today = date.today()
     with db() as conn:
         rows = conn.execute(
             f"""
@@ -79,7 +120,10 @@ def list_accounts(uid: int = Depends(require_auth)) -> list[AccountOut]:
         """,
             (uid,),
         ).fetchall()
-    return [_account_row_to_out(r) for r in rows]
+        if not rows:
+            return []
+        schedule = load_schedule(conn, uid, today)
+    return [_account_row_to_out(r, _low_balance(r, schedule, today)) for r in rows]
 
 
 @router.post("/api/accounts", status_code=201, response_model=AccountOut)
@@ -89,8 +133,9 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
     with db() as conn:
         cur = conn.execute(
             "INSERT INTO accounts(user_id, name, type, subtype, institution, institution_name,"
-            " currency, interest_rate, color, counts_to_net_worth, closed)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            " currency, interest_rate, color, counts_to_net_worth, closed,"
+            " low_balance_threshold_cents)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 data.name,
@@ -103,6 +148,7 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
                 data.color,
                 int(data.counts_to_net_worth),
                 int(data.closed),
+                _threshold_cents(data.low_balance_threshold),
             ),
         )
         conn.commit()
@@ -121,12 +167,13 @@ def update_account(
     """Patch the supplied fields of one of the user's accounts (404 if not
     theirs).
 
-    Only non-None fields are applied, except the institution pair — those are
-    nullable columns where clearing is a meaningful edit ("no longer recorded"),
-    so an explicit null there reaches the UPDATE. Subtype and institution are
-    both re-checked against the row's existing values here because a partial
-    patch omits the other half of each pair, so the schema-level validators
-    can't see it.
+    Only non-None fields are applied, except the institution pair and the
+    low-balance threshold — nullable columns where clearing is a meaningful edit
+    ("no longer recorded", "warn only below zero"), so an explicit null there
+    reaches the UPDATE. Subtype, institution and threshold are re-checked
+    against the row's existing values here because a partial patch omits the
+    account's type and the other half of each pair, so the schema-level
+    validators can't see them.
     """
     with db() as conn:
         existing = conn.execute(
@@ -137,7 +184,11 @@ def update_account(
         if not existing:
             raise HTTPException(404, "Not found")
         set_fields = data.model_fields_set
-        updates = {k: v for k, v in data.model_dump().items() if v is not None}
+        updates = {
+            k: v
+            for k, v in data.model_dump(exclude={"low_balance_threshold"}).items()
+            if v is not None
+        }
         # Cross-field check: subtype must be valid for the row's existing type.
         # The Pydantic schema can't enforce this on a partial patch because
         # `type` isn't in the payload.
@@ -170,6 +221,16 @@ def update_account(
                 raise HTTPException(400, str(exc)) from exc
             updates["institution"] = slug
             updates["institution_name"] = name
+        if "low_balance_threshold" in set_fields:
+            try:
+                check_low_balance_threshold(
+                    existing["type"], data.low_balance_threshold
+                )
+            except ValueError as exc:
+                raise HTTPException(400, str(exc)) from exc
+            updates["low_balance_threshold_cents"] = _threshold_cents(
+                data.low_balance_threshold
+            )
         if updates:
             sets = ", ".join(f"{k}=?" for k in updates)
             conn.execute(
@@ -334,29 +395,9 @@ def get_activity(
 
 # ─── Balance projection ───────────────────────────────────────────────────────
 
-# The account page projects 12 months; P8's projections screen goes further.
+# The account page projects 12 months; the savings Projections window's
+# milestones reach 5 years.
 MAX_PROJECTION_MONTHS = 60
-
-
-def _scheduled_item(row: sqlite3.Row) -> ScheduledItem:
-    """Map a ``subscriptions`` row (joined to both account names) to the
-    projection's input."""
-    return ScheduledItem(
-        id=row["id"],
-        name=row["name"],
-        kind=row["kind"],
-        frequency=row["frequency"],
-        category=row["category"] or "",
-        amount_cents=row["amount_cents"],
-        start_date=date.fromisoformat(row["start_date"]),
-        end_date=date.fromisoformat(row["end_date"]) if row["end_date"] else None,
-        account_id=row["account_id"],
-        to_account_id=row["to_account_id"],
-        account_name=row["account_name"],
-        to_account_name=row["to_account_name"],
-        active=bool(row["active"]),
-        auto_post=bool(row["auto_post"]),
-    )
 
 
 def _money(cents: int) -> float:
@@ -389,28 +430,8 @@ def get_projection(
         if not acct:
             raise HTTPException(404, "Not found")
         start_cents = latest_balance_cents(conn, aid) or 0
-        rows = conn.execute(
-            "SELECT s.*, a.name AS account_name, t.name AS to_account_name"
-            " FROM subscriptions s"
-            " LEFT JOIN accounts a ON a.id = s.account_id AND a.user_id = s.user_id"
-            " LEFT JOIN accounts t ON t.id = s.to_account_id AND t.user_id = s.user_id"
-            " WHERE s.user_id=? AND (s.account_id=? OR s.to_account_id=?)",
-            (uid, aid, aid),
-        ).fetchall()
-        # Occurrences already posted or skipped are in the balance (or never
-        # will be), so the projection leaves them out.
-        by_item = handled_dates(conn, uid, [r["id"] for r in rows], start=today)
-        handled = {(sid, day) for sid, days in by_item.items() for day in days}
-    result = project(
-        account_id=aid,
-        account_type=acct["type"],
-        interest_rate=acct["interest_rate"],
-        start_balance_cents=start_cents,
-        items=[_scheduled_item(r) for r in rows],
-        today=today,
-        months=months,
-        handled=handled,
-    )
+        schedule = load_schedule(conn, uid, today, account_id=aid)
+    result = project_account(acct, start_cents, schedule, today, months=months)
     summary = result.summary
     return AccountProjectionOut(
         account_id=aid,
