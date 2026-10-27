@@ -4,8 +4,10 @@ Rolls an account's current balance forward a day at a time through its
 scheduled items and monthly interest, giving everything the account page's
 projection half draws: a closing balance per day, the 1/3/6/12-month horizon
 tiles, the dated events (each with the balance after it) behind the Upcoming
-list, and the low point / first overdrawn day. The router loads the rows and
-turns cents into money; everything here is integer cents and ``date``.
+list, and the low point / first overdrawn day. The same run backs the savings
+Projections window and the low-balance warning on account tiles.
+``services/projection_inputs`` loads the rows and routers turn cents into
+money; everything here is integer cents and ``date``.
 Recurrence maths comes from ``services/subscriptions`` and the debt sign rule
 from ``services/accounts.balance_delta``, so neither is restated here.
 
@@ -32,11 +34,16 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from services.accounts import DEBT_TYPES, balance_delta
+from constants import DEBT_TYPES
+from services.accounts import balance_delta
 from services.subscriptions import add_months, occurrences_between
 
 # The account page's horizon tiles, in months from today.
 HORIZON_MONTHS = (1, 3, 6, 12)
+
+# How far ahead the low-balance warning looks: today and the next 30 days, the
+# same window as the account page's Upcoming card.
+LOW_BALANCE_DAYS = 30
 
 # How a projected interest credit reads in Upcoming. The category is the
 # built-in income category, so the UI's category colours and icons apply.
@@ -172,17 +179,20 @@ def project(
     start_balance_cents: int,
     items: Iterable[ScheduledItem],
     today: date,
-    months: int,
+    months: int = 0,
+    days: int = 0,
     handled: Set[tuple[int, date]] = frozenset(),
 ) -> Projection:
     """Project the account's balance from ``today`` to ``months`` calendar
-    months ahead (month-end clamped, so 31 Jan + 1 month is 28/29 Feb).
+    months (month-end clamped, so 31 Jan + 1 month is 28/29 Feb) and then
+    ``days`` days ahead. Pass one of the two: the account page asks for months,
+    the low-balance check for a fixed number of days.
 
     ``handled`` holds the ``(subscription_id, occurrence date)`` pairs already
     posted or skipped; those occurrences are left out. Horizons are reported for
     each of ``HORIZON_MONTHS`` that fits inside the window.
     """
-    end = add_months(today.day, today.year, today.month, months)
+    end = add_months(today.day, today.year, today.month, months) + timedelta(days=days)
 
     # Every pending occurrence in the window, grouped by day.
     due: dict[date, list[tuple[int, str | None, ScheduledItem]]] = defaultdict(list)
@@ -250,9 +260,9 @@ def project(
 
     horizons = []
     for n in HORIZON_MONTHS:
-        if n > months:
-            break
         horizon_date = add_months(today.day, today.year, today.month, n)
+        if horizon_date > end:
+            break
         closing = points[(horizon_date - today).days].balance_cents
         horizons.append(
             Horizon(n, horizon_date, closing, closing - start_balance_cents)
@@ -280,3 +290,26 @@ def _summarise(points: list[Point], account_type: str) -> Summary:
         first_negative_date=first_negative,
         end_balance_cents=points[-1].balance_cents,
     )
+
+
+def monthly_points(result: Projection, today: date, months: int) -> list[Point]:
+    """One point per calendar month for the savings Projections window: the
+    start balance today, then the closing balance ``m`` months on (month-end
+    clamped, like the horizons) for each ``m`` up to ``months``, which must fit
+    inside ``result``. Month 12 is therefore the 12-month horizon."""
+    out = [Point(today, result.start_balance_cents)]
+    for m in range(1, months + 1):
+        day = add_months(today.day, today.year, today.month, m)
+        out.append(result.points[(day - today).days])
+    return out
+
+
+def first_below(points: Iterable[Point], threshold_cents: int) -> Point | None:
+    """The first day the balance closes below ``threshold_cents``, or None.
+
+    Drives the low-balance warning: an asset account is low when its projection
+    over the next ``LOW_BALANCE_DAYS`` dips under the User's "Warn me below"
+    amount (zero when they haven't set one). Today counts, so an account
+    already under the amount is low from today.
+    """
+    return next((p for p in points if p.balance_cents < threshold_cents), None)

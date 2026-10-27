@@ -102,11 +102,12 @@ function ChartTooltip({
 }
 
 /**
- * Savings-account projections: a chart of each account's compound-interest
- * trajectory plus per-account 1/2/5-year milestone cards, with colour-coded
- * chips to focus on specific accounts. Data comes from the server's
- * `/api/projections` (figures stay in each account's own currency). Mirrors the
- * goal-projection modal's shape, but at the account level.
+ * Savings-account projections: a chart of each account's projected balance
+ * plus per-account 1/2/5-year milestone cards, with colour-coded chips to focus
+ * on specific accounts. Data comes from the server's `/api/projections`, which
+ * runs the account page's projection (scheduled transactions and AER interest)
+ * and samples it monthly; figures stay in each account's own currency. Mirrors
+ * the goal-projection modal's shape, but at the account level.
  */
 export default function AccountProjectionsModal({ currency, onClose }: Props) {
   const { fmt, fmtShort, hidden } = useMoney();
@@ -135,8 +136,9 @@ export default function AccountProjectionsModal({ currency, onClose }: Props) {
           <div>
             <h2 className={styles.title}>Savings projections</h2>
             <p className={styles.sub}>
-              Projected balance with monthly compound interest, per savings
-              account. Milestones are at 1, 2 and 5 years.
+              Projected balance from scheduled transactions and interest, per
+              savings account, as on each account's page. Milestones are at 1, 2
+              and 5 years.
             </p>
           </div>
           <button className={styles.close} onClick={onClose} aria-label="Close">
@@ -148,8 +150,7 @@ export default function AccountProjectionsModal({ currency, onClose }: Props) {
           <div className={styles.empty}>Loading projections…</div>
         ) : all.length === 0 ? (
           <div className={styles.empty}>
-            Add a savings account with an interest rate to see its projected
-            growth.
+            Add a savings account to see its projected growth.
           </div>
         ) : (
           <>

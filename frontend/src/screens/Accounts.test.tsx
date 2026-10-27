@@ -187,6 +187,16 @@ describe("Accounts tiles open the account page", () => {
     );
   });
 
+  it("flags an account projected to run low, on the tile and in its link name", () => {
+    renderWithRoutes([
+      { ...MONZO, low_balance: { date: "2099-01-14", balance: 150 } },
+      CHASE_CURRENT,
+    ]);
+    const link = screen.getByRole("link", { name: "Monzo Pot, £500.00, Low by 14 Jan" });
+    expect(within(link).getByText("Low by 14 Jan").className).toMatch(/lowBadge/);
+    expect(screen.getByRole("link", { name: "Everyday, £1,000.00" })).toBeInTheDocument();
+  });
+
   it("navigates on a plain click", async () => {
     renderWithRoutes([CHASE_CURRENT, MONZO]);
     await userEvent.click(screen.getByRole("link", { name: /Monzo Pot/ }));

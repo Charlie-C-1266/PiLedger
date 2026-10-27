@@ -9,7 +9,15 @@ from datetime import date, timedelta
 import pytest
 
 from services.accounts import balance_delta
-from services.projection import ScheduledItem, monthly_interest_cents, project
+from services.projection import (
+    LOW_BALANCE_DAYS,
+    Point,
+    ScheduledItem,
+    first_below,
+    monthly_interest_cents,
+    monthly_points,
+    project,
+)
 
 TODAY = date(2026, 10, 26)
 ACCOUNT = 1
@@ -334,6 +342,68 @@ def test_only_horizons_inside_the_window_are_reported():
     assert [h.months for h in _project(months=3).horizons] == [1, 3]
     assert [h.months for h in _project(months=60).horizons] == [1, 3, 6, 12]
     assert len(_project(months=60).points) == 1827
+
+
+def test_a_days_window_ends_that_many_days_ahead():
+    result = _project(months=0, days=LOW_BALANCE_DAYS)
+
+    assert LOW_BALANCE_DAYS == 30
+    assert len(result.points) == 31  # today and the next 30 days
+    assert result.points[-1].date == date(2026, 11, 25)
+    # Only whole months that fit get a horizon: 1 month (26 Nov) doesn't.
+    assert result.horizons == []
+    assert [h.months for h in _project(months=0, days=31).horizons] == [1]
+
+
+def test_a_days_window_matches_the_same_days_of_a_months_window():
+    items = [_item(frequency="weekly", amount_cents=4_000)]
+    short = _project(items, months=0, days=30, interest_rate=5.0)
+    long = _project(items, months=12, interest_rate=5.0)
+
+    assert short.points == long.points[:31]
+
+
+def test_monthly_points_sample_the_closing_balance_each_month():
+    # 31 Jan clamps to 28 Feb, as the horizons do.
+    today = date(2027, 1, 31)
+    rent = _item(start_date=date(2027, 2, 10), amount_cents=50_000)
+    result = _project([rent], today=today, months=3)
+
+    points = monthly_points(result, today, 3)
+
+    assert [p.date for p in points] == [
+        today,
+        date(2027, 2, 28),
+        date(2027, 3, 31),
+        date(2027, 4, 30),
+    ]
+    assert [p.balance_cents for p in points] == [100_000, 50_000, 0, -50_000]
+    assert points[3].balance_cents == result.horizons[1].balance_cents
+
+
+def test_monthly_points_start_from_the_start_balance_not_todays_close():
+    due_today = _item(amount_cents=2_500)
+    result = _project([due_today], months=1)
+
+    points = monthly_points(result, TODAY, 1)
+
+    assert result.points[0].balance_cents == 97_500
+    assert points[0] == Point(TODAY, 100_000)
+
+
+def test_first_below_finds_the_first_day_under_the_threshold():
+    points = [
+        Point(TODAY, 30_000),
+        Point(TODAY + timedelta(days=1), 20_000),
+        Point(TODAY + timedelta(days=2), 15_000),
+        Point(TODAY + timedelta(days=3), -5_000),
+    ]
+
+    assert first_below(points, 20_001) == points[1]
+    assert first_below(points, 20_000) == points[2]  # touching it isn't below
+    assert first_below(points, 0) == points[3]
+    assert first_below(points, 31_000) == points[0]  # already under: today
+    assert first_below(points, -5_000) is None
 
 
 # ── Item lifecycle and handled dates ─────────────────────────────────────────

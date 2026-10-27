@@ -13,6 +13,7 @@ import Skeleton from "../components/Skeleton";
 import AccountHistoryChart from "../components/charts/AccountHistoryChart";
 import InstitutionMark from "../components/InstitutionMark";
 import { resolveInstitution } from "../lib/institutions";
+import { lowBalanceLabel } from "./account/projectionModel";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType, RangeKey } from "../types";
@@ -83,14 +84,17 @@ function groupByInstitution(accounts: Account[]): Grouped[] {
 }
 
 /** An account tile that opens the account's own page. A plain tap or click
- * navigates; editing lives behind that page's Edit button. */
+ * navigates; editing lives behind that page's Edit button. The link's name
+ * replaces the tile's text, so it repeats the low-balance chip too. */
 function AccountLink({ account }: { account: Account }) {
   const { fmt } = useMoney();
+  const label = [account.name, fmt(account.current_balance ?? 0, account.currency)];
+  if (account.low_balance) label.push(lowBalanceLabel(account.low_balance));
   return (
     <Link
       to={`/accounts/${account.id}`}
       className={styles.tileLink}
-      aria-label={`${account.name}, ${fmt(account.current_balance ?? 0, account.currency)}`}
+      aria-label={label.join(", ")}
     >
       <AccountTile account={account} badge style={{ width: "100%", height: 150 }} />
     </Link>

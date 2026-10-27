@@ -222,6 +222,38 @@
   font-size: 12px;
 }
 
+/* ── A labelled field with a hint under it ("Warn me below") ── */
+
+.field {
+  margin-bottom: 20px;
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 8px;
+  font: 600 14px/1.2 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text);
+}
+
+.field .input {
+  margin-bottom: 6px;
+}
+
+/* "Check this": the hint turns into what to fix, in words as well as colour. */
+.field .input[aria-invalid="true"] {
+  border-color: var(--pl-warn);
+}
+
+.fieldHint {
+  display: block;
+  font: 400 12px/1.3 "Plus Jakarta Sans", sans-serif;
+  color: var(--pl-text-soft);
+}
+
+.fieldError {
+  color: var(--pl-warn);
+}
+
 /* ── Count-toward-net-worth toggle (ADR-0003) ──────────── */
 
 .toggleRow {

@@ -1150,7 +1150,6 @@ def stamped_v15_db(tmp_path, monkeypatch):
 def test_v15_db_climbs_to_current_version(stamped_v15_db):
     from db import SCHEMA_VERSION
 
-    assert SCHEMA_VERSION == 16
     assert _read_schema_version(stamped_v15_db) == SCHEMA_VERSION
 
 
@@ -1268,3 +1267,81 @@ def test_legacy_path_has_auto_post(migrated_db):
         migrated_db, "subscriptions"
     )
     assert "occurrence_date" in _table_columns(migrated_db, "subscription_postings")
+
+
+# ─── v17: the per-account low-balance threshold ──────────────────────────────
+
+
+@pytest.fixture
+def stamped_v16_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 16 whose accounts table predates
+    low_balance_threshold_cents, holding a current and a credit account.
+    init() must climb it to v17 with both left unset."""
+    db_path = tmp_path / "v16.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, _set_schema_version
+
+    init()
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("ALTER TABLE accounts DROP COLUMN low_balance_threshold_cents")
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES"
+            "(1, 1, 'Current', 'current'), (2, 1, 'Card', 'credit')"
+        )
+        _set_schema_version(conn, 16)
+        conn.commit()
+    finally:
+        conn.close()
+
+    init()
+    return db_path
+
+
+def test_v16_db_climbs_to_v17(stamped_v16_db):
+    from db import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == 17
+    assert _read_schema_version(stamped_v16_db) == SCHEMA_VERSION
+
+
+def test_v16_accounts_gain_an_unset_threshold(stamped_v16_db):
+    """_migrate_to_17 adds the column as NULL, so every existing account warns
+    only below zero until its User sets an amount."""
+    assert "low_balance_threshold_cents" in _table_columns(stamped_v16_db, "accounts")
+    conn = sqlite3.connect(str(stamped_v16_db))
+    try:
+        rows = conn.execute(
+            "SELECT id, name, low_balance_threshold_cents FROM accounts ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows == [(1, "Current", None), (2, "Card", None)]
+
+
+def test_v17_rerun_is_a_no_op(stamped_v16_db):
+    """Running init() again on a v17 DB leaves the column (and version) alone."""
+    from db import init, SCHEMA_VERSION
+
+    init()
+    assert _read_schema_version(stamped_v16_db) == SCHEMA_VERSION
+    conn = sqlite3.connect(str(stamped_v16_db))
+    try:
+        names = [r[1] for r in conn.execute("PRAGMA table_info(accounts)").fetchall()]
+    finally:
+        conn.close()
+    assert names.count("low_balance_threshold_cents") == 1
+
+
+def test_gated_path_adds_low_balance_threshold(stamped_v1_db):
+    assert "low_balance_threshold_cents" in _table_columns(stamped_v1_db, "accounts")
+
+
+def test_legacy_path_has_low_balance_threshold(migrated_db):
+    assert "low_balance_threshold_cents" in _table_columns(migrated_db, "accounts")

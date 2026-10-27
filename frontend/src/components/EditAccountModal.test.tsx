@@ -185,3 +185,76 @@ describe("EditAccountModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe("EditAccountModal low-balance warning", () => {
+  const field = () => screen.getByLabelText("Warn me below");
+  const save = () => userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+  it("offers an empty Warn me below field with a hint on an asset account", () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    expect(field()).toHaveValue("");
+    expect(field()).toHaveAccessibleDescription(
+      "Show a warning when this account is projected to fall below this amount. Leave empty to warn only below £0.",
+    );
+  });
+
+  it("prefills the stored amount", () => {
+    render(
+      <EditAccountModal account={makeAccount({ low_balance_threshold: 200 })} onClose={() => {}} />,
+      { wrapper },
+    );
+    expect(field()).toHaveValue("200");
+  });
+
+  it("saves a new amount", async () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    await userEvent.type(field(), "1,250.50");
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { low_balance_threshold: 1250.5 });
+  });
+
+  it("stores null when the field is cleared", async () => {
+    render(
+      <EditAccountModal account={makeAccount({ low_balance_threshold: 200 })} onClose={() => {}} />,
+      { wrapper },
+    );
+    await userEvent.clear(field());
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { low_balance_threshold: null });
+  });
+
+  it("won't save a negative amount, and says why", async () => {
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    await userEvent.type(field(), "-5");
+    await save();
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(field()).toHaveAttribute("aria-invalid", "true");
+    expect(field()).toHaveAccessibleDescription(
+      "Enter an amount of zero or more, or leave it empty.",
+    );
+  });
+
+  it("leaves the amount alone when it isn't changed", async () => {
+    render(
+      <EditAccountModal account={makeAccount({ low_balance_threshold: 200 })} onClose={() => {}} />,
+      { wrapper },
+    );
+    await userEvent.type(screen.getByPlaceholderText(/New balance/), "500");
+    await save();
+    expect(recordBalance).toHaveBeenCalledWith(1, 500);
+    expect(updateAccount).not.toHaveBeenCalled();
+  });
+
+  it("isn't offered on a credit card or a loan", () => {
+    const { unmount } = render(
+      <EditAccountModal account={makeAccount({ type: "credit" })} onClose={() => {}} />,
+      { wrapper },
+    );
+    expect(screen.queryByLabelText("Warn me below")).not.toBeInTheDocument();
+    unmount();
+    render(<EditAccountModal account={makeAccount({ type: "loan" })} onClose={() => {}} />, {
+      wrapper,
+    });
+    expect(screen.queryByLabelText("Warn me below")).not.toBeInTheDocument();
+  });
+});

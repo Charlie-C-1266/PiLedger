@@ -2,13 +2,16 @@ import { colorToGradient } from "../theme/swatches";
 import { useMoney } from "../privacy/useMoney";
 import { resolveInstitution } from "../lib/institutions";
 import InstitutionEmblem from "./InstitutionEmblem";
+import { lowBalanceLabel } from "../screens/account/projectionModel";
 import type { Account } from "../types";
 import styles from "./AccountTile.module.css";
 
 interface Props {
   account: Account;
   compact?: boolean;
-  /** Fill the parent's width at 168px tall — the account page's identity tile. */
+  /** Fill the parent's width at 168px tall — the account page's identity tile.
+   * It leaves out the "Low by …" chip, since that page's projection note
+   * already says when the balance runs low. */
   wide?: boolean;
   /** Show a "Set aside" badge when the account is excluded from net worth. */
   badge?: boolean;
@@ -41,6 +44,9 @@ export default function AccountTile({
     : badge && !account.counts_to_net_worth
       ? "Set aside"
       : null;
+  // Set by the server when this open asset account is projected below its
+  // "Warn me below" amount (zero when unset) in the next 30 days.
+  const low = wide ? null : account.low_balance;
 
   return (
     <div
@@ -82,7 +88,17 @@ export default function AccountTile({
             {fmt(account.current_balance ?? 0, account.currency)}
           </span>
         </span>
-        {badgeLabel && <span className={styles.badge}>{badgeLabel}</span>}
+        {(low || badgeLabel) && (
+          <span className={styles.badges}>
+            {/* pl-warn always pairs with words: the chip says what it means. */}
+            {low && (
+              <span className={`${styles.badge} ${styles.lowBadge}`}>
+                {lowBalanceLabel(low)}
+              </span>
+            )}
+            {badgeLabel && <span className={styles.badge}>{badgeLabel}</span>}
+          </span>
+        )}
       </div>
     </div>
   );

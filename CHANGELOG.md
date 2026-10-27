@@ -14,6 +14,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - CSV import no longer drops genuinely repeated same-day transactions (e.g. two identical fares) as duplicates; re-importing an export still skips rows already imported.
 - Updated `anyio`, `certifi` and `urllib3` to clear newly-disclosed security advisories flagged by the dependency and image scans.
 - Updated `filelock` (used only by the development dependency audit) to clear newly-disclosed security advisories.
+- Updated `msgpack` (also used only by the development dependency audit) to clear a newly-disclosed security advisory.
 
 ### Added
 
@@ -23,10 +24,12 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Scheduled payments, income and transfers can post themselves on their due date, keeping account balances up to date.
 - Scheduled items can be set to post automatically, with an Auto badge and a repeat icon on the transactions they create.
 - Account pages show projected balances over 1, 3, 6 and 12 months and the scheduled transactions coming up, with Post now, Skip and Undo.
+- Accounts can have a low-balance warning amount; Accounts and Overview flag any account projected to fall below it in the next 30 days.
 
 ### Changed
 
 - CSV import recognises transactions already posted from a schedule and no longer duplicates them; each match can be switched off in the preview.
+- The savings Projections window now uses the same projection as account pages, including scheduled transfers and AER interest.
 
 ## [3.3.0] — 2026-08-24
 

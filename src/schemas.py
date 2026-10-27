@@ -16,6 +16,7 @@ from constants import (
     AccountSubtype,
     AccountType,
     Currency,
+    DEBT_TYPES,
     Frequency,
     HEX_COLOR_PATTERN,
     ImportDateFormat,
@@ -164,6 +165,21 @@ def validated_institution(
     return slug, None
 
 
+def check_low_balance_threshold(account_type: str, threshold: Optional[float]) -> None:
+    """Raise ``ValueError`` if a threshold is set on a credit or loan account.
+
+    The warning reads "this account is projected to run low", which only means
+    something for money held; a debt account's balance is what's owed. Shared
+    by ``AccountIn`` and the ``PUT /api/accounts/{id}`` handler, which checks a
+    patch against the stored type.
+    """
+    if threshold is not None and account_type in DEBT_TYPES:
+        raise ValueError(
+            "low_balance_threshold is only valid on current, savings and"
+            " investment accounts"
+        )
+
+
 class AccountIn(_In):
     name: Annotated[str, Field(min_length=1, max_length=120)]
     type: AccountType
@@ -179,6 +195,17 @@ class AccountIn(_In):
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
     counts_to_net_worth: bool = True
     closed: bool = False
+    # "Warn me below": flag the account when its projection dips under this.
+    # None warns only below zero. Asset accounts only (see check_low_balance_threshold).
+    low_balance_threshold: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
+
+    @model_validator(mode="after")
+    def _threshold_only_on_assets(self) -> "AccountIn":
+        """Reject a low-balance threshold on a credit card or loan."""
+        check_low_balance_threshold(self.type, self.low_balance_threshold)
+        return self
 
     @model_validator(mode="after")
     def _subtype_matches_type(self) -> "AccountIn":
@@ -222,6 +249,11 @@ class AccountPatch(_In):
     color: Optional[str] = Field(default=None, pattern=HEX_COLOR_PATTERN)
     counts_to_net_worth: Optional[bool] = None
     closed: Optional[bool] = None
+    # Like the institution pair, an explicit null is applied (it clears the
+    # threshold back to "warn below zero"); the handler checks the stored type.
+    low_balance_threshold: Optional[float] = Field(
+        default=None, ge=0, le=MAX_MONEY, allow_inf_nan=False
+    )
 
 
 class BalanceIn(_In):
@@ -513,6 +545,13 @@ class OkOut(BaseModel):
     ok: bool
 
 
+class LowBalanceOut(BaseModel):
+    # The first day the projected closing balance is under the threshold
+    # (ISO ``YYYY-MM-DD``; today when it already is), and that balance.
+    date: str
+    balance: float
+
+
 class AccountOut(BaseModel):
     id: int
     user_id: int
@@ -531,6 +570,12 @@ class AccountOut(BaseModel):
     created_at: str
     current_balance: Optional[float] = None
     last_updated: Optional[str] = None
+    # The "Warn me below" amount, in the account's currency; None when unset.
+    low_balance_threshold: Optional[float] = None
+    # Set by GET /api/accounts when an open asset account is projected to close
+    # below its threshold (zero when unset) within the next 30 days; None
+    # otherwise, and always None from the create and update routes.
+    low_balance: Optional[LowBalanceOut] = None
 
 
 class BalanceEntryOut(BaseModel):
@@ -613,6 +658,26 @@ class AccountProjectionOut(BaseModel):
     horizons: list[ProjectionHorizonOut]
     events: list[ProjectionEventOut]
     summary: ProjectionSummaryOut
+
+
+class SavingsProjectionOut(BaseModel):
+    """One savings account in the Projections window (``GET /api/projections``),
+    in its own currency. ``points`` has one entry per month from today (month 0
+    is the current balance); the milestones are always 12, 24 and 60 months on,
+    whatever horizon ``points`` covers."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: int
+    name: str
+    color: Optional[str] = None
+    currency: Currency
+    initial_balance: float
+    interest_rate: float
+    one_year: float = Field(alias="1yr")
+    two_year: float = Field(alias="2yr")
+    five_year: float = Field(alias="5yr")
+    points: list[ProjectionPointOut]
 
 
 class SummaryOut(BaseModel):

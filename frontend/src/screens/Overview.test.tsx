@@ -21,6 +21,8 @@ vi.mock("../components/charts/LineChart", () => ({ default: () => <div /> }));
 
 import Overview from "./Overview";
 import { useSummary } from "../hooks/useSummary";
+import { useAccounts } from "../hooks/useAccounts";
+import type { Account } from "../types";
 
 function makeSummary(over: Partial<Summary>): Summary {
   return {
@@ -79,5 +81,36 @@ describe("Overview net-position pill (H7)", () => {
 
     const pill = screen.getByText("£2,500.00");
     expect(pill).toHaveAttribute("data-direction", "up");
+  });
+});
+
+describe("Overview card stack", () => {
+  beforeEach(() => {
+    vi.mocked(useSummary).mockReturnValue({ data: makeSummary({}) } as never);
+  });
+
+  it("flags an account projected to run low on its tile", () => {
+    const account: Account = {
+      id: 7,
+      user_id: 1,
+      name: "Everyday",
+      type: "current",
+      subtype: "general",
+      institution: null,
+      institution_name: null,
+      currency: "GBP",
+      interest_rate: 0,
+      color: "#6366f1",
+      counts_to_net_worth: true,
+      closed: false,
+      created_at: "2026-01-01T00:00:00Z",
+      current_balance: 320,
+      last_updated: null,
+      low_balance_threshold: 200,
+      low_balance: { date: "2099-01-14", balance: 150 },
+    };
+    vi.mocked(useAccounts).mockReturnValue({ data: [account] } as never);
+    renderOverview();
+    expect(screen.getByText("Low by 14 Jan").className).toMatch(/lowBadge/);
   });
 });

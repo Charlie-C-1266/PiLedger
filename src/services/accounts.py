@@ -8,6 +8,7 @@ import sqlite3
 
 from fastapi import HTTPException
 
+from constants import DEBT_TYPES
 from db import utcnow_iso
 
 
@@ -34,10 +35,6 @@ LATEST_BALANCE_JOIN = (
     " ORDER BY recorded_at DESC, id DESC LIMIT 1"
     ")"
 )
-
-
-# Account types whose stored balance is the amount owed rather than held.
-DEBT_TYPES = frozenset({"credit", "loan"})
 
 
 def balance_delta(account_type: str | None, cashflow_cents: int) -> int:

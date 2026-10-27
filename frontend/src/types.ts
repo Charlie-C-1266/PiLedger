@@ -21,6 +21,20 @@ export interface Account {
   created_at: string;
   current_balance: number | null;
   last_updated: string | null;
+  /** "Warn me below": the amount under which this asset account is flagged,
+   * in its own currency. Null warns only below zero. Never set on debt. */
+  low_balance_threshold?: number | null;
+  /** From `GET /api/accounts` only: the first day in the next 30 that this
+   * open asset account is projected to close below its threshold (zero when
+   * unset), with that day's balance. Null when it stays above. */
+  low_balance?: LowBalance | null;
+}
+
+/** When an account is projected to run low: the first day under its
+ * threshold (`YYYY-MM-DD`, today when it already is) and that balance. */
+export interface LowBalance {
+  date: string;
+  balance: number;
 }
 
 export interface Transaction {
@@ -235,16 +249,18 @@ export interface AccountActivity {
   total_out: number;
 }
 
-/** One month of a savings-account compound-interest projection. */
+/** One month of a savings account's projected balance. */
 export interface ProjectionPoint {
   date: string;
   balance: number;
 }
 
 /** A single savings account's server-computed projection, from
- * `GET /api/projections`. Figures stay in the account's own `currency` (no base
- * conversion). The `1yr`/`2yr`/`5yr` milestones are pre-computed at 12/24/60
- * months regardless of the requested `points` horizon. */
+ * `GET /api/projections`: the account page's projection (scheduled
+ * transactions and AER interest) sampled once a month. Figures stay in the
+ * account's own `currency` (no base conversion). The `1yr`/`2yr`/`5yr`
+ * milestones are pre-computed at 12/24/60 months regardless of the requested
+ * `points` horizon. */
 export interface AccountProjection {
   id: number;
   name: string;
