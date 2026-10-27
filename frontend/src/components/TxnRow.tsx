@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMoney } from "../privacy/useMoney";
 import { useLongPress } from "../hooks/useLongPress";
+import { RepeatIcon } from "./icons";
 import type { Transaction } from "../types";
 import styles from "./TxnRow.module.css";
 
@@ -42,6 +43,17 @@ export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: 
       <div className={styles.info}>
         <div className={styles.merchant}>{txn.merchant}</div>
         <div className={styles.sub}>
+          {txn.subscription_id != null && (
+            // Created by a scheduled item (auto-posted or "Post now").
+            <span
+              className={styles.scheduled}
+              role="img"
+              aria-label="Posted from a schedule"
+              title="Posted from a schedule"
+            >
+              <RepeatIcon aria-hidden="true" />
+            </span>
+          )}
           {txn.category ? `${txn.category} · ` : ""}
           {formatDate(txn.occurred_at)}
         </div>

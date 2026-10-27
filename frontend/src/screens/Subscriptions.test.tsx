@@ -10,6 +10,7 @@ vi.mock("../hooks/useSubscriptions", () => ({
   useOccurrences: vi.fn(),
 }));
 vi.mock("../hooks/useSummary", () => ({ useSummary: vi.fn() }));
+vi.mock("../hooks/useAccounts", () => ({ useAccounts: vi.fn() }));
 // Heavy children — exercised by their own tests; stub here so the screen test
 // stays focused on list rendering and the view toggle.
 vi.mock("../components/SubscriptionsCalendar", () => ({
@@ -22,6 +23,8 @@ vi.mock("../components/AddSubscriptionModal", () => ({
 import Subscriptions from "./Subscriptions";
 import { useSubscriptions } from "../hooks/useSubscriptions";
 import { useSummary } from "../hooks/useSummary";
+import { useAccounts } from "../hooks/useAccounts";
+import type { Account } from "../types";
 
 function makeSub(over: Partial<Subscription>): Subscription {
   return {
@@ -47,7 +50,17 @@ function makeSub(over: Partial<Subscription>): Subscription {
   };
 }
 
+function setAccounts(accounts: Pick<Account, "id" | "name" | "closed">[]) {
+  vi.mocked(useAccounts).mockReturnValue({
+    data: accounts,
+  } as ReturnType<typeof useAccounts>);
+}
+
 function setSubs(subs: Subscription[]) {
+  setAccounts([
+    { id: 1, name: "Current", closed: false },
+    { id: 2, name: "Savings", closed: false },
+  ]);
   vi.mocked(useSubscriptions).mockReturnValue({
     data: subs,
   } as ReturnType<typeof useSubscriptions>);
@@ -152,5 +165,49 @@ describe("Scheduled screen", () => {
     setSubs([makeSub({ name: "Old", active: false, next_due_date: null })]);
     renderScreen();
     expect(screen.getByText("Paused")).toBeInTheDocument();
+  });
+
+  it("badges automatic items Auto and leaves reminders unbadged", () => {
+    setSubs([
+      makeSub({ id: 1, name: "Rent", account_id: 1, auto_post: true }),
+      makeSub({ id: 2, name: "Gym", account_id: 1, auto_post: false }),
+    ]);
+    renderScreen();
+    const badges = screen.getAllByText("Auto");
+    expect(badges).toHaveLength(1);
+    expect(screen.getByText("Rent").closest("[class*=card]")).toContainElement(
+      badges[0]
+    );
+  });
+
+  it("warns when an automatic item's account is closed", () => {
+    setSubs([
+      makeSub({ id: 1, name: "Rent", account_id: 3, auto_post: true }),
+      makeSub({ id: 2, name: "Gym", account_id: 3, auto_post: false }),
+    ]);
+    setAccounts([{ id: 3, name: "Old bank", closed: true }]);
+    renderScreen();
+    // Only the automatic one: a reminder never posts, so there's nothing to warn about.
+    expect(screen.getAllByText("Won't post: Old bank is closed")).toHaveLength(1);
+  });
+
+  it("warns about a closed destination on an automatic transfer", () => {
+    setSubs([
+      makeSub({
+        name: "Savings pot",
+        kind: "transfer",
+        account_id: 1,
+        account_name: "Current",
+        to_account_id: 3,
+        to_account_name: "Old bank",
+        auto_post: true,
+      }),
+    ]);
+    setAccounts([
+      { id: 1, name: "Current", closed: false },
+      { id: 3, name: "Old bank", closed: true },
+    ]);
+    renderScreen();
+    expect(screen.getByText("Won't post: Old bank is closed")).toBeInTheDocument();
   });
 });

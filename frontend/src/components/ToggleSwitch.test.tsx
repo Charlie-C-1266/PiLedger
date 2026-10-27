@@ -30,4 +30,14 @@ describe("ToggleSwitch", () => {
     fireEvent.click(screen.getByRole("switch"));
     expect(onChange).toHaveBeenCalledWith(true);
   });
+
+  it("can be disabled, and then ignores clicks", () => {
+    const onChange = vi.fn();
+    render(
+      <ToggleSwitch label="Count" checked={false} onChange={onChange} disabled />,
+    );
+    expect(screen.getByRole("switch")).toBeDisabled();
+    fireEvent.click(screen.getByRole("switch"));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

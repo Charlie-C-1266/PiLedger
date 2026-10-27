@@ -9,10 +9,11 @@ import { ACCENT_OPTIONS } from "../theme/tokens";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
 import { useInvalidate } from "../hooks/useInvalidate";
-import { KIND_OPTIONS } from "../lib/scheduled";
+import { KIND_OPTIONS, autoPostBlocker } from "../lib/scheduled";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
 import SegmentedControl from "./SegmentedControl";
+import ToggleSwitch from "./ToggleSwitch";
 import type { Frequency, Subscription, SubscriptionKind } from "../types";
 import styles from "./AddModal.module.css";
 
@@ -23,6 +24,8 @@ const FREQUENCIES: { value: Frequency; label: string }[] = [
   { value: "quarterly", label: "Quarterly" },
   { value: "annual", label: "Annually" },
 ];
+
+const AUTO_POST_HINT = "Starts from today — earlier dates aren't back-filled.";
 
 const NAME_EXAMPLE: Record<SubscriptionKind, string> = {
   expense: "Netflix",
@@ -73,11 +76,29 @@ export default function AddSubscriptionModal({ subscription, onClose }: Props) {
     subscription?.to_account_id ?? ""
   );
   const [notes, setNotes] = useState(subscription?.notes ?? "");
+  // Whether the user wants this item to post itself. A new item does by
+  // default (D2: in the app, an item linked to an account is automatic unless
+  // switched off); an edit starts from the stored value.
+  const [wantAutoPost, setWantAutoPost] = useState(
+    subscription ? !!subscription.auto_post : true
+  );
   const [error, setError] = useState("");
 
   const isTransfer = kind === "transfer";
   const accountList = useMemo(() => accounts ?? [], [accounts]);
   const fromAccount = accountList.find((a) => a.id === accountId);
+
+  // Auto-post needs its account (both, for a transfer) chosen and open — the
+  // API rejects it otherwise. Until then the switch is off and disabled, with
+  // the reason as its hint; it comes back on by itself once the accounts are
+  // in place, unless the user switched it off. What it shows is what's saved.
+  const autoPostBlocked = autoPostBlocker(
+    kind,
+    accountId === "" ? null : accountId,
+    toAccountId === "" ? null : toAccountId,
+    accountList
+  );
+  const autoPost = wantAutoPost && autoPostBlocked === null;
 
   // Transfers are restricted to accounts sharing a currency (the same rule as
   // a one-off transfer), so the To list follows the From account's currency
@@ -148,6 +169,9 @@ export default function AddSubscriptionModal({ subscription, onClose }: Props) {
       notes: notes.trim(),
       account_id: accountId === "" ? null : Number(accountId),
       to_account_id: isTransfer && toAccountId !== "" ? Number(toAccountId) : null,
+      // Always explicit: the API treats an omitted auto_post as off on create
+      // and as "unchanged" on update.
+      auto_post: autoPost,
     });
   };
 
@@ -311,6 +335,14 @@ export default function AddSubscriptionModal({ subscription, onClose }: Props) {
           </select>
         </>
       )}
+
+      <ToggleSwitch
+        label="Post automatically"
+        hint={autoPostBlocked ?? AUTO_POST_HINT}
+        checked={autoPost}
+        onChange={setWantAutoPost}
+        disabled={autoPostBlocked !== null}
+      />
 
       <input
         className={styles.input}

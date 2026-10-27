@@ -21,7 +21,7 @@ export function useInvalidate() {
     const bust = (...keys: string[]) =>
       keys.forEach((key) => qc.invalidateQueries({ queryKey: [key] }));
 
-    return {
+    const ripple = {
       /** An account was created/edited or a balance was recorded: balances and
        *  every net-worth view derived from them change (but not transactions). */
       accountChanged: () =>
@@ -57,11 +57,15 @@ export function useInvalidate() {
       /** A goal was created/edited/deleted. */
       goalChanged: () => bust("goals"),
 
-      /** A subscription was created/edited/deleted: the list, any expanded
-       *  calendar occurrences and the account projections built from it go
-       *  stale. */
-      subscriptionChanged: () =>
-        bust("subscriptions", "occurrences", "account-projection"),
+      /** A scheduled item was created/edited/deleted: the list and any
+       *  expanded calendar occurrences go stale. Items now create transactions
+       *  (auto-post, Post now) and tag them with the item, so a change to one
+       *  also carries the whole transactionChanged ripple — which includes
+       *  the account projections built from scheduled items. */
+      subscriptionChanged: () => {
+        bust("subscriptions", "occurrences");
+        ripple.transactionChanged();
+      },
 
       /** A budget income/group/envelope changed (structure or allocation). */
       budgetChanged: () => bust("budget"),
@@ -90,5 +94,6 @@ export function useInvalidate() {
        *  currency, so summary, net-worth trend and (converted) budget spend move. */
       ratesChanged: () => bust("rates", "summary", "networth", "budget"),
     };
+    return ripple;
   }, [qc]);
 }

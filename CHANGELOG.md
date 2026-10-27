@@ -21,6 +21,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Each account has its own page with its balance, details and recent transactions.
 - Per-account balance projection from scheduled transactions and interest (API).
 - Scheduled payments, income and transfers can post themselves on their due date, keeping account balances up to date.
+- Scheduled items can be set to post automatically, with an Auto badge and a repeat icon on the transactions they create.
 - Account pages show projected balances over 1, 3, 6 and 12 months and the scheduled transactions coming up, with Post now, Skip and Undo.
 
 ## [3.3.0] — 2026-08-24

@@ -82,14 +82,31 @@ describe("useInvalidate ripple sets", () => {
     );
   });
 
-  it("subscriptionChanged busts the list, the calendar occurrences and account projections", () => {
-    // A schedule edit (or a Post now / Skip) moves every projected balance the
-    // item touches, so the account page's chart and Upcoming list must refetch.
+  it("subscriptionChanged busts the list, the calendar and the whole transaction ripple", () => {
+    // Scheduled items now create transactions (auto-post, Post now) and tag
+    // them, so a change to one must refresh balances, transaction lists and
+    // the account projections built from schedules — whatever
+    // transactionChanged covers, now or later.
     const { result, spy } = setup();
+    result.current.transactionChanged();
+    const transactionKeys = bustedKeys(spy);
+    spy.mockClear();
+
     result.current.subscriptionChanged();
-    expect(bustedKeys(spy)).toEqual(
-      new Set(["subscriptions", "occurrences", "account-projection"]),
+    const keys = bustedKeys(spy);
+    expect(keys).toEqual(
+      new Set(["subscriptions", "occurrences", ...transactionKeys]),
     );
+    for (const key of [
+      "transactions",
+      "accounts",
+      "account-activity",
+      "account-projection",
+      "summary",
+      "history-all",
+    ]) {
+      expect(keys).toContain(key);
+    }
   });
   it("baseCurrencyChanged busts every figure denominated in the base currency", () => {
     // Switching base re-scales the stored rates server-side and re-denominates
