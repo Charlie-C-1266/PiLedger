@@ -1,11 +1,23 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { previewImport, commitImport } from "../api/client";
+import {
+  previewImport,
+  previewImportMatches,
+  commitImport,
+  type ImportRequest,
+} from "../api/client";
 import { useAccounts } from "../hooks/useAccounts";
 import { useInvalidate } from "../hooks/useInvalidate";
+import { useMoney } from "../privacy/useMoney";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
-import type { ImportDateFormat, ImportPreview, ImportResult } from "../types";
+import ToggleSwitch from "./ToggleSwitch";
+import type {
+  ImportDateFormat,
+  ImportMatchedRow,
+  ImportPreview,
+  ImportResult,
+} from "../types";
 import addModalStyles from "./AddModal.module.css";
 import styles from "./ImportCsvModal.module.css";
 
@@ -13,7 +25,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = "upload" | "mapping" | "result";
+type Step = "upload" | "mapping" | "matches" | "result";
 type AmountMode = "single" | "split";
 
 const DATE_FORMATS: { key: ImportDateFormat; label: string }[] = [
@@ -23,6 +35,15 @@ const DATE_FORMATS: { key: ImportDateFormat; label: string }[] = [
   { key: "dmy_dash", label: "DD-MM-YYYY" },
   { key: "mdy_dash", label: "MM-DD-YYYY" },
 ];
+
+/** "12 Nov" from a `YYYY-MM-DD` date, read as a local calendar day. */
+function formatDay(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
 
 export default function ImportCsvModal({ onClose }: Props) {
   const { data: accounts } = useAccounts();
@@ -48,6 +69,12 @@ export default function ImportCsvModal({ onClose }: Props) {
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [result, setResult] = useState<ImportResult | null>(null);
   const [fileError, setFileError] = useState("");
+  // Rows matching a transaction a schedule already posted, and the ones the
+  // user switched off (imported as new rows instead of claiming the match).
+  const [matches, setMatches] = useState<ImportMatchedRow[]>([]);
+  const [declined, setDeclined] = useState<Set<number>>(new Set());
+  const { fmt } = useMoney();
+  const currency = openAccounts.find((a) => a.id === accountId)?.currency ?? "GBP";
 
   const previewMutation = useMutation({
     mutationFn: previewImport,
@@ -77,6 +104,21 @@ export default function ImportCsvModal({ onClose }: Props) {
     },
   });
 
+  // Before importing, ask which rows match a scheduled transaction. With none,
+  // import straight away; otherwise let the user review each match first.
+  const matchMutation = useMutation({
+    mutationFn: previewImportMatches,
+    onSuccess: (data, request) => {
+      if (data.matches.length === 0) {
+        commitMutation.mutate(request);
+        return;
+      }
+      setMatches(data.matches);
+      setDeclined(new Set());
+      setStep("matches");
+    },
+  });
+
   const handleFile = async (file: File) => {
     setFileError("");
     const text = await file.text();
@@ -88,23 +130,45 @@ export default function ImportCsvModal({ onClose }: Props) {
     previewMutation.mutate(text);
   };
 
-  const handleCommit = () => {
+  const importRequest = (): ImportRequest => ({
+    csv_text: csvText,
+    account_id: Number(accountId),
+    mapping: {
+      date: mapping.date,
+      merchant: mapping.merchant,
+      category: mapping.category || undefined,
+      note: mapping.note || undefined,
+      ...(amountMode === "single"
+        ? { amount: mapping.amount }
+        : { debit: mapping.debit, credit: mapping.credit }),
+    },
+    date_format: dateFormat,
+  });
+
+  const handleImport = () => {
     if (!accountId) return;
+    matchMutation.mutate(importRequest());
+  };
+
+  const handleCommitMatches = () => {
     commitMutation.mutate({
-      csv_text: csvText,
-      account_id: Number(accountId),
-      mapping: {
-        date: mapping.date,
-        merchant: mapping.merchant,
-        category: mapping.category || undefined,
-        note: mapping.note || undefined,
-        ...(amountMode === "single"
-          ? { amount: mapping.amount }
-          : { debit: mapping.debit, credit: mapping.credit }),
-      },
-      date_format: dateFormat,
+      ...importRequest(),
+      match_choices: matches.map((m) => ({ row: m.row, claim: !declined.has(m.row) })),
     });
   };
+
+  const setMatchOn = (row: number, on: boolean) => {
+    const next = new Set(declined);
+    if (on) next.delete(row);
+    else next.add(row);
+    setDeclined(next);
+  };
+
+  const signedAmount = (amount: number) =>
+    `${amount >= 0 ? "+" : "−"}${fmt(Math.abs(amount), currency).replace(/^[−-]/, "")}`;
+
+  const importError = matchMutation.error ?? commitMutation.error;
+  const checking = matchMutation.isPending || commitMutation.isPending;
 
   const mappingComplete =
     !!mapping.date &&
@@ -333,6 +397,45 @@ export default function ImportCsvModal({ onClose }: Props) {
             </div>
           )}
 
+          {importError && (
+            <p className={addModalStyles.errorMsg}>
+              {importError instanceof Error ? importError.message : "Import failed."}
+            </p>
+          )}
+
+          <ModalActions
+            onCancel={onClose}
+            onSave={handleImport}
+            saveLabel="Import"
+            savingLabel="Importing…"
+            saving={checking}
+            saveDisabled={!mappingComplete || !accountId}
+            busy={checking}
+          />
+        </>
+      )}
+
+      {step === "matches" && (
+        <>
+          <p className={addModalStyles.subtitle}>
+            {matches.length === 1
+              ? "1 row matches a transaction"
+              : `${matches.length} rows match transactions`}{" "}
+            already posted from a schedule. On keeps the posted transaction and gives it
+            the bank's date and description; off imports the row as a new one.
+          </p>
+          <div className={styles.matchList}>
+            {matches.map((m) => (
+              <ToggleSwitch
+                key={m.row}
+                label={`Matches scheduled: ${m.match.name} (${formatDay(m.match.date)})`}
+                hint={`${formatDay(m.date)} · ${m.merchant} · ${signedAmount(m.amount)}`}
+                checked={!declined.has(m.row)}
+                onChange={(on) => setMatchOn(m.row, on)}
+              />
+            ))}
+          </div>
+
           {commitMutation.isError && (
             <p className={addModalStyles.errorMsg}>
               {commitMutation.error instanceof Error
@@ -342,12 +445,12 @@ export default function ImportCsvModal({ onClose }: Props) {
           )}
 
           <ModalActions
-            onCancel={onClose}
-            onSave={handleCommit}
+            onCancel={() => setStep("mapping")}
+            cancelLabel="Back"
+            onSave={handleCommitMatches}
             saveLabel="Import"
             savingLabel="Importing…"
             saving={commitMutation.isPending}
-            saveDisabled={!mappingComplete || !accountId}
             busy={commitMutation.isPending}
           />
         </>
@@ -358,6 +461,8 @@ export default function ImportCsvModal({ onClose }: Props) {
           <p className={styles.resultLine}>
             <strong>{result.imported}</strong> transaction
             {result.imported === 1 ? "" : "s"} imported
+            {result.matched > 0 &&
+              `, ${result.matched} matched ${result.matched === 1 ? "a scheduled transaction" : "scheduled transactions"}`}
             {result.skipped_duplicates > 0 &&
               `, ${result.skipped_duplicates} skipped as duplicate${result.skipped_duplicates === 1 ? "" : "s"}`}
             .

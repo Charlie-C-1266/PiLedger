@@ -8,7 +8,8 @@ If your bank or card provider lets you export your statement as a CSV file, you 
 2. Pick the **account** the transactions belong to, then choose your CSV file.
 3. PiLedger reads the file and shows you a preview: its columns, a sample of the first few rows, and a best-effort guess at which column is which.
 4. Confirm or correct the column mapping (see below), pick the date format your file uses, and click **Import**.
-5. You'll see a summary: how many transactions were imported, how many were skipped as duplicates, and any rows that couldn't be parsed.
+5. If any rows are payments a scheduled item already posted, PiLedger lists them for you to check first (see [Payments already posted from a schedule](#payments-already-posted-from-a-schedule)); click **Import** again to finish.
+6. You'll see a summary: how many transactions were imported, how many matched a scheduled transaction, how many were skipped as duplicates, and any rows that couldn't be parsed.
 
 Nothing is uploaded to a third party — the file is parsed entirely by your own PiLedger server.
 
@@ -74,6 +75,17 @@ Column names don't need to match these exactly — the mapping step lets you poi
 ## Re-importing is safe
 
 If you import the same statement twice — or two exports with overlapping date ranges — PiLedger recognises rows it's already imported (matched on account, date, amount, and merchant) and skips them rather than creating duplicates. The result summary reports these as **skipped duplicates**, separate from the newly imported count. Manually-entered transactions are never affected by this check.
+
+## Payments already posted from a schedule
+
+A scheduled item that posts itself adds its transaction on the due date, so when the bank's statement arrives later the same payment would otherwise be counted twice. Before importing, PiLedger checks each row against the account's transactions that came from a schedule. A row matches one when the amount is exactly the same and the dates are no more than 3 days apart; each posted transaction matches at most one row, the closest by date.
+
+Matched rows are listed as, for example, **Matches scheduled: Netflix (12 Nov)**, each with a switch that starts on:
+
+- **On** — the row and the scheduled transaction are the same payment. No new transaction is added; the posted one takes the bank's date and description, and the balance doesn't change.
+- **Off** — the row is imported as a new transaction, as it would be without the match.
+
+A payment whose amount varies (an energy or phone bill) only matches when this month's amount is exactly the scheduled one. Manually-entered transactions are never matched. Re-importing the same file stays safe: matched rows are recognised as already imported and skipped.
 
 ## Limits and troubleshooting
 

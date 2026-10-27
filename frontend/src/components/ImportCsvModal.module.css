@@ -69,6 +69,23 @@
   top: 0;
 }
 
+/* Matched rows: one ToggleSwitch per row, divided by hairlines and scrolling
+   when a long statement matches many scheduled transactions. */
+.matchList {
+  max-height: 280px;
+  overflow: auto;
+  margin-bottom: 20px;
+  border-top: 1px solid var(--pl-rule);
+}
+
+/* `> div` outranks ToggleSwitch's own `.toggleRow` margin. */
+.matchList > div {
+  margin-bottom: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--pl-rule);
+  overflow-wrap: anywhere;
+}
+
 .resultLine {
   font: 600 14px/1.4 "Plus Jakarta Sans", sans-serif;
   color: var(--pl-text);
