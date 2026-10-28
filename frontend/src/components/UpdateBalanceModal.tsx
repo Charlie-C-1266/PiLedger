@@ -44,7 +44,7 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
         notes: note.trim() || undefined,
       }),
     onSuccess: () => {
-      inv.accountChanged();
+      inv.balanceRecorded();
       toast.success("Balance updated");
       onClose();
     },

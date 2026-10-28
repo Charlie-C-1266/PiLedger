@@ -6,7 +6,8 @@ session cookie), then drives the search overlay from the desktop header:
 account/goal matches come from the cached lists, transaction matches come from
 the server-side `?search=` query, selecting a transaction deep-links to
 `/transactions?q=<term>` with the list pre-filtered, and selecting an account
-opens that account's own page — its projection and Upcoming card included.
+opens that account's own page — its projection, Upcoming card and a manual
+balance update (recorded as a Balance adjustment) included.
 """
 
 from __future__ import annotations
@@ -112,10 +113,25 @@ def test_search_matches_accounts_and_goals(signed_in_page) -> None:
     toast.get_by_role("button", name="Undo").click()
     expect(row).to_be_visible()
 
+    # Update balance records the change as a Balance adjustment, which shows in
+    # Recent transactions straight away (−£42.50 → £100.00 is +£142.50).
+    page.get_by_role("button", name="Update balance").click()
+    update = page.get_by_role("dialog", name="Update balance")
+    update.get_by_role("textbox", name="New balance").fill("100")
+    update.get_by_role("button", name="Update balance").click()
+    expect(
+        page.get_by_role("status").filter(has_text="Balance updated")
+    ).to_be_visible()
+    expect(recent.get_by_text("Balance adjustment", exact=True)).to_be_visible()
+    expect(recent.get_by_role("img", name="Balance set by hand")).to_be_visible()
+    expect(recent.get_by_text("+£142.50")).to_be_visible()
+    expect(recent.get_by_text("Last 30 days · 2 transactions")).to_be_visible()
+
     # "View all" lands on Transactions filtered to this account.
     recent.get_by_role("link", name=re.compile("View all")).click()
     page.wait_for_url(f"**/transactions?account={account_id}")
     expect(page.get_by_text("Tesco Express")).to_be_visible()
+    expect(page.get_by_text("Balance adjustment", exact=True)).to_be_visible()
 
 
 def test_search_transaction_deep_links_to_filtered_list(signed_in_page) -> None:

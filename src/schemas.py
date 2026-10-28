@@ -728,6 +728,10 @@ class TransactionOut(BaseModel):
     # The scheduled item whose occurrence created this row (auto-post or "Post
     # now"), from the posting log; null for anything entered by hand.
     subscription_id: Optional[int] = None
+    # A Balance adjustment: recorded by a manual balance update for the change
+    # it made. Its amount and account can't be edited, and it isn't counted as
+    # money in or out (budget spend, activity totals).
+    adjustment: bool = False
     created_at: str
 
 

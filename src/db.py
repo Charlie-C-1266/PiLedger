@@ -123,7 +123,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 17
+SCHEMA_VERSION: int = 18
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -264,6 +264,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 17. Add accounts.low_balance_threshold_cents ("Warn me below").
     _ensure_low_balance_threshold_column(conn)
 
+    # 18. Add transactions.adjustment (marks a Balance adjustment row).
+    _ensure_adjustment_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -367,6 +370,20 @@ def _ensure_low_balance_threshold_column(conn: sqlite3.Connection) -> None:
     if "low_balance_threshold_cents" not in cols:
         conn.execute(
             "ALTER TABLE accounts ADD COLUMN low_balance_threshold_cents INTEGER"
+        )
+        conn.commit()
+
+
+def _ensure_adjustment_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add transactions.adjustment — 1 on the Balance adjustment
+    row recorded when the User sets an account's balance by hand (the gap
+    between the old and new balance), 0 everywhere else. Existing rows stay 0:
+    past manual updates can't be told apart from transaction-driven balance
+    changes, so they aren't back-filled."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+    if "adjustment" not in cols:
+        conn.execute(
+            "ALTER TABLE transactions ADD COLUMN adjustment INTEGER NOT NULL DEFAULT 0"
         )
         conn.commit()
 
@@ -708,6 +725,14 @@ def _migrate_to_17(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_18(conn: sqlite3.Connection) -> None:
+    """Add transactions.adjustment (marks the Balance adjustment row a manual
+    balance update records; existing rows stay 0)."""
+    _ensure_adjustment_column(conn)
+    _set_schema_version(conn, 18)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -772,7 +797,8 @@ def init() -> None:
                 note         TEXT    DEFAULT '',
                 transfer_id  TEXT,
                 import_hash  TEXT,
-                created_at   TEXT    DEFAULT (datetime('now'))
+                created_at   TEXT    DEFAULT (datetime('now')),
+                adjustment   INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS goals (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -874,6 +900,10 @@ def init() -> None:
         if version < 17:
             _migrate_to_17(conn)
             version = 17
+
+        if version < 18:
+            _migrate_to_18(conn)
+            version = 18
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

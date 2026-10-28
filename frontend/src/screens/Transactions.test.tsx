@@ -77,3 +77,34 @@ describe("Transactions deep links", () => {
     );
   });
 });
+
+describe("Transactions totals", () => {
+  const stat = (label: string) => screen.getByText(label).nextElementSibling;
+
+  it("lists Balance adjustments but leaves them out of the money totals", () => {
+    const base = {
+      user_id: 1,
+      account_id: 4,
+      occurred_at: "2026-10-20T10:00:00Z",
+      category: "",
+      note: "",
+      created_at: "2026-10-20T10:00:00Z",
+    };
+    vi.mocked(useTransactions).mockReturnValue({
+      data: [
+        { ...base, id: 1, amount: -20, merchant: "Tesco" },
+        { ...base, id: 2, amount: 100, merchant: "Salary" },
+        { ...base, id: 3, amount: 12.4, merchant: "Balance adjustment", adjustment: true },
+        { ...base, id: 4, amount: -5, merchant: "Balance adjustment", adjustment: true },
+      ],
+    } as never);
+
+    renderAt("/transactions");
+
+    expect(stat("Showing")).toHaveTextContent("4");
+    expect(stat("Inflow")).toHaveTextContent("£100.00");
+    expect(stat("Outflow")).toHaveTextContent("£20.00");
+    expect(stat("Net")).toHaveTextContent("£80.00");
+    expect(screen.getAllByText("Balance adjustment")).toHaveLength(2);
+  });
+});

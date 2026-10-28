@@ -382,6 +382,12 @@ DEFAULT_CATEGORIES: list[str] = [
 # Maximum number of custom categories a single user may create.
 MAX_CUSTOM_CATEGORIES = 50
 
+# The transaction a manual balance update records for the difference it made
+# (transactions.adjustment = 1). Like a transfer's "Transfer", the category is
+# a fixed label rather than one of the User's spending categories.
+ADJUSTMENT_MERCHANT = "Balance adjustment"
+ADJUSTMENT_CATEGORY = "Adjustment"
+
 # ─── API tokens ───────────────────────────────────────────────────────────────
 
 # api_tokens is user-scoped (carries user_id) so it lives in db.USER_SCOPED_TABLES

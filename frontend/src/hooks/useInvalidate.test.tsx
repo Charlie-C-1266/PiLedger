@@ -42,6 +42,24 @@ describe("useInvalidate ripple sets", () => {
     );
   });
 
+  it("balanceRecorded adds the transaction lists to the account ripple (a Balance adjustment), but not budget spend", () => {
+    const { result, spy } = setup();
+    result.current.balanceRecorded();
+    expect(bustedKeys(spy)).toEqual(
+      new Set([
+        "accounts",
+        "account-activity",
+        "account-history",
+        "account-projection",
+        "summary",
+        "networth",
+        "history-all",
+        "projections",
+        "transactions",
+      ]),
+    );
+  });
+
   it("transactionChanged busts the full money-flow ripple, incl. networth + budget", () => {
     // The original bug this guards: a transaction must refresh the net-worth
     // trend and budget spend, not just the transaction list and balances.

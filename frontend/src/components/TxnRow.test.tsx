@@ -54,6 +54,29 @@ describe("TxnRow", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("marks a Balance adjustment as a balance set by hand", () => {
+    renderRow({
+      txn: {
+        ...TXN,
+        merchant: "Balance adjustment",
+        category: "Adjustment",
+        amount: 12.4,
+        adjustment: true,
+      },
+    });
+    const mark = screen.getByRole("img", { name: "Balance set by hand" });
+    expect(mark).toHaveAttribute("title", "Balance set by hand");
+    expect(screen.getByText("Balance adjustment")).toBeInTheDocument();
+    expect(screen.getByText("+£12.40")).toBeInTheDocument();
+  });
+
+  it("has no adjustment mark on an ordinary transaction", () => {
+    renderRow();
+    expect(
+      screen.queryByRole("img", { name: "Balance set by hand" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("has no account column, and so no link, without an account name", () => {
     renderRow();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();

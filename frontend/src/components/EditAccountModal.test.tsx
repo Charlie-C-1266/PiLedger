@@ -258,3 +258,41 @@ describe("EditAccountModal low-balance warning", () => {
     expect(screen.queryByLabelText("Warn me below")).not.toBeInTheDocument();
   });
 });
+
+describe("EditAccountModal balance refresh", () => {
+  function renderWithSpy() {
+    const qc = new QueryClient();
+    const spy = vi.spyOn(qc, "invalidateQueries").mockReturnValue(Promise.resolve());
+    const onClose = vi.fn();
+    render(
+      <QueryClientProvider client={qc}>
+        <ThemeProvider>
+          <EditAccountModal account={makeAccount()} onClose={onClose} />
+        </ThemeProvider>
+      </QueryClientProvider>,
+    );
+    const busted = () =>
+      spy.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0]);
+    return { onClose, busted };
+  }
+
+  it("refreshes the transaction lists when a new balance is saved", async () => {
+    const { onClose, busted } = renderWithSpy();
+    await userEvent.type(screen.getByPlaceholderText("New balance (e.g. 2500.00)"), "250");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(recordBalance).toHaveBeenCalledWith(1, 250);
+    expect(busted()).toContain("transactions");
+  });
+
+  it("leaves the transaction lists alone when only settings change", async () => {
+    const { onClose, busted } = renderWithSpy();
+    await userEvent.click(screen.getByRole("switch", { name: "Closed" }));
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(busted()).toContain("accounts");
+    expect(busted()).not.toContain("transactions");
+  });
+});

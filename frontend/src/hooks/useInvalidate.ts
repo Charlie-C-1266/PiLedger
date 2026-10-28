@@ -36,6 +36,15 @@ export function useInvalidate() {
           "projections",
         ),
 
+      /** A balance was recorded by hand. As well as the account ripple, a
+       *  changed balance records a Balance adjustment transaction, so the
+       *  transaction lists go stale too (budget spend doesn't: adjustments
+       *  aren't spending). */
+      balanceRecorded: () => {
+        ripple.accountChanged();
+        bust("transactions");
+      },
+
       /** A transaction was created/edited/deleted, or a transfer was made — and
        *  also an account *deletion*, which cascades its transactions. Adjusts a
        *  balance (so the whole net-worth picture moves) and may change budget

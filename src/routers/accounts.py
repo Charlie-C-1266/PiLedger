@@ -34,9 +34,15 @@ from schemas import (
     check_low_balance_threshold,
     validated_institution,
 )
-from services.accounts import LATEST_BALANCE_JOIN, latest_balance_cents
+from services.accounts import (
+    LATEST_BALANCE_JOIN,
+    balance_cents_at,
+    balance_delta,
+    latest_balance_cents,
+)
 from services.projection import LOW_BALANCE_DAYS, first_below
 from services.projection_inputs import Schedule, load_schedule, project_account
+from services.transactions import insert_adjustment
 
 router = APIRouter(tags=["accounts"])
 
@@ -265,18 +271,37 @@ def record_balance(
     uid: int = Depends(require_auth),
 ) -> OkOut:
     """Append a balance-history point for one of the user's accounts (404 if not
-    theirs), timestamped now unless the body supplies ``recorded_at``."""
+    theirs), timestamped now unless the body supplies ``recorded_at``.
+
+    When the account already had a balance at that moment and this one differs,
+    the difference is also recorded as a Balance adjustment transaction dated
+    then, carrying the note, so a manual change shows in the account's
+    transactions. Its amount is the cash flow that would have caused the change
+    (``balance_delta``'s debt rule, so owing more on a card reads as money
+    out). An account's first balance, or one that matches, records none."""
     with db() as conn:
-        if not conn.execute(
-            "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (aid, uid)
-        ).fetchone():
+        account = conn.execute(
+            "SELECT type FROM accounts WHERE id=? AND user_id=?", (aid, uid)
+        ).fetchone()
+        if not account:
             raise HTTPException(404, "Not found")
         ts = data.recorded_at or utcnow_iso()
+        new_cents = to_cents(data.balance)
+        before_cents = balance_cents_at(conn, aid, ts)
         conn.execute(
             "INSERT INTO balance_history(account_id, balance_cents, notes, recorded_at)"
             " VALUES(?,?,?,?)",
-            (aid, to_cents(data.balance), data.notes, ts),
+            (aid, new_cents, data.notes, ts),
         )
+        if before_cents is not None and new_cents != before_cents:
+            insert_adjustment(
+                conn,
+                uid,
+                aid,
+                balance_delta(account["type"], new_cents - before_cents),
+                ts,
+                data.notes or "",
+            )
         conn.commit()
     return OkOut(ok=True)
 
@@ -363,21 +388,19 @@ def get_activity(
         ).fetchone():
             raise HTTPException(404, "Not found")
         since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
-        opening = conn.execute(
-            "SELECT balance_cents FROM balance_history"
-            " WHERE account_id=? AND recorded_at<=?"
-            " ORDER BY recorded_at DESC, id DESC LIMIT 1",
-            (aid, since),
-        ).fetchone()
+        opening_cents = balance_cents_at(conn, aid, since)
         current_cents = latest_balance_cents(conn, aid)
+        # Balance adjustments are listed (and counted) but aren't money in or
+        # out: they correct the balance rather than move money.
         totals = conn.execute(
             "SELECT COUNT(*) AS n,"
-            " COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents END), 0) AS cin,"
-            " COALESCE(SUM(CASE WHEN amount_cents < 0 THEN -amount_cents END), 0) AS cout"
+            " COALESCE(SUM(CASE WHEN amount_cents > 0 AND adjustment = 0"
+            " THEN amount_cents END), 0) AS cin,"
+            " COALESCE(SUM(CASE WHEN amount_cents < 0 AND adjustment = 0"
+            " THEN -amount_cents END), 0) AS cout"
             " FROM transactions WHERE account_id=? AND user_id=? AND occurred_at>=?",
             (aid, uid, since),
         ).fetchone()
-    opening_cents = opening["balance_cents"] if opening else None
     change_cents = (
         None
         if opening_cents is None

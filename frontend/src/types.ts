@@ -50,6 +50,10 @@ export interface Transaction {
   /** The scheduled item that created this row (auto-posted or "Post now");
    * null for anything entered by hand. */
   subscription_id?: number | null;
+  /** A Balance adjustment: recorded by a manual balance update for the change
+   * it made. Its amount and account can't be edited, and it isn't money in or
+   * out (left out of the in/out totals and budget spend). */
+  adjustment?: boolean;
   created_at: string;
 }
 

@@ -160,11 +160,13 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
         ).fetchall()
 
         # Negative transactions since the window start, with each account's
-        # currency so amounts can be converted to base before summing.
+        # currency so amounts can be converted to base before summing. Balance
+        # adjustments correct a balance rather than spend money, so they're out.
         txn_rows = conn.execute(
             "SELECT t.occurred_at, t.category, t.amount_cents, a.currency"
             " FROM transactions t JOIN accounts a ON a.id = t.account_id"
-            " WHERE t.user_id=? AND t.amount_cents < 0 AND t.occurred_at >= ?",
+            " WHERE t.user_id=? AND t.amount_cents < 0 AND t.adjustment = 0"
+            " AND t.occurred_at >= ?",
             (uid, window_start),
         ).fetchall()
 

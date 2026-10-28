@@ -98,9 +98,14 @@ def test_export_round_trips_every_user_scoped_table(alice):
     assert body["exchange_rates"][0]["currency"] == "USD"
     assert body["exchange_rates"][0]["rate"] == 0.78
 
-    assert len(body["transactions"]) == 1
-    assert body["transactions"][0]["merchant"] == "Tesco"
-    assert body["transactions"][0]["amount_cents"] == -4250
+    # The Tesco spend, plus the Balance adjustment the second manual balance
+    # update recorded (1234.56 → 1400.00).
+    by_merchant = {row["merchant"]: row for row in body["transactions"]}
+    assert set(by_merchant) == {"Tesco", "Balance adjustment"}
+    assert by_merchant["Tesco"]["amount_cents"] == -4250
+    assert by_merchant["Tesco"]["adjustment"] == 0
+    assert by_merchant["Balance adjustment"]["amount_cents"] == 16544
+    assert by_merchant["Balance adjustment"]["adjustment"] == 1
 
 
 def test_export_is_valid_json_bytes(alice):

@@ -1304,10 +1304,9 @@ def stamped_v16_db(tmp_path, monkeypatch):
     return db_path
 
 
-def test_v16_db_climbs_to_v17(stamped_v16_db):
+def test_v16_db_climbs_to_current_version(stamped_v16_db):
     from db import SCHEMA_VERSION
 
-    assert SCHEMA_VERSION == 17
     assert _read_schema_version(stamped_v16_db) == SCHEMA_VERSION
 
 
@@ -1326,7 +1325,8 @@ def test_v16_accounts_gain_an_unset_threshold(stamped_v16_db):
 
 
 def test_v17_rerun_is_a_no_op(stamped_v16_db):
-    """Running init() again on a v17 DB leaves the column (and version) alone."""
+    """Running init() again on a migrated DB leaves the column (and version)
+    alone."""
     from db import init, SCHEMA_VERSION
 
     init()
@@ -1345,3 +1345,79 @@ def test_gated_path_adds_low_balance_threshold(stamped_v1_db):
 
 def test_legacy_path_has_low_balance_threshold(migrated_db):
     assert "low_balance_threshold_cents" in _table_columns(migrated_db, "accounts")
+
+
+# ── v17 → v18: transactions.adjustment (Balance adjustment rows) ─────────────
+
+
+@pytest.fixture
+def stamped_v17_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 17 whose transactions table predates
+    transactions.adjustment, holding one ordinary transaction. init() must
+    climb it to v18 with that row left as a non-adjustment."""
+    db_path = tmp_path / "v17.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, _set_schema_version
+
+    init()
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("ALTER TABLE transactions DROP COLUMN adjustment")
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES"
+            "(1, 1, 'Current', 'current')"
+        )
+        conn.execute(
+            "INSERT INTO transactions(id, user_id, account_id, amount_cents,"
+            " merchant) VALUES(1, 1, 1, -4250, 'Tesco')"
+        )
+        _set_schema_version(conn, 17)
+        conn.commit()
+    finally:
+        conn.close()
+
+    init()
+    return db_path
+
+
+def test_v17_db_climbs_to_v18(stamped_v17_db):
+    from db import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == 18
+    assert _read_schema_version(stamped_v17_db) == SCHEMA_VERSION
+
+
+def test_v17_transactions_are_not_adjustments(stamped_v17_db):
+    """_migrate_to_18 adds the flag as 0: past manual balance updates can't be
+    told apart from transaction-driven ones, so nothing is back-filled."""
+    conn = sqlite3.connect(str(stamped_v17_db))
+    try:
+        rows = conn.execute(
+            "SELECT id, merchant, adjustment FROM transactions ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows == [(1, "Tesco", 0)]
+
+
+def test_v18_rerun_is_a_no_op(stamped_v17_db):
+    from db import init, SCHEMA_VERSION
+
+    init()
+    assert _read_schema_version(stamped_v17_db) == SCHEMA_VERSION
+    names = _table_columns(stamped_v17_db, "transactions")
+    assert "adjustment" in names
+
+
+def test_gated_path_adds_adjustment(stamped_v1_db):
+    assert "adjustment" in _table_columns(stamped_v1_db, "transactions")
+
+
+def test_legacy_path_has_adjustment(migrated_db):
+    assert "adjustment" in _table_columns(migrated_db, "transactions")

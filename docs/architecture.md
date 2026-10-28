@@ -44,7 +44,7 @@ Browser  ──HTTP──►  FastAPI (src/app.py — thin wiring + lifespan)
 | R3 | Graphical interface | Single-page web app served directly by the backend; works in any modern browser |
 | R4 | Track current, savings, and loan account balances | All three account types are supported with distinct display treatment; loans appear as liabilities and subtract from net worth |
 | R5 | Add and remove accounts | Accounts can be created via the "Add Account" modal and deleted from the Edit modal with confirmation |
-| R6 | Update account balances | "Update Balance" records a new balance snapshot with optional notes |
+| R6 | Update account balances | "Update Balance" records a new balance snapshot with optional notes, plus a Balance adjustment transaction for any change |
 | R7 | Graphs of historical balances | Step-line chart showing all accounts over a selectable window (30 days - 1 year) |
 | R8 | Projected balances | Each account's page projects its balance 1, 3, 6 and 12 months ahead from its scheduled transactions and monthly interest; the Overview's savings projections window shows each savings account at 1, 2 and 5 years |
 | R9 | Interest rates on savings accounts | Annual interest rate (AER %) stored per savings account; used for monthly-compounding projections |
