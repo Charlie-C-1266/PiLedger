@@ -33,6 +33,8 @@ The balance is shown in the account's own currency. Beside it:
 
 **Update balance** records what the account holds now, or held on an earlier date, with an optional note. Use it when the bank's figure and PiLedger's have drifted apart.
 
+When the new balance differs from what the account held on that date, the difference appears in its transactions as a **Balance adjustment**, marked with a sliders icon and carrying your note, so you can always see when a balance was set by hand. For a credit card or loan, owing more shows as money out. Adjustments aren't counted as spending or money in or out. You can change an adjustment's note, and deleting it moves the balance back; to correct the amount, update the balance again. An account's first balance doesn't create one, and nor does entering the same balance again.
+
 ## Projected balance
 
 Below the balance, PiLedger projects where the account is heading.

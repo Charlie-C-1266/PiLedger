@@ -26,6 +26,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Scheduled items can be set to post automatically, with an Auto badge and a repeat icon on the transactions they create.
 - Account pages show projected balances over 1, 3, 6 and 12 months and the scheduled transactions coming up, with Post now, Skip and Undo.
 - Accounts can have a low-balance warning amount; Accounts and Overview flag any account projected to fall below it in the next 30 days.
+- Updating an account's balance by hand records the difference as a Balance adjustment in its transactions, so manual changes stay visible in the history.
 
 ### Changed
 

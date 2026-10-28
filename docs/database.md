@@ -82,6 +82,7 @@ Financial transaction records. Each row represents a single transaction on one a
 | `transfer_id` | TEXT | Shared by the two legs of a transfer; NULL otherwise |
 | `import_hash` | TEXT | Set on rows that came from a CSV import, so re-importing the same file skips them; unique when not NULL |
 | `created_at` | TEXT | UTC ISO-8601, set by SQLite `datetime('now')` on insert |
+| `adjustment` | INTEGER | `1` on a Balance adjustment: the row a manual balance update records for the difference it made (merchant "Balance adjustment", category "Adjustment"). It is written alongside the update's `balance_history` row rather than moving the balance itself, and is left out of budget spend and money-in/out totals. `0` otherwise, including every row from before v18 |
 
 A transaction doesn't record which scheduled item posted it: the API reads that from `subscription_postings` (by `transaction_id`, or `transfer_id` for both legs of a transfer) and reports it as `subscription_id`.
 
@@ -187,7 +188,7 @@ The posting log: one row per occurrence of a scheduled item that has been dealt 
 
 ## `meta`
 
-Key-value infrastructure table. Currently holds a single row: `schema_version` (17 at the time of writing: `SCHEMA_VERSION` in `db.py`).
+Key-value infrastructure table. Currently holds a single row: `schema_version` (18 at the time of writing: `SCHEMA_VERSION` in `db.py`).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -200,7 +201,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version` (
 
 **Fresh databases** get the current-schema `CREATE TABLE IF NOT EXISTS` statements, then are stamped with the latest `SCHEMA_VERSION`.
 
-**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — seventeen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
+**Legacy databases** (pre-v0.25, no `meta` table or no `schema_version` row) go through the original sniff-based migration path — eighteen idempotent steps that check column presence via `PRAGMA table_info` and `sqlite_master`:
 
 1. **`accounts.user_id` (0.2.0)** — added via `ALTER TABLE` if absent.
 2. **`accounts.type` widening (0.6.0)** — table recreated with the wider `CHECK(type IN ('current','savings','loan'))` constraint.
@@ -219,6 +220,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version` (
 15. **`subscriptions.kind` + `subscriptions.to_account_id`** — added via `ALTER TABLE`; `kind` defaults to `'expense'`, `to_account_id` is NULL.
 16. **`subscriptions.auto_post` + `subscriptions.auto_post_from`** — added via `ALTER TABLE`; `auto_post` defaults to `0` (every existing item stays a reminder), `auto_post_from` is NULL.
 17. **`accounts.low_balance_threshold_cents`** — added via `ALTER TABLE`, NULL on existing rows.
+18. **`transactions.adjustment`** — added via `ALTER TABLE`, defaults to `0`.
 
 After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
 
@@ -237,3 +239,4 @@ After the legacy path completes, the version is stamped. Subsequent runs read th
 - **v15** — `subscriptions.kind` (`'expense'`, `'income'` or `'transfer'`, defaulting to `'expense'` so every existing row stays a payment) and `subscriptions.to_account_id` (a transfer's destination, `ON DELETE SET NULL`) added, so scheduled items can be income or transfers.
 - **v16** — scheduled items can post themselves. `subscriptions.auto_post` (default `0`, so nothing starts posting on upgrade) and `subscriptions.auto_post_from` (the first day auto-post may post — the day it was switched on, so the past is never back-filled) added, and the `subscription_postings` log created: one row per handled occurrence (`posted` or `skipped`), unique on `(subscription_id, occurrence_date)` so a date is never posted twice. Its `transaction_id` is `ON DELETE SET NULL`, so deleting an auto-posted transaction doesn't bring it back; deleting the scheduled item deletes its postings but keeps its transactions.
 - **v17** — `accounts.low_balance_threshold_cents` (the "Warn me below" amount) added, NULL on existing accounts so they keep warning only below zero.
+- **v18** — `transactions.adjustment` added, `0` on existing rows: past manual balance updates can't be told apart from transaction-driven ones, so none are back-filled as Balance adjustments.

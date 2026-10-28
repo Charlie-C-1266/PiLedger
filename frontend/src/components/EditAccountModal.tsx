@@ -131,7 +131,9 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
     if (institutionChanged) await institutionMutation.mutateAsync();
     if (thresholdChanged) await thresholdMutation.mutateAsync(thresholdValue);
 
-    inv.accountChanged();
+    // A new balance may also record a Balance adjustment transaction.
+    if (hasBalance) inv.balanceRecorded();
+    else inv.accountChanged();
     onClose();
   };
 

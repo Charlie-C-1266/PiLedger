@@ -80,10 +80,12 @@ export default function Transactions() {
     return Array.from(set).sort();
   }, [transactions]);
 
-  // Stats
+  // Stats. Balance adjustments are listed and counted, but they correct a
+  // balance rather than move money, so they stay out of the in/out totals.
   const count = filtered.length;
-  const inflow = filtered.reduce((s, t) => s + (t.amount > 0 ? t.amount : 0), 0);
-  const outflow = filtered.reduce(
+  const flows = filtered.filter((t) => !t.adjustment);
+  const inflow = flows.reduce((s, t) => s + (t.amount > 0 ? t.amount : 0), 0);
+  const outflow = flows.reduce(
     (s, t) => s + (t.amount < 0 ? Math.abs(t.amount) : 0),
     0
   );

@@ -27,6 +27,10 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
   // A transfer leg can't be edited (the two sides must stay in sync); the
   // backend rejects PUTs on it. Offer delete-both instead.
   const isTransfer = !!transaction?.transfer_id;
+  // A Balance adjustment records what a manual balance update changed: its
+  // amount and account are fixed (the backend rejects edits to them), so it
+  // offers its note and Delete, which moves the balance back.
+  const isAdjustment = !isTransfer && !!transaction?.adjustment;
   const { data: accounts } = useAccounts();
   const currency =
     accounts?.find((a) => a.id === transaction?.account_id)?.currency ?? "GBP";
@@ -53,6 +57,7 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
     transaction ? transaction.amount < 0 : true
   );
   const [category, setCategory] = useState(transaction?.category ?? "");
+  const [note, setNote] = useState(transaction?.note ?? "");
   const inv = useInvalidate();
   const toast = useToast();
 
@@ -72,11 +77,27 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
       ),
   });
 
+  const noteMutation = useMutation({
+    mutationFn: (value: string) => updateTransaction(transaction!.id, { note: value }),
+    onSuccess: () => {
+      inv.transactionChanged();
+      toast.success("Note saved");
+      onClose();
+    },
+    onError: () => toast.error("Couldn't save the note"),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: () => deleteTransaction(transaction!.id),
     onSuccess: () => {
       inv.transactionChanged();
-      toast.success(isTransfer ? "Transfer deleted" : "Transaction deleted");
+      toast.success(
+        isTransfer
+          ? "Transfer deleted"
+          : isAdjustment
+            ? "Adjustment deleted"
+            : "Transaction deleted"
+      );
       onClose();
     },
     onError: () =>
@@ -97,14 +118,18 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
     });
   };
 
-  const pending = saveMutation.isPending || deleteMutation.isPending;
+  const pending =
+    saveMutation.isPending || noteMutation.isPending || deleteMutation.isPending;
+  const accountName = accounts?.find((a) => a.id === transaction?.account_id)?.name;
 
   return (
     <Modal onClose={onClose}>
         <h2 className={styles.title}>
           {isTransfer
             ? "Transfer"
-            : editing
+            : isAdjustment
+              ? "Balance adjustment"
+              : editing
               ? "Edit transaction"
               : "Add transaction"}
         </h2>
@@ -124,6 +149,44 @@ export default function AddModal({ accountId, transaction, onClose }: Props) {
               deleteLabel="Delete transfer"
               deleting={deleteMutation.isPending}
               busy={pending}
+            />
+          </>
+        ) : isAdjustment ? (
+          <>
+            <p className={styles.subtitle}>
+              {accountName ? `${accountName} · ` : ""}
+              {transaction!.amount >= 0 ? "+" : "−"}
+              {fmt(Math.abs(transaction!.amount), currency).replace(/^[−-]/, "")} ·{" "}
+              {new Date(transaction!.occurred_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+            <p className={styles.subtitle}>
+              Recorded when the balance was updated by hand. Deleting it moves the
+              balance back by this amount; to correct the amount, update the balance
+              again.
+            </p>
+            <input
+              className={styles.input}
+              placeholder="Note (optional)"
+              aria-label="Note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              autoComplete="off"
+            />
+            <ModalActions
+              onCancel={onClose}
+              onSave={() => noteMutation.mutate(note.trim())}
+              saveLabel="Save note"
+              saving={noteMutation.isPending}
+              saveDisabled={note.trim() === (transaction!.note ?? "")}
+              busy={pending}
+              onDelete={() => deleteMutation.mutate()}
+              deleteLabel="Delete adjustment"
+              deleting={deleteMutation.isPending}
             />
           </>
         ) : (

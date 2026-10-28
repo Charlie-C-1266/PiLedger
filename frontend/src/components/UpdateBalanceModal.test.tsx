@@ -117,3 +117,25 @@ describe("UpdateBalanceModal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe("UpdateBalanceModal refreshes", () => {
+  it("refreshes the transaction lists, where the Balance adjustment appears", async () => {
+    const qc = new QueryClient();
+    const spy = vi.spyOn(qc, "invalidateQueries").mockReturnValue(Promise.resolve());
+    const onClose = vi.fn();
+    render(
+      <QueryClientProvider client={qc}>
+        <ToastProvider>
+          <UpdateBalanceModal account={ACCOUNT} onClose={onClose} />
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    await userEvent.type(screen.getByLabelText("New balance"), "3500");
+    await userEvent.click(screen.getByRole("button", { name: "Update balance" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const keys = spy.mock.calls.map((c) => (c[0] as { queryKey: string[] }).queryKey[0]);
+    expect(keys).toEqual(expect.arrayContaining(["transactions", "accounts"]));
+  });
+});

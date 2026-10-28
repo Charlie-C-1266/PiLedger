@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMoney } from "../privacy/useMoney";
 import { useLongPress } from "../hooks/useLongPress";
-import { RepeatIcon } from "./icons";
+import { AdjustIcon, RepeatIcon } from "./icons";
 import type { Transaction } from "../types";
 import styles from "./TxnRow.module.css";
 
@@ -52,6 +52,17 @@ export default function TxnRow({ txn, accountName, currency = "GBP", onClick }: 
               title="Posted from a schedule"
             >
               <RepeatIcon aria-hidden="true" />
+            </span>
+          )}
+          {txn.adjustment && (
+            // Recorded by a manual balance update for the change it made.
+            <span
+              className={styles.scheduled}
+              role="img"
+              aria-label="Balance set by hand"
+              title="Balance set by hand"
+            >
+              <AdjustIcon aria-hidden="true" />
             </span>
           )}
           {txn.category ? `${txn.category} · ` : ""}

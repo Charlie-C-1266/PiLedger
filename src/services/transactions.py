@@ -14,6 +14,7 @@ import sqlite3
 import uuid
 from typing import Optional
 
+from constants import ADJUSTMENT_CATEGORY, ADJUSTMENT_MERCHANT
 from services.accounts import adjust_account_balance
 
 # Every read of transactions that is returned through the API goes through this
@@ -52,6 +53,38 @@ def insert_transaction(
         (uid, account_id, amount_cents, occurred_at, merchant, category, note),
     )
     adjust_account_balance(conn, account_id, amount_cents)
+    assert cur.lastrowid is not None
+    return cur.lastrowid
+
+
+def insert_adjustment(
+    conn: sqlite3.Connection,
+    uid: int,
+    account_id: int,
+    amount_cents: int,
+    occurred_at: str,
+    note: str,
+) -> int:
+    """Record a Balance adjustment: the cash flow a manual balance update made,
+    flagged ``adjustment = 1``. Unlike ``insert_transaction`` it does *not*
+    move the balance, because the balance-history entry the update wrote has
+    already set it; the row is the visible record of that change. Deleting it
+    later goes through ``delete_transaction_legs`` like any other row, which
+    reverses it. Returns the new id. Does not commit."""
+    cur = conn.execute(
+        "INSERT INTO transactions(user_id, account_id, amount_cents,"
+        " occurred_at, merchant, category, note, adjustment)"
+        " VALUES(?,?,?,?,?,?,?,1)",
+        (
+            uid,
+            account_id,
+            amount_cents,
+            occurred_at,
+            ADJUSTMENT_MERCHANT,
+            ADJUSTMENT_CATEGORY,
+            note,
+        ),
+    )
     assert cur.lastrowid is not None
     return cur.lastrowid
 

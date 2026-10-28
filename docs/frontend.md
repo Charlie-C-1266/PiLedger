@@ -132,10 +132,10 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 | Modal | Trigger | Operation |
 |---|---|---|
 | Add Account | "+ Add" menu | Creates an account (name, institution, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
-| Edit Account | Account page's Edit button | Records a new `balance_history` row and/or updates the account's colour, institution, and set-aside/closed flags. |
-| Update Balance | Account page's "Update balance" pill | Records a `balance_history` row with an optional earlier date and note. |
+| Edit Account | Account page's Edit button | Records a new `balance_history` row (and, when it changes the balance, a Balance adjustment transaction) and/or updates the account's colour, institution, and set-aside/closed flags. |
+| Update Balance | Account page's "Update balance" pill | Records a `balance_history` row with an optional earlier date and note; a changed balance also records a Balance adjustment transaction (refreshed via `useInvalidate().balanceRecorded`). |
 | Transfer | "+ Add" menu or account page | Moves money between two same-currency accounts; from an account page it starts with that account as the source. |
-| Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. |
+| Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. A Balance adjustment opens a read-only view instead: its note can be changed and it can be deleted, but not its amount or account. |
 | Add / Edit Goal | "+ Add" menu or goal card edit | Creates or updates a savings goal. |
 | Add / Edit Scheduled item | Scheduled screen, or "Edit schedule" on the account page | Creates or updates a scheduled payment, income or transfer (`AddSubscriptionModal`). The "Post automatically" switch starts on for a new item and is disabled, with the reason as its hint, until every account it posts to is chosen and open; the request always sends `auto_post` explicitly. |
 | Upcoming actions | A scheduled row in the account page's Upcoming card | Post now, Skip this one, or Edit schedule for that occurrence (`UpcomingActions`). |

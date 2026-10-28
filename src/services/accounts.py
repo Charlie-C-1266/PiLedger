@@ -24,6 +24,19 @@ def latest_balance_cents(conn: sqlite3.Connection, account_id: int) -> int | Non
     return row["balance_cents"] if row else None
 
 
+def balance_cents_at(conn: sqlite3.Connection, account_id: int, at: str) -> int | None:
+    """Return the balance an account had at ``at`` (a canonical ISO timestamp):
+    its latest balance-history entry recorded at or before then, ties broken by
+    insertion ``id`` like ``latest_balance_cents``. None if it had none yet."""
+    row = conn.execute(
+        "SELECT balance_cents FROM balance_history"
+        " WHERE account_id=? AND recorded_at<=?"
+        " ORDER BY recorded_at DESC, id DESC LIMIT 1",
+        (account_id, at),
+    ).fetchone()
+    return row["balance_cents"] if row else None
+
+
 # A LEFT JOIN that attaches each account's most-recent balance_history row as
 # ``b`` (so callers can read ``b.balance_cents`` / ``b.recorded_at``). Assumes
 # the outer query aliases ``accounts`` as ``a``; mirrors the ordering of

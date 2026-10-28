@@ -54,7 +54,7 @@ def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
     """Map a ``transactions`` row (read through ``TXN_SELECT``) to
     ``TransactionOut`` (cents → dollars, NULL note → empty string,
     ``transfer_id`` present only on transfer legs, ``subscription_id`` only on
-    rows a scheduled item posted)."""
+    rows a scheduled item posted, ``adjustment`` true on Balance adjustments)."""
     keys = row.keys()
     return TransactionOut(
         id=row["id"],
@@ -67,6 +67,7 @@ def _txn_row_to_out(row: sqlite3.Row) -> TransactionOut:
         note=row["note"] or "",
         transfer_id=row["transfer_id"] if "transfer_id" in keys else None,
         subscription_id=row["subscription_id"] if "subscription_id" in keys else None,
+        adjustment=bool(row["adjustment"]) if "adjustment" in keys else False,
         created_at=row["created_at"],
     )
 
@@ -190,7 +191,9 @@ def update_transaction(
     uid: int = Depends(require_auth),
 ) -> TransactionOut:
     """Patch the supplied fields of one of the user's transactions (404 if not
-    theirs; 400 for a transfer leg, which can't be edited).
+    theirs; 400 for a transfer leg, which can't be edited, or for a change to a
+    Balance adjustment's amount or account — it records what a balance update
+    did, so a different amount means updating the balance again).
 
     When the amount or account changes, the old amount is reversed off the
     original account and the new amount applied to the (possibly new) account so
@@ -212,6 +215,18 @@ def update_transaction(
                 "A transfer can't be edited — delete it and create a new one",
             )
         patch = data.model_dump(exclude_none=True)
+        if old["adjustment"]:
+            # Resending the current values (the edit form does) isn't a change.
+            if patch.get("account_id", old["account_id"]) != old["account_id"] or (
+                "amount" in patch and to_cents(patch["amount"]) != old["amount_cents"]
+            ):
+                raise HTTPException(
+                    400,
+                    "A balance adjustment's amount and account can't be edited"
+                    " — update the balance again instead",
+                )
+            patch.pop("account_id", None)
+            patch.pop("amount", None)
         if "account_id" in patch and patch["account_id"] != old["account_id"]:
             require_open_account(conn, patch["account_id"], uid)
         if "amount" in patch:
