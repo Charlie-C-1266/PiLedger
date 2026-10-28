@@ -69,7 +69,7 @@ Closed accounts don't project.
 
 The **Upcoming** card lists what's due on the account today and over the next 30 days: each scheduled item and each projected interest credit, with its date, how often it repeats, its category (or, for a transfer, the account it goes to or comes from), the amount, and the balance once it lands. On an account that isn't a debt, a balance below zero is highlighted.
 
-The card shows the first seven, says how many more there are, and ends with the net change over the 30 days. **Manage** opens the Scheduled screen.
+The card shows the first seven, says how many more there are, and ends with the net change over the 30 days. **Manage** opens the Scheduled screen, filtered to this account.
 
 Select a scheduled item to act on it. The window says whether it posts automatically or is a reminder, and offers:
 

@@ -1,4 +1,5 @@
 import type { Account, SubscriptionKind } from "../types";
+import { parseIdParam } from "./params";
 
 /** User-facing names for each kind of scheduled item, in picker order. */
 export const KIND_OPTIONS: { value: SubscriptionKind; label: string }[] = [
@@ -6,6 +7,55 @@ export const KIND_OPTIONS: { value: SubscriptionKind; label: string }[] = [
   { value: "income", label: "Income" },
   { value: "transfer", label: "Transfer" },
 ];
+
+/** What the Scheduled screen is narrowed to: one account ("" for all) and one
+ * kind ("all" for every kind). Kept in the URL as `?account=` and `?type=`. */
+export interface ScheduledFilter {
+  account: number | "";
+  kind: SubscriptionKind | "all";
+}
+
+const KINDS = new Set<string>(KIND_OPTIONS.map((o) => o.value));
+
+/** The filter a Scheduled URL asks for; anything unrecognised means "all". */
+export function readScheduledFilter(params: URLSearchParams): ScheduledFilter {
+  const type = params.get("type");
+  return {
+    account: parseIdParam(params.get("account")),
+    kind: type && KINDS.has(type) ? (type as SubscriptionKind) : "all",
+  };
+}
+
+/** `params` with the filter written in, leaving any other params alone. An
+ * unfiltered side is left out of the URL rather than written as "all". */
+export function writeScheduledFilter(
+  params: URLSearchParams,
+  filter: ScheduledFilter
+): URLSearchParams {
+  const next = new URLSearchParams(params);
+  if (filter.account === "") next.delete("account");
+  else next.set("account", String(filter.account));
+  if (filter.kind === "all") next.delete("type");
+  else next.set("type", filter.kind);
+  return next;
+}
+
+/** Whether a scheduled item, or one of its occurrences, passes the filter. A
+ * transfer belongs to both of its accounts, so it shows under either one. */
+export function matchesScheduledFilter(
+  item: {
+    kind: SubscriptionKind;
+    account_id?: number | null;
+    to_account_id?: number | null;
+  },
+  filter: ScheduledFilter
+): boolean {
+  if (filter.kind !== "all" && item.kind !== filter.kind) return false;
+  if (filter.account === "") return true;
+  return postingAccountIds(item.kind, item.account_id, item.to_account_id).includes(
+    filter.account
+  );
+}
 
 /**
  * The sign a scheduled amount is shown with. Amounts are stored positive and

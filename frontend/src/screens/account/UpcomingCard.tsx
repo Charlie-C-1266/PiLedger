@@ -171,7 +171,10 @@ export default function UpcomingCard({ account }: { account: Account }) {
             {soon && scheduled.length > 0 && ` · ${soon.events.length} scheduled`}
           </div>
         </div>
-        <TextLink to="/scheduled" aria-label="Manage scheduled transactions">
+        <TextLink
+          to={`/scheduled?account=${account.id}`}
+          aria-label="Manage scheduled transactions"
+        >
           Manage
         </TextLink>
       </div>

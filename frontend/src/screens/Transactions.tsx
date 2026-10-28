@@ -12,6 +12,7 @@ import FilterSheet from "../components/FilterSheet";
 import { AnimatePresence } from "motion/react";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { parseIdParam } from "../lib/params";
 import type { Transaction, TxnSort } from "../types";
 import styles from "./Transactions.module.css";
 
@@ -21,12 +22,6 @@ const SORT_OPTIONS: { key: TxnSort; label: string }[] = [
   { key: "amount", label: "Largest" },
   { key: "amount_asc", label: "Smallest" },
 ];
-
-/** A positive integer account id from the query string, or "" (all accounts). */
-function parseAccountParam(value: string | null): number | "" {
-  const id = Number(value);
-  return value && Number.isInteger(id) && id > 0 ? id : "";
-}
 
 export default function Transactions() {
   const { fmt } = useMoney();
@@ -41,7 +36,7 @@ export default function Transactions() {
   // (an account page's "View all"), and keep both in sync if the params change.
   const [searchParams] = useSearchParams();
   const qParam = searchParams.get("q") ?? "";
-  const accountParam = parseAccountParam(searchParams.get("account"));
+  const accountParam = parseIdParam(searchParams.get("account"));
   const [search, setSearch] = useState(qParam);
   useEffect(() => {
     setSearch(qParam);

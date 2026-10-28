@@ -81,6 +81,15 @@ A switch at the top changes between them.
 
 **Calendar** lays the same items out across a scrollable month grid, with a dot in the item's colour on each day it falls due. Once a date has been posted the dot becomes a tick; a skipped date shows as a faded ring. Tap a day to see what's on it, whether each one has been posted or skipped, and any item that can't post because its account is closed. This is the view for spotting clustering: three renewals landing the day before payday is the kind of thing a list hides and a calendar makes obvious.
 
+## Filtering
+
+Under the switch, two filters narrow both views at once:
+
+- **Type** shows only payments, only income or only transfers.
+- **Account** shows only what touches one account. A transfer counts for both of its accounts, so a monthly payment into savings shows under the account it leaves and the one it arrives in. Only accounts with something scheduled are offered.
+
+**Clear filters** puts everything back. The filters are part of the page's address (`/scheduled?account=3&type=income`), so they're still set when you come back to the screen, and an account page's **Manage** link opens Scheduled already filtered to that account.
+
 ## Ending or removing an item
 
 To stop something, set an **end date**: no due dates after it are shown, projected or posted. Deleting removes the item outright.

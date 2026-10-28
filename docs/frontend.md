@@ -38,7 +38,7 @@ The SPA is mounted from `static/dist/index.html` (the Vite production build). Re
 | `/transactions` | `Transactions` | Paginated transaction browser with full-text search, account filter, category chips, date/amount sort. `?q=` seeds the search and `?account=<id>` the account filter. |
 | `/budget` | `Budget` | Zero-based envelope budget: income lines, envelope groups with live spent-vs-budgeted sliders, "left to budget" hero, period toggle (monthly/weekly/yearly), safe-to-spend, allocation donut, and a budget-vs-actual trend |
 | `/goals` | `Goals` | Savings goals grid with target progress, monthly contribution, and ETA |
-| `/scheduled` | `Subscriptions` | Scheduled payments, income and transfers: a List / Calendar toggle, each item's Auto badge and next due date, and the calendar's posted (tick) and skipped (hollow ring) markers. The component keeps its old name; `/subscriptions` redirects here. |
+| `/scheduled` | `Subscriptions` | Scheduled payments, income and transfers: a List / Calendar toggle, account and type filters (kept in `?account=` / `?type=`) that apply to both views, each item's Auto badge and next due date, and the calendar's posted (tick) and skipped (hollow ring) markers. The component keeps its old name; `/subscriptions` redirects here. |
 | `/settings` | `Settings` | Theme, dark mode, custom transaction categories, exchange-rate editor, documentation link, password change, account deletion |
 
 All routes require a valid session. The server returns `302 → /login` for unauthenticated requests; the client also redirects on receiving `401` from any API call.
