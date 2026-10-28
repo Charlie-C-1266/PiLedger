@@ -29,6 +29,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Accounts can have a low-balance warning amount; Accounts and Overview flag any account projected to fall below it in the next 30 days.
 - Updating an account's balance by hand records the difference as a Balance adjustment in its transactions, so manual changes stay visible in the history.
 - The Scheduled screen can be filtered to one account and to payments, income or transfers; an account page's Manage link opens it filtered to that account.
+- An account's nickname, type, subtype, interest rate and currency can be changed from Edit on its page.
 
 ### Changed
 

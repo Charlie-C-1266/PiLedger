@@ -85,3 +85,19 @@ export function accountTypeLine(account: { type: string; subtype: string }): str
   if (!account.subtype || account.subtype === "general") return type;
   return `${type} · ${SUBTYPE_LABELS[account.subtype] ?? account.subtype}`;
 }
+
+/** Types whose balance is the amount owed rather than held. Mirrors the
+ * backend's `DEBT_TYPES`. */
+const DEBT_TYPES: readonly AccountType[] = ["credit", "loan"];
+
+/**
+ * The types an account of `type` can be switched to, itself included: those
+ * on the same side, money held or money owed. Crossing over would flip what
+ * its stored balance means, so the API refuses it.
+ */
+export function switchableTypes(type: AccountType): AccountType[] {
+  const owed = DEBT_TYPES.includes(type);
+  return (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter(
+    (t) => DEBT_TYPES.includes(t) === owed,
+  );
+}

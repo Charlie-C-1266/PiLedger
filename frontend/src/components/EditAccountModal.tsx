@@ -1,15 +1,21 @@
 import { useId, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { recordBalance, removeAccount, updateAccount } from "../api/client";
+import { ApiError, recordBalance, removeAccount, updateAccount } from "../api/client";
 import { useMoney } from "../privacy/useMoney";
 import { INSTITUTION_GROUPS, OTHER } from "../lib/institutions";
-import { currencySymbol } from "../lib/currency";
+import { CURRENCIES, currencySymbol } from "../lib/currency";
+import {
+  ACCOUNT_TYPE_LABELS,
+  SUBTYPE_LABELS,
+  SUBTYPES_BY_TYPE,
+  switchableTypes,
+} from "../lib/accountTypes";
 import Modal from "./Modal";
 import ColorPicker from "./ColorPicker";
 import ToggleSwitch from "./ToggleSwitch";
 import ModalActions from "./ModalActions";
 import { useInvalidate } from "../hooks/useInvalidate";
-import type { Account } from "../types";
+import type { Account, AccountType } from "../types";
 import styles from "./AddModal.module.css";
 
 interface Props {
@@ -20,6 +26,9 @@ interface Props {
   onDeleted?: () => void;
 }
 
+/** Mirrors the API's `MAX_RATE` (% a year). */
+const MAX_RATE = 1000;
+
 /** The "Warn me below" input as an amount: null when left empty, NaN when it
  * isn't a non-negative number. Thousands separators are allowed. */
 function parseThreshold(raw: string): number | null {
@@ -29,23 +38,51 @@ function parseThreshold(raw: string): number | null {
   return Number.isFinite(value) && value >= 0 ? value : NaN;
 }
 
+/** The interest-rate input as a percentage: 0 when left empty, NaN when it
+ * isn't a number from 0 to MAX_RATE. A trailing "%" is allowed. */
+function parseRate(raw: string): number {
+  const text = raw.trim().replace(/%$/, "").trim();
+  if (!text) return 0;
+  const value = Number(text);
+  return Number.isFinite(value) && value >= 0 && value <= MAX_RATE ? value : NaN;
+}
+
+/** Edit an account's details (everything its page lists), record a new
+ * balance, or delete it. Saves only what changed, in one request. */
 export default function EditAccountModal({ account, onClose, onDeleted }: Props) {
   const { fmt } = useMoney();
-  const thresholdId = useId();
+  const ids = {
+    name: useId(),
+    provider: useId(),
+    type: useId(),
+    subtype: useId(),
+    rate: useId(),
+    currency: useId(),
+    balance: useId(),
+    threshold: useId(),
+  };
+  const [name, setName] = useState(account.name);
+  const [institution, setInstitution] = useState(account.institution ?? "");
+  const [institutionName, setInstitutionName] = useState(
+    account.institution_name ?? ""
+  );
+  const [type, setType] = useState<AccountType>(account.type);
+  const [subtype, setSubtype] = useState(account.subtype);
+  const [rate, setRate] = useState(
+    account.interest_rate ? String(account.interest_rate) : ""
+  );
+  const [currency, setCurrency] = useState(account.currency);
   const [balance, setBalance] = useState("");
   const [threshold, setThreshold] = useState(
     account.low_balance_threshold != null ? String(account.low_balance_threshold) : ""
   );
   const [color, setColor] = useState(account.color || "#6366f1");
-  const [institution, setInstitution] = useState(account.institution ?? "");
-  const [institutionName, setInstitutionName] = useState(
-    account.institution_name ?? ""
-  );
   const [countsToNetWorth, setCountsToNetWorth] = useState(
     account.counts_to_net_worth
   );
   const [closed, setClosed] = useState(account.closed);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [error, setError] = useState("");
   const inv = useInvalidate();
 
   const deleteMutation = useMutation({
@@ -57,98 +94,101 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
     },
   });
 
-  const balanceMutation = useMutation({
-    mutationFn: (val: number) => recordBalance(account.id, val),
+  // The details go first, so a refused change (a currency a scheduled
+  // transfer can't follow, say) doesn't leave a new balance half-saved.
+  const saveMutation = useMutation({
+    mutationFn: async (save: { patch: Partial<Account>; newBalance: number | null }) => {
+      if (Object.keys(save.patch).length) await updateAccount(account.id, save.patch);
+      if (save.newBalance != null) await recordBalance(account.id, save.newBalance);
+    },
+    onSuccess: (_, save) => {
+      // A new balance may also record a Balance adjustment transaction.
+      if (save.newBalance != null) inv.balanceRecorded();
+      else inv.accountChanged();
+      onClose();
+    },
+    onError: (err) => {
+      // The details may have saved before the balance failed.
+      inv.accountChanged();
+      setError(
+        err instanceof ApiError && err.detail
+          ? err.detail
+          : "Couldn't save these changes. Please try again."
+      );
+    },
   });
 
-  const colorMutation = useMutation({
-    mutationFn: (newColor: string) => updateAccount(account.id, { color: newColor }),
-  });
-
-  const flagMutation = useMutation({
-    mutationFn: (counts: boolean) =>
-      updateAccount(account.id, { counts_to_net_worth: counts }),
-  });
-
-  const closedMutation = useMutation({
-    mutationFn: (nextClosed: boolean) =>
-      updateAccount(account.id, { closed: nextClosed }),
-  });
-
-  // Null clears it back to warning only below zero.
-  const thresholdMutation = useMutation({
-    mutationFn: (value: number | null) =>
-      updateAccount(account.id, { low_balance_threshold: value }),
-  });
-
-  // Sent as a pair: the API rejects a custom name on a catalogue slug and
-  // requires one on "other", so switching between them has to move both fields
-  // in the same request.
-  const institutionMutation = useMutation({
-    mutationFn: () =>
-      updateAccount(account.id, {
-        institution: institution || null,
-        institution_name: institution === OTHER ? institutionName.trim() : null,
-      }),
-  });
-
+  const trimmedName = name.trim();
   const customName = institutionName.trim();
   const needsCustomName = institution === OTHER;
   // The low-balance warning reads "projected to run low", which only fits
   // money held: credit cards and loans don't get one.
-  const warnsLow = account.type !== "credit" && account.type !== "loan";
+  const warnsLow = type !== "credit" && type !== "loan";
   const thresholdValue = parseThreshold(threshold);
   const thresholdInvalid = Number.isNaN(thresholdValue);
+  const rateValue = parseRate(rate);
+  const rateInvalid = Number.isNaN(rateValue);
+  const currencyChanged = currency !== account.currency;
+  const symbol = currencySymbol(currency);
 
-  const handleSave = async () => {
-    const colorChanged = color !== (account.color || "#6366f1");
-    const flagChanged = countsToNetWorth !== account.counts_to_net_worth;
-    const closedChanged = closed !== account.closed;
-    const institutionChanged =
-      institution !== (account.institution ?? "") ||
-      (needsCustomName && customName !== (account.institution_name ?? ""));
-    const thresholdChanged =
-      warnsLow && thresholdValue !== (account.low_balance_threshold ?? null);
-    const balanceParsed = parseFloat(balance);
-    const hasBalance = !isNaN(balanceParsed);
-
-    if (needsCustomName && !customName) return;
-    if (warnsLow && thresholdInvalid) return;
-    if (
-      !hasBalance &&
-      !colorChanged &&
-      !flagChanged &&
-      !closedChanged &&
-      !institutionChanged &&
-      !thresholdChanged
-    )
-      return;
-
-    if (hasBalance) await balanceMutation.mutateAsync(balanceParsed);
-    if (colorChanged) await colorMutation.mutateAsync(color);
-    if (flagChanged) await flagMutation.mutateAsync(countsToNetWorth);
-    if (closedChanged) await closedMutation.mutateAsync(closed);
-    if (institutionChanged) await institutionMutation.mutateAsync();
-    if (thresholdChanged) await thresholdMutation.mutateAsync(thresholdValue);
-
-    // A new balance may also record a Balance adjustment transaction.
-    if (hasBalance) inv.balanceRecorded();
-    else inv.accountChanged();
-    onClose();
+  const handleTypeChange = (next: AccountType) => {
+    setType(next);
+    // Keep the subtype if the new type has it too ("general" always does).
+    if (!SUBTYPES_BY_TYPE[next].includes(subtype)) setSubtype("general");
   };
 
-  const pending =
-    balanceMutation.isPending ||
-    colorMutation.isPending ||
-    flagMutation.isPending ||
-    closedMutation.isPending ||
-    institutionMutation.isPending ||
-    thresholdMutation.isPending ||
-    deleteMutation.isPending;
+  const handleSave = () => {
+    if (!trimmedName) {
+      setError("Give the account a nickname.");
+      return;
+    }
+    if (needsCustomName && !customName) return;
+    if (rateInvalid || (warnsLow && thresholdInvalid)) return;
+
+    const patch: Partial<Account> = {};
+    if (trimmedName !== account.name) patch.name = trimmedName;
+    // The API checks the subtype against the type, so they travel together.
+    if (type !== account.type || subtype !== account.subtype) {
+      if (type !== account.type) patch.type = type;
+      patch.subtype = subtype;
+    }
+    if (rateValue !== (account.interest_rate ?? 0)) patch.interest_rate = rateValue;
+    if (currencyChanged) patch.currency = currency;
+    if (color !== (account.color || "#6366f1")) patch.color = color;
+    if (countsToNetWorth !== account.counts_to_net_worth) {
+      patch.counts_to_net_worth = countsToNetWorth;
+    }
+    if (closed !== account.closed) patch.closed = closed;
+    // Sent as a pair: the API rejects a custom name on a catalogue slug and
+    // requires one on "other", so switching between them has to move both
+    // fields in the same request.
+    if (
+      institution !== (account.institution ?? "") ||
+      (needsCustomName && customName !== (account.institution_name ?? ""))
+    ) {
+      patch.institution = institution || null;
+      patch.institution_name = needsCustomName ? customName : null;
+    }
+    // Null clears it back to warning only below zero.
+    if (warnsLow && thresholdValue !== (account.low_balance_threshold ?? null)) {
+      patch.low_balance_threshold = thresholdValue;
+    }
+    const parsedBalance = parseFloat(balance);
+    const newBalance = Number.isNaN(parsedBalance) ? null : parsedBalance;
+
+    if (!Object.keys(patch).length && newBalance == null) {
+      onClose();
+      return;
+    }
+    setError("");
+    saveMutation.mutate({ patch, newBalance });
+  };
+
+  const pending = saveMutation.isPending || deleteMutation.isPending;
 
   return (
     <Modal onClose={onClose}>
-        <h2 className={styles.title}>Update account</h2>
+        <h2 className={styles.title}>Edit account</h2>
         <p className={styles.subtitle}>
           {account.name}
           {account.current_balance != null && (
@@ -156,73 +196,195 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
           )}
         </p>
 
-        <input
-          className={styles.input}
-          placeholder="New balance (e.g. 2500.00)"
-          value={balance}
-          onChange={(e) => setBalance(e.target.value)}
-          inputMode="decimal"
-          autoFocus
-        />
-
-        <select
-          className={styles.select}
-          value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
-          aria-label="Institution"
-        >
-          <option value="">No institution</option>
-          {INSTITUTION_GROUPS.map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.institutions.map((i) => (
-                <option key={i.slug} value={i.slug}>
-                  {i.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-
-        {needsCustomName && (
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.name}>
+            Nickname
+          </label>
           <input
+            id={ids.name}
             className={styles.input}
-            placeholder="Institution name (e.g. Chase)"
-            value={institutionName}
-            onChange={(e) => setInstitutionName(e.target.value)}
-            aria-label="Institution name"
-            maxLength={60}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={120}
             autoComplete="off"
+            aria-invalid={!trimmedName || undefined}
+            autoFocus
           />
-        )}
+        </div>
 
-        <ColorPicker value={color} onChange={setColor} />
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.provider}>
+            Provider
+          </label>
+          <select
+            id={ids.provider}
+            className={styles.select}
+            value={institution}
+            onChange={(e) => setInstitution(e.target.value)}
+          >
+            <option value="">No provider</option>
+            {INSTITUTION_GROUPS.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.institutions.map((i) => (
+                  <option key={i.slug} value={i.slug}>
+                    {i.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {needsCustomName && (
+            <input
+              className={styles.input}
+              placeholder="Provider name (e.g. Chase)"
+              value={institutionName}
+              onChange={(e) => setInstitutionName(e.target.value)}
+              aria-label="Provider name"
+              maxLength={60}
+              autoComplete="off"
+            />
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.type}>
+            Account type
+          </label>
+          <select
+            id={ids.type}
+            className={styles.select}
+            value={type}
+            onChange={(e) => handleTypeChange(e.target.value as AccountType)}
+            aria-describedby={`${ids.type}-hint`}
+          >
+            {switchableTypes(account.type).map((t) => (
+              <option key={t} value={t}>
+                {ACCOUNT_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          <span className={styles.fieldHint} id={`${ids.type}-hint`}>
+            {warnsLow
+              ? "To track a credit card or loan, add a new account: its balance is money you owe."
+              : "To track money you hold, add a new account: this one's balance is money you owe."}
+          </span>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.subtype}>
+            Subtype
+          </label>
+          <select
+            id={ids.subtype}
+            className={styles.select}
+            value={subtype}
+            onChange={(e) => setSubtype(e.target.value)}
+          >
+            {SUBTYPES_BY_TYPE[type].map((s) => (
+              <option key={s} value={s}>
+                {SUBTYPE_LABELS[s]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.rate}>
+            Interest rate
+          </label>
+          <input
+            id={ids.rate}
+            className={styles.input}
+            placeholder="0.00"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            inputMode="decimal"
+            autoComplete="off"
+            aria-describedby={`${ids.rate}-hint`}
+            aria-invalid={rateInvalid || undefined}
+          />
+          <span
+            className={`${styles.fieldHint} ${rateInvalid ? styles.fieldError : ""}`}
+            id={`${ids.rate}-hint`}
+          >
+            {rateInvalid
+              ? "Enter a rate from 0 to 1,000%, or leave it empty."
+              : "% a year. Leave empty for none."}
+          </span>
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.currency}>
+            Currency
+          </label>
+          <select
+            id={ids.currency}
+            className={styles.select}
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            aria-describedby={currencyChanged ? `${ids.currency}-hint` : undefined}
+          >
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.name}
+              </option>
+            ))}
+          </select>
+          {currencyChanged && (
+            <span className={styles.fieldHint} id={`${ids.currency}-hint`}>
+              Amounts aren't converted: the balance and transactions keep their
+              numbers in {currency}.
+            </span>
+          )}
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.fieldLabel} htmlFor={ids.balance}>
+            New balance
+          </label>
+          <input
+            id={ids.balance}
+            className={styles.input}
+            placeholder="New balance (e.g. 2500.00)"
+            value={balance}
+            onChange={(e) => setBalance(e.target.value)}
+            inputMode="decimal"
+            autoComplete="off"
+            aria-describedby={`${ids.balance}-hint`}
+          />
+          <span className={styles.fieldHint} id={`${ids.balance}-hint`}>
+            Leave empty to keep the current balance.
+          </span>
+        </div>
 
         {warnsLow && (
           <div className={styles.field}>
-            <label className={styles.fieldLabel} htmlFor={thresholdId}>
+            <label className={styles.fieldLabel} htmlFor={ids.threshold}>
               Warn me below
             </label>
             <input
-              id={thresholdId}
+              id={ids.threshold}
               className={styles.input}
-              placeholder={`${currencySymbol(account.currency)}0.00`}
+              placeholder={`${symbol}0.00`}
               value={threshold}
               onChange={(e) => setThreshold(e.target.value)}
               inputMode="decimal"
               autoComplete="off"
-              aria-describedby={`${thresholdId}-hint`}
+              aria-describedby={`${ids.threshold}-hint`}
               aria-invalid={thresholdInvalid || undefined}
             />
             <span
               className={`${styles.fieldHint} ${thresholdInvalid ? styles.fieldError : ""}`}
-              id={`${thresholdId}-hint`}
+              id={`${ids.threshold}-hint`}
             >
               {thresholdInvalid
                 ? "Enter an amount of zero or more, or leave it empty."
-                : `Show a warning when this account is projected to fall below this amount. Leave empty to warn only below ${currencySymbol(account.currency)}0.`}
+                : `Show a warning when this account is projected to fall below this amount. Leave empty to warn only below ${symbol}0.`}
             </span>
           </div>
         )}
+
+        <ColorPicker value={color} onChange={setColor} />
 
         <ToggleSwitch
           label="Count toward net worth"
@@ -237,6 +399,12 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
           checked={closed}
           onChange={setClosed}
         />
+
+        {error && (
+          <div className={styles.errorMsg} role="alert">
+            {error}
+          </div>
+        )}
 
         {confirmingDelete ? (
           <div className={styles.footer}>

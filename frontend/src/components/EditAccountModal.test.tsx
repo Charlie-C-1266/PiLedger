@@ -4,18 +4,23 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-vi.mock("../api/client", () => ({
-  updateAccount: vi.fn(),
-  removeAccount: vi.fn(),
-  recordBalance: vi.fn(),
-}));
+vi.mock("../api/client", async () => {
+  const actual = await vi.importActual<typeof import("../api/client")>("../api/client");
+  return {
+    // A real class the modal branches on, to show the API's reason.
+    ApiError: actual.ApiError,
+    updateAccount: vi.fn(),
+    removeAccount: vi.fn(),
+    recordBalance: vi.fn(),
+  };
+});
 
 // Mocked only to prove the modal no longer fetches history (D13: the chart
 // moved to the account page).
 vi.mock("../hooks/useAccountHistory", () => ({ useAccountHistory: vi.fn() }));
 
 import EditAccountModal from "./EditAccountModal";
-import { updateAccount, recordBalance, removeAccount } from "../api/client";
+import { ApiError, updateAccount, recordBalance, removeAccount } from "../api/client";
 import { useAccountHistory } from "../hooks/useAccountHistory";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import type { Account } from "../types";
@@ -78,17 +83,17 @@ describe("EditAccountModal", () => {
     expect(updateAccount).toHaveBeenCalledWith(1, { closed: true });
   });
 
-  it("preselects the account's current institution", () => {
+  it("preselects the account's current provider", () => {
     render(
       <EditAccountModal account={makeAccount({ institution: "chase" })} onClose={() => {}} />,
       { wrapper },
     );
-    expect(screen.getByLabelText("Institution")).toHaveValue("chase");
+    expect(screen.getByLabelText("Provider")).toHaveValue("chase");
   });
 
-  it("saves a newly chosen institution as a pair", async () => {
+  it("saves a newly chosen provider as a pair", async () => {
     render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
-    await userEvent.selectOptions(screen.getByLabelText("Institution"), "chase");
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "chase");
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).toHaveBeenCalledWith(1, {
@@ -97,12 +102,12 @@ describe("EditAccountModal", () => {
     });
   });
 
-  it("clears the provider when the institution is unset", async () => {
+  it("clears the provider when it is unset", async () => {
     render(
       <EditAccountModal account={makeAccount({ institution: "chase" })} onClose={() => {}} />,
       { wrapper },
     );
-    await userEvent.selectOptions(screen.getByLabelText("Institution"), "");
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "");
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).toHaveBeenCalledWith(1, {
@@ -113,10 +118,10 @@ describe("EditAccountModal", () => {
 
   it("asks for a name when Other is chosen, and sends it with the slug", async () => {
     render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
-    expect(screen.queryByLabelText("Institution name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Provider name")).not.toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByLabelText("Institution"), "other");
-    await userEvent.type(screen.getByLabelText("Institution name"), "Kroo");
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "other");
+    await userEvent.type(screen.getByLabelText("Provider name"), "Kroo");
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).toHaveBeenCalledWith(1, {
@@ -127,7 +132,7 @@ describe("EditAccountModal", () => {
 
   it("will not save Other without a name, since the API would reject it", async () => {
     render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
-    await userEvent.selectOptions(screen.getByLabelText("Institution"), "other");
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "other");
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).not.toHaveBeenCalled();
@@ -141,7 +146,7 @@ describe("EditAccountModal", () => {
       />,
       { wrapper },
     );
-    await userEvent.selectOptions(screen.getByLabelText("Institution"), "starling");
+    await userEvent.selectOptions(screen.getByLabelText("Provider"), "starling");
     await userEvent.click(screen.getByRole("button", { name: "Update account" }));
 
     expect(updateAccount).toHaveBeenCalledWith(1, {
@@ -294,5 +299,152 @@ describe("EditAccountModal balance refresh", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(busted()).toContain("accounts");
     expect(busted()).not.toContain("transactions");
+  });
+});
+
+describe("EditAccountModal details", () => {
+  const save = () => userEvent.click(screen.getByRole("button", { name: "Update account" }));
+  const renderModal = (overrides: Partial<Account> = {}, onClose = vi.fn()) => {
+    render(<EditAccountModal account={makeAccount(overrides)} onClose={onClose} />, {
+      wrapper,
+    });
+    return onClose;
+  };
+
+  it("is titled Edit account and prefills every detail the page lists", () => {
+    renderModal({ type: "savings", subtype: "cash_isa", interest_rate: 4.1, currency: "EUR" });
+    expect(screen.getByRole("heading", { name: "Edit account" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nickname")).toHaveValue("Monzo");
+    expect(screen.getByLabelText("Account type")).toHaveValue("savings");
+    expect(screen.getByLabelText("Subtype")).toHaveValue("cash_isa");
+    expect(screen.getByLabelText("Interest rate")).toHaveValue("4.1");
+    expect(screen.getByLabelText("Currency")).toHaveValue("EUR");
+  });
+
+  it("saves a new nickname", async () => {
+    renderModal();
+    await userEvent.clear(screen.getByLabelText("Nickname"));
+    await userEvent.type(screen.getByLabelText("Nickname"), "  Joint account ");
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { name: "Joint account" });
+  });
+
+  it("won't save an empty nickname, and says why", async () => {
+    const onClose = renderModal();
+    await userEvent.clear(screen.getByLabelText("Nickname"));
+    await save();
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Give the account a nickname.");
+  });
+
+  it("saves a new interest rate", async () => {
+    renderModal({ interest_rate: 3 });
+    const field = screen.getByLabelText("Interest rate");
+    await userEvent.clear(field);
+    await userEvent.type(field, "4.75%");
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { interest_rate: 4.75 });
+  });
+
+  it("clears the interest rate to none", async () => {
+    renderModal({ interest_rate: 3 });
+    await userEvent.clear(screen.getByLabelText("Interest rate"));
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { interest_rate: 0 });
+  });
+
+  it("won't save a rate that isn't a percentage, and says why", async () => {
+    renderModal();
+    const field = screen.getByLabelText("Interest rate");
+    await userEvent.type(field, "abc");
+    await save();
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription("Enter a rate from 0 to 1,000%, or leave it empty.");
+  });
+
+  it("only offers types on the same side: money held or money owed", () => {
+    const options = () =>
+      Array.from(
+        (screen.getByLabelText("Account type") as HTMLSelectElement).options,
+        (o) => o.value,
+      );
+    const { unmount } = render(
+      <EditAccountModal account={makeAccount({ type: "current" })} onClose={() => {}} />,
+      { wrapper },
+    );
+    expect(options()).toEqual(["current", "savings", "invest"]);
+    unmount();
+    render(<EditAccountModal account={makeAccount({ type: "credit" })} onClose={() => {}} />, {
+      wrapper,
+    });
+    expect(options()).toEqual(["loan", "credit"]);
+  });
+
+  it("sends the type with a subtype that fits it", async () => {
+    renderModal({ type: "savings", subtype: "cash_isa" });
+    await userEvent.selectOptions(screen.getByLabelText("Account type"), "current");
+    // A Cash ISA isn't a kind of current account, so the subtype resets.
+    expect(screen.getByLabelText("Subtype")).toHaveValue("general");
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { type: "current", subtype: "general" });
+  });
+
+  it("saves a new subtype on its own", async () => {
+    renderModal({ type: "savings" });
+    await userEvent.selectOptions(screen.getByLabelText("Subtype"), "easy_access");
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { subtype: "easy_access" });
+  });
+
+  it("saves a new currency and says amounts aren't converted", async () => {
+    renderModal();
+    const field = screen.getByLabelText("Currency");
+    expect(field).not.toHaveAccessibleDescription();
+    await userEvent.selectOptions(field, "EUR");
+    expect(field).toHaveAccessibleDescription(
+      "Amounts aren't converted: the balance and transactions keep their numbers in EUR.",
+    );
+    await save();
+    expect(updateAccount).toHaveBeenCalledWith(1, { currency: "EUR" });
+  });
+
+  it("sends every change in one request", async () => {
+    renderModal();
+    await userEvent.clear(screen.getByLabelText("Nickname"));
+    await userEvent.type(screen.getByLabelText("Nickname"), "Bills");
+    await userEvent.type(screen.getByLabelText("Interest rate"), "1.5");
+    await userEvent.click(screen.getByRole("switch", { name: "Closed" }));
+    await save();
+    expect(updateAccount).toHaveBeenCalledTimes(1);
+    expect(updateAccount).toHaveBeenCalledWith(1, {
+      name: "Bills",
+      interest_rate: 1.5,
+      closed: true,
+    });
+  });
+
+  it("just closes when nothing changed", async () => {
+    const onClose = renderModal();
+    await save();
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(recordBalance).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("shows the API's reason when a change is refused, and records no balance", async () => {
+    vi.mocked(updateAccount).mockRejectedValue(
+      new ApiError(400, '"Savings pot" is a scheduled transfer with Pot (GBP).', "400"),
+    );
+    const onClose = renderModal();
+    await userEvent.selectOptions(screen.getByLabelText("Currency"), "EUR");
+    await userEvent.type(screen.getByLabelText("New balance"), "100");
+    await save();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      '"Savings pot" is a scheduled transfer with Pot (GBP).',
+    );
+    expect(recordBalance).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });

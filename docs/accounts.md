@@ -18,7 +18,7 @@ The top of the page shows the account's provider mark (or, if no provider is rec
 
 Three buttons sit alongside:
 
-- **Edit** opens the account's settings: a new balance, its colour and provider, whether it counts toward net worth, whether it's closed, and deleting it.
+- **Edit** opens the account's settings: its nickname, provider, type and subtype, interest rate and currency, a new balance, its colour, whether it counts toward net worth, whether it's closed, and deleting it. See [Changing an account's details](#changing-an-accounts-details).
 - **Transfer** moves money to another account, starting with this one as the source.
 - **Add transaction** records a transaction on this account.
 
@@ -88,6 +88,13 @@ The latest seven transactions on the account, with a count of how many there wer
 ## Account details
 
 A read-only summary: nickname, provider, account type, interest rate, currency, whether it counts toward net worth, when you started tracking it, and when its balance was last updated. Change them with **Edit**.
+
+### Changing an account's details
+
+**Edit** changes everything in the details except the two dates. Only what you change is saved. There are two limits:
+
+- **Type** can only change on the same side. A current, savings or investment account can switch between those three, and a credit card can become a loan or the other way round. An account you hold money in can't become one you owe, because the same balance would then mean a debt. Add a new account instead. When a new type doesn't have the old subtype (a Cash ISA isn't a kind of current account), the subtype goes back to General.
+- **Currency** relabels the account; it doesn't convert anything. The balance and every transaction keep their numbers. It can't change while a scheduled transfer links the account to one in its current currency, because both ends of a transfer have to share a currency. Change or delete that transfer first.
 
 ## Low-balance warnings
 
