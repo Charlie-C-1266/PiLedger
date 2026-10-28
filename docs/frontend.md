@@ -132,7 +132,7 @@ Write operations open modal dialogs. All modals close on overlay click or `Escap
 | Modal | Trigger | Operation |
 |---|---|---|
 | Add Account | "+ Add" menu | Creates an account (name, institution, type, currency, colour); optionally records an opening balance. Currency defaults to the user's base currency. |
-| Edit Account | Account page's Edit button | Records a new `balance_history` row (and, when it changes the balance, a Balance adjustment transaction) and/or updates the account's colour, institution, and set-aside/closed flags. |
+| Edit Account | Account page's Edit button | Updates the account's details (nickname, provider, type and subtype on the same side, interest rate, currency, colour, warning amount, set-aside/closed flags) in one `PUT` of only the changed fields, then records a new `balance_history` row if a balance was entered (and, when it changes the balance, a Balance adjustment transaction). The type picker only offers same-side types (`switchableTypes`); a refused change shows the API's reason. |
 | Update Balance | Account page's "Update balance" pill | Records a `balance_history` row with an optional earlier date and note; a changed balance also records a Balance adjustment transaction (refreshed via `useInvalidate().balanceRecorded`). |
 | Transfer | "+ Add" menu or account page | Moves money between two same-currency accounts; from an account page it starts with that account as the source. |
 | Add / Edit Transaction | "+ Add" menu or row edit button | Creates or updates a transaction record; balance is adjusted automatically. A Balance adjustment opens a read-only view instead: its note can be changed and it can be deleted, but not its amount or account. |

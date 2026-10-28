@@ -164,6 +164,23 @@ def create_account(data: AccountIn, uid: int = Depends(require_auth)) -> Account
     return _account_row_to_out(row)
 
 
+def _transfer_currency_clash(
+    conn: sqlite3.Connection, aid: int, currency: str
+) -> sqlite3.Row | None:
+    """A scheduled transfer linking account ``aid`` to an account that isn't
+    in ``currency``, with that account's name and currency, or None."""
+    row: sqlite3.Row | None = conn.execute(
+        "SELECT s.name, o.name AS other_name, o.currency AS other_currency"
+        " FROM subscriptions s JOIN accounts o ON o.id = CASE"
+        "   WHEN s.account_id = ? THEN s.to_account_id ELSE s.account_id END"
+        " WHERE s.kind = 'transfer' AND ? IN (s.account_id, s.to_account_id)"
+        "   AND o.currency != ?"
+        " ORDER BY s.id LIMIT 1",
+        (aid, aid, currency),
+    ).fetchone()
+    return row
+
+
 @router.put("/api/accounts/{aid}", response_model=AccountOut)
 def update_account(
     aid: int,
@@ -176,15 +193,22 @@ def update_account(
     Only non-None fields are applied, except the institution pair and the
     low-balance threshold — nullable columns where clearing is a meaningful edit
     ("no longer recorded", "warn only below zero"), so an explicit null there
-    reaches the UPDATE. Subtype, institution and threshold are re-checked
-    against the row's existing values here because a partial patch omits the
-    account's type and the other half of each pair, so the schema-level
-    validators can't see them.
+    reaches the UPDATE. Type, subtype, institution and threshold are re-checked
+    against the row's existing values here because a partial patch may omit the
+    other half of each pair, so the schema-level validators can't see them.
+
+    The type may change between accounts that hold money (current, savings,
+    invest) or between debts (credit, loan), but not across: the stored balance
+    means "held" on one side and "owed" on the other, so switching would flip
+    it, and how every later edit to a past transaction moves it. A currency
+    change is refused while a scheduled transfer links the account to one in
+    another currency, since a transfer needs both sides in the same currency.
+    Amounts are never converted: a currency change relabels them.
     """
     with db() as conn:
         existing = conn.execute(
-            "SELECT type, institution, institution_name FROM accounts"
-            " WHERE id=? AND user_id=?",
+            "SELECT type, subtype, currency, institution, institution_name"
+            " FROM accounts WHERE id=? AND user_id=?",
             (aid, uid),
         ).fetchone()
         if not existing:
@@ -195,17 +219,32 @@ def update_account(
             for k, v in data.model_dump(exclude={"low_balance_threshold"}).items()
             if v is not None
         }
-        # Cross-field check: subtype must be valid for the row's existing type.
-        # The Pydantic schema can't enforce this on a partial patch because
-        # `type` isn't in the payload.
-        if (
-            "subtype" in updates
-            and updates["subtype"] not in SUBTYPES_BY_TYPE[existing["type"]]
-        ):
+        new_type = updates.get("type", existing["type"])
+        if (new_type in DEBT_TYPES) != (existing["type"] in DEBT_TYPES):
             raise HTTPException(
                 400,
-                f"subtype '{updates['subtype']}' is not valid for type '{existing['type']}'",
+                "An account can't switch between money you hold and money you"
+                " owe. Add a new account instead.",
             )
+        # Cross-field check: the subtype must be valid for the resulting type.
+        # The Pydantic schema can't enforce this on a partial patch, which may
+        # carry only one of the two.
+        if {"type", "subtype"} & updates.keys():
+            subtype = updates.get("subtype", existing["subtype"])
+            if subtype not in SUBTYPES_BY_TYPE[new_type]:
+                raise HTTPException(
+                    400,
+                    f"subtype '{subtype}' is not valid for type '{new_type}'",
+                )
+        if updates.get("currency", existing["currency"]) != existing["currency"]:
+            clash = _transfer_currency_clash(conn, aid, updates["currency"])
+            if clash:
+                raise HTTPException(
+                    400,
+                    f'"{clash["name"]}" is a scheduled transfer with'
+                    f" {clash['other_name']} ({clash['other_currency']}). Both"
+                    " accounts in a transfer need the same currency.",
+                )
         # Same idea for the institution pair, resolved against the stored row so
         # that patching one half is checked against the other. Writing both
         # columns keeps them coherent — switching from 'other' to a catalogue
@@ -229,9 +268,7 @@ def update_account(
             updates["institution_name"] = name
         if "low_balance_threshold" in set_fields:
             try:
-                check_low_balance_threshold(
-                    existing["type"], data.low_balance_threshold
-                )
+                check_low_balance_threshold(new_type, data.low_balance_threshold)
             except ValueError as exc:
                 raise HTTPException(400, str(exc)) from exc
             updates["low_balance_threshold_cents"] = _threshold_cents(

@@ -235,7 +235,8 @@
   color: var(--pl-text);
 }
 
-.field .input {
+.field .input,
+.field .select {
   margin-bottom: 6px;
 }
 
