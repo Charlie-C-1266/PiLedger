@@ -233,6 +233,9 @@ class AccountIn(_In):
 
 class AccountPatch(_In):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    # Only within a side: held (current/savings/invest) or owed (credit/loan).
+    # The handler checks that, and the subtype, against the stored row.
+    type: Optional[AccountType] = None
     subtype: Optional[AccountSubtype] = None
     # Both use exclude_unset in the handler, so an explicit `institution: null`
     # clears the provider while an omitted field is left alone. The pair is
