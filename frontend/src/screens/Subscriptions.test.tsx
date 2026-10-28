@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import type { Subscription } from "../types";
 
@@ -14,7 +14,9 @@ vi.mock("../hooks/useAccounts", () => ({ useAccounts: vi.fn() }));
 // Heavy children — exercised by their own tests; stub here so the screen test
 // stays focused on list rendering and the view toggle.
 vi.mock("../components/SubscriptionsCalendar", () => ({
-  default: () => <div data-testid="calendar-view" />,
+  default: ({ filter }: { filter?: unknown }) => (
+    <div data-testid="calendar-view" data-filter={JSON.stringify(filter)} />
+  ),
 }));
 vi.mock("../components/AddSubscriptionModal", () => ({
   default: () => <div data-testid="add-modal" />,
@@ -69,11 +71,17 @@ function setSubs(subs: Subscription[]) {
   } as ReturnType<typeof useSummary>);
 }
 
-function renderScreen() {
+/** Shows the current query string, so a test can check what the filter wrote. */
+function LocationProbe() {
+  return <div data-testid="location">{useLocation().search}</div>;
+}
+
+function renderScreen(url = "/scheduled") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <ThemeProvider>
         <Subscriptions />
+        <LocationProbe />
       </ThemeProvider>
     </MemoryRouter>
   );
@@ -209,5 +217,140 @@ describe("Scheduled screen", () => {
     ]);
     renderScreen();
     expect(screen.getByText("Won't post: Old bank is closed")).toBeInTheDocument();
+  });
+});
+
+describe("Scheduled screen filters", () => {
+  const ITEMS = [
+    makeSub({ id: 1, name: "Netflix", kind: "expense", account_id: 1, account_name: "Current" }),
+    makeSub({ id: 2, name: "Salary", kind: "income", account_id: 1, account_name: "Current" }),
+    makeSub({
+      id: 3,
+      name: "Savings pot",
+      kind: "transfer",
+      account_id: 1,
+      account_name: "Current",
+      to_account_id: 2,
+      to_account_name: "Savings",
+    }),
+    makeSub({ id: 4, name: "Gym", kind: "expense", account_id: null }),
+  ];
+
+  const names = () =>
+    ["Netflix", "Salary", "Savings pot", "Gym"].filter((n) => screen.queryByText(n));
+
+  const accountSelect = () => screen.getByRole("combobox", { name: "Account" });
+
+  it("shows everything until a filter is chosen", () => {
+    setSubs(ITEMS);
+    renderScreen();
+    expect(names()).toEqual(["Netflix", "Salary", "Savings pot", "Gym"]);
+    expect(accountSelect()).toHaveValue("");
+    expect(screen.getByRole("radio", { name: "All types" })).toBeChecked();
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("offers the same types as the add form", () => {
+    setSubs(ITEMS);
+    renderScreen();
+    const types = within(screen.getByRole("radiogroup", { name: "Type" }));
+    expect(types.getAllByRole("radio").map((r) => r.textContent)).toEqual([
+      "All types",
+      "Payment",
+      "Income",
+      "Transfer",
+    ]);
+  });
+
+  it("narrows the list to one type and records it in the URL", async () => {
+    setSubs(ITEMS);
+    renderScreen();
+    await userEvent.click(screen.getByRole("radio", { name: "Income" }));
+    expect(names()).toEqual(["Salary"]);
+    expect(screen.getByTestId("location")).toHaveTextContent("?type=income");
+  });
+
+  it("narrows the list to one account, including transfers into it", async () => {
+    setSubs(ITEMS);
+    renderScreen();
+    await userEvent.selectOptions(accountSelect(), "Savings");
+    // Only the transfer touches Savings: it arrives there.
+    expect(names()).toEqual(["Savings pot"]);
+    expect(screen.getByTestId("location")).toHaveTextContent("?account=2");
+  });
+
+  it("combines the account and type filters", async () => {
+    setSubs(ITEMS);
+    renderScreen();
+    await userEvent.selectOptions(accountSelect(), "Current");
+    await userEvent.click(screen.getByRole("radio", { name: "Payment" }));
+    // Gym is a payment too, but has no account.
+    expect(names()).toEqual(["Netflix"]);
+  });
+
+  it("only offers accounts that have something scheduled", () => {
+    setSubs(ITEMS);
+    setAccounts([
+      { id: 1, name: "Current", closed: false },
+      { id: 2, name: "Savings", closed: false },
+      { id: 5, name: "ISA", closed: false },
+    ]);
+    renderScreen();
+    const options = within(accountSelect()).getAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["All accounts", "Current", "Savings"]);
+  });
+
+  it("marks a closed account in the account picker", () => {
+    setSubs([makeSub({ name: "Rent", account_id: 3, account_name: "Old bank" })]);
+    setAccounts([{ id: 3, name: "Old bank", closed: true }]);
+    renderScreen();
+    expect(within(accountSelect()).getByRole("option", { name: "Old bank (closed)" })).toBeInTheDocument();
+  });
+
+  it("opens already filtered from a link", () => {
+    setSubs(ITEMS);
+    renderScreen("/scheduled?account=2&type=transfer");
+    expect(names()).toEqual(["Savings pot"]);
+    expect(accountSelect()).toHaveValue("2");
+    expect(screen.getByRole("radio", { name: "Transfer" })).toBeChecked();
+  });
+
+  it("ignores a link to an account that doesn't exist", () => {
+    setSubs(ITEMS);
+    renderScreen("/scheduled?account=99");
+    expect(names()).toEqual(["Netflix", "Salary", "Savings pot", "Gym"]);
+    expect(accountSelect()).toHaveValue("");
+  });
+
+  it("says when nothing matches, and Clear filters brings everything back", async () => {
+    setSubs(ITEMS);
+    renderScreen("/scheduled?account=2&type=income");
+    expect(names()).toEqual([]);
+    expect(screen.getByText("Nothing scheduled matches these filters.")).toBeInTheDocument();
+    // This isn't the empty-account message: there are items, just not these.
+    expect(screen.queryByText(/Nothing scheduled yet/i)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+
+    expect(names()).toEqual(["Netflix", "Salary", "Savings pot", "Gym"]);
+    expect(screen.getByTestId("location")).toHaveTextContent(/^$/);
+    expect(screen.queryByRole("button", { name: "Clear filters" })).not.toBeInTheDocument();
+  });
+
+  it("hands the same filter to the calendar", async () => {
+    setSubs(ITEMS);
+    renderScreen("/scheduled?account=1");
+    await userEvent.click(screen.getByRole("radio", { name: "Calendar" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Payment" }));
+    expect(JSON.parse(screen.getByTestId("calendar-view").dataset.filter!)).toEqual({
+      account: 1,
+      kind: "expense",
+    });
+  });
+
+  it("hides the filters while nothing is scheduled", () => {
+    setSubs([]);
+    renderScreen();
+    expect(screen.queryByRole("group", { name: "Filter scheduled items" })).not.toBeInTheDocument();
   });
 });

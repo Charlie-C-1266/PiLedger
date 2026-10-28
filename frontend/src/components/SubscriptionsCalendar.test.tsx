@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ThemeProvider } from "../theme/ThemeProvider";
 import type { Account, Subscription, SubscriptionOccurrence } from "../types";
+import type { ScheduledFilter } from "../lib/scheduled";
 
 vi.mock("../hooks/useSubscriptions", () => ({
   useOccurrences: vi.fn(),
@@ -57,10 +58,10 @@ function occurrence(over: Partial<SubscriptionOccurrence>): SubscriptionOccurren
   };
 }
 
-function renderCalendar() {
+function renderCalendar(filter?: ScheduledFilter) {
   return render(
     <ThemeProvider>
-      <SubscriptionsCalendar currency="GBP" />
+      <SubscriptionsCalendar currency="GBP" filter={filter} />
     </ThemeProvider>
   );
 }
@@ -165,5 +166,38 @@ describe("SubscriptionsCalendar", () => {
     renderCalendar();
     await userEvent.click(screen.getByRole("gridcell", { name: /1 scheduled item/ }));
     expect(screen.getByText("Won't post: Old bank is closed")).toBeInTheDocument();
+  });
+});
+
+describe("SubscriptionsCalendar filter", () => {
+  it("only marks the occurrences the filter lets through", async () => {
+    setOccurrences([
+      occurrence({ subscription_id: 1, name: "Rent", kind: "expense", account_id: 1 }),
+      occurrence({ subscription_id: 2, name: "Salary", kind: "income", account_id: 1 }),
+      occurrence({
+        subscription_id: 3,
+        name: "Savings pot",
+        kind: "transfer",
+        account_id: 1,
+        to_account_id: 2,
+      }),
+    ]);
+    renderCalendar({ account: 2, kind: "all" });
+    // Only the transfer touches account 2.
+    const cell = screen.getByRole("gridcell", { name: /1 scheduled item\b/ });
+    await userEvent.click(cell);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Savings pot")).toBeInTheDocument();
+    expect(within(dialog).queryByText("Rent")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText("Salary")).not.toBeInTheDocument();
+  });
+
+  it("shows every occurrence without a filter", () => {
+    setOccurrences([
+      occurrence({ subscription_id: 1, name: "Rent", kind: "expense" }),
+      occurrence({ subscription_id: 2, name: "Salary", kind: "income" }),
+    ]);
+    renderCalendar();
+    expect(screen.getByRole("gridcell", { name: /2 scheduled items/ })).toBeInTheDocument();
   });
 });

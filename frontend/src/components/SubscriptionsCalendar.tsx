@@ -2,7 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useOccurrences, useSubscriptions } from "../hooks/useSubscriptions";
 import { useAccounts } from "../hooks/useAccounts";
-import { closedPostingAccount } from "../lib/scheduled";
+import {
+  closedPostingAccount,
+  matchesScheduledFilter,
+  type ScheduledFilter,
+} from "../lib/scheduled";
 import Modal from "./Modal";
 import ScheduledAmount, {
   AutoBadge,
@@ -101,15 +105,18 @@ function OccurrenceStatus({
 
 interface Props {
   currency: string;
+  /** Show only the occurrences of items that pass this filter. */
+  filter?: ScheduledFilter;
 }
 
 /**
  * Hand-built month grid (no date-library dependency). It only *displays* dates —
  * the recurrence expansion is done server-side by `useOccurrences`, so the grid
- * is a pure group-by-date lookup keyed on `YYYY-MM-DD`. The 6×7 layout is a
+ * is a pure group-by-date lookup keyed on `YYYY-MM-DD`, after dropping anything
+ * the screen's filter hides. The 6×7 layout is a
  * roving-tabindex `grid` with arrow-key navigation.
  */
-export default function SubscriptionsCalendar({ currency }: Props) {
+export default function SubscriptionsCalendar({ currency, filter }: Props) {
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(
     () => new Date(today.getFullYear(), today.getMonth(), 1)
@@ -159,10 +166,11 @@ export default function SubscriptionsCalendar({ currency }: Props) {
   const byDate = useMemo(() => {
     const map: Record<string, SubscriptionOccurrence[]> = {};
     for (const o of occurrences ?? []) {
+      if (filter && !matchesScheduledFilter(o, filter)) continue;
       (map[o.date] ??= []).push(o);
     }
     return map;
-  }, [occurrences]);
+  }, [occurrences, filter]);
 
   const step = (delta: number) =>
     setViewMonth(new Date(year, month + delta, 1));

@@ -4,6 +4,9 @@ import {
   autoPostBlocker,
   closedPostingAccount,
   kindSign,
+  matchesScheduledFilter,
+  readScheduledFilter,
+  writeScheduledFilter,
 } from "./scheduled";
 
 describe("scheduled kinds", () => {
@@ -86,5 +89,61 @@ describe("closedPostingAccount", () => {
     expect(
       closedPostingAccount({ kind: "expense", account_id: 3 }, undefined),
     ).toBeNull();
+  });
+});
+
+describe("scheduled filter", () => {
+  const payment = { kind: "expense" as const, account_id: 1, to_account_id: null };
+  const transfer = { kind: "transfer" as const, account_id: 1, to_account_id: 2 };
+
+  it("lets everything through when unfiltered", () => {
+    const all = { account: "" as const, kind: "all" as const };
+    expect(matchesScheduledFilter(payment, all)).toBe(true);
+    expect(matchesScheduledFilter(transfer, all)).toBe(true);
+  });
+
+  it("keeps only the chosen kind", () => {
+    const transfers = { account: "" as const, kind: "transfer" as const };
+    expect(matchesScheduledFilter(payment, transfers)).toBe(false);
+    expect(matchesScheduledFilter(transfer, transfers)).toBe(true);
+  });
+
+  it("shows a transfer under either of its accounts", () => {
+    expect(matchesScheduledFilter(transfer, { account: 1, kind: "all" })).toBe(true);
+    expect(matchesScheduledFilter(transfer, { account: 2, kind: "all" })).toBe(true);
+    expect(matchesScheduledFilter(transfer, { account: 3, kind: "all" })).toBe(false);
+  });
+
+  it("matches a payment on its own account only", () => {
+    expect(matchesScheduledFilter(payment, { account: 1, kind: "all" })).toBe(true);
+    expect(matchesScheduledFilter(payment, { account: 2, kind: "all" })).toBe(false);
+    // Unlinked items never match an account.
+    expect(
+      matchesScheduledFilter({ kind: "expense", account_id: null }, { account: 1, kind: "all" })
+    ).toBe(false);
+  });
+
+  it("needs both the account and the kind to match", () => {
+    expect(matchesScheduledFilter(payment, { account: 1, kind: "income" })).toBe(false);
+    expect(matchesScheduledFilter(payment, { account: 1, kind: "expense" })).toBe(true);
+  });
+
+  it("reads the filter from the URL, ignoring values it doesn't know", () => {
+    expect(readScheduledFilter(new URLSearchParams("account=2&type=income"))).toEqual({
+      account: 2,
+      kind: "income",
+    });
+    expect(readScheduledFilter(new URLSearchParams("account=x&type=salary"))).toEqual({
+      account: "",
+      kind: "all",
+    });
+  });
+
+  it("writes the filter into the URL and drops the unfiltered sides", () => {
+    const params = new URLSearchParams("q=rent&type=income");
+    const next = writeScheduledFilter(params, { account: 3, kind: "all" });
+    expect(next.toString()).toBe("q=rent&account=3");
+    // The original params are left untouched.
+    expect(params.toString()).toBe("q=rent&type=income");
   });
 });

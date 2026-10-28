@@ -96,14 +96,14 @@ beforeEach(() => {
 });
 
 describe("UpcomingCard list", () => {
-  it("lists the next 30 days with the balance after each, and Manage", () => {
+  it("lists the next 30 days with the balance after each, and Manage for this account", () => {
     renderCard();
     expect(within(card()).getByText("Next 30 days · 3 scheduled")).toBeInTheDocument();
     expect(within(card()).getByText("Netflix")).toBeInTheDocument();
     expect(within(card()).getByText("£4,524.07 after")).toBeInTheDocument();
     expect(within(card()).getByRole("link", { name: "Manage scheduled transactions" })).toHaveAttribute(
       "href",
-      "/scheduled",
+      "/scheduled?account=12",
     );
     expect(within(card()).getByText("Net change by 25 Nov")).toBeInTheDocument();
     expect(within(card()).getByText("−£103.79")).toBeInTheDocument();
