@@ -18,8 +18,12 @@
   transition: background 160ms, color 160ms;
 }
 
-.pill:hover {
-  color: var(--pl-text-soft);
+/* Only where hover is real: a tap leaves :hover stuck on touch screens, and
+   the selected segment must keep its own colour either way. */
+@media (hover: hover) {
+  .pill:not(.active):hover {
+    color: var(--pl-text-soft);
+  }
 }
 
 .active {

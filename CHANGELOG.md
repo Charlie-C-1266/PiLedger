@@ -16,6 +16,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - Updated `filelock` (used only by the development dependency audit) to clear newly-disclosed security advisories.
 - Updated `msgpack` (also used only by the development dependency audit) to clear a newly-disclosed security advisory.
 - Each screen now loads once when you navigate to it; previously it loaded twice, and a dialog opened in its first moment (such as an Upcoming item's actions) could close by itself.
+- On touch screens, the selected option in a switch (such as List / Calendar) no longer turns hard to read after you tap it.
 
 ### Added
 
