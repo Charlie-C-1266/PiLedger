@@ -37,6 +37,50 @@ describe("Donut", () => {
     });
   });
 
+  it("draws every slice at its share, tiling the whole ring", () => {
+    // Regression: each dash pattern repeated every dash + circumference
+    // instead of every circumference, so the top-right quarter of the ring was
+    // never drawn and the first slice shrank (a 60% slice drew as about 35%).
+    const size = 200;
+    const thickness = 26;
+    const gap = 3;
+    render(
+      <Donut
+        slices={slices}
+        size={size}
+        thickness={thickness}
+        gap={gap}
+        hoverIdx={null}
+        onHover={() => {}}
+      />,
+    );
+    const circumference = 2 * Math.PI * ((size - thickness) / 2);
+    const gapLen = (gap / 360) * circumference;
+    const total = slices.reduce((s, sl) => s + sl.value, 0);
+
+    const arcs = [...screen.getByRole("img").querySelectorAll("circle")];
+    let expectedStart = gapLen / 2;
+    arcs.forEach((arc, i) => {
+      const [dash, space] = arc
+        .getAttribute("stroke-dasharray")!
+        .split(" ")
+        .map(Number);
+      const start = -Number(arc.getAttribute("stroke-dashoffset"));
+      const share = slices[i].value / total;
+
+      // One dash per lap, so nothing wraps into the wrong place.
+      expect(dash + space).toBeCloseTo(circumference);
+      // Length is the slice's share of the ring, less the gap.
+      expect(dash).toBeCloseTo(share * circumference - gapLen);
+      // Slices follow on from each other and stay within one lap.
+      expect(start).toBeCloseTo(expectedStart);
+      expect(start + dash).toBeLessThanOrEqual(circumference);
+      // Butt ends: round caps would add length beyond the slice's share.
+      expect(arc).toHaveAttribute("stroke-linecap", "butt");
+      expectedStart += share * circumference;
+    });
+  });
+
   it("prefers an explicit ariaLabel when provided", () => {
     render(
       <Donut slices={slices} hoverIdx={null} onHover={() => {}} ariaLabel="My assets" />,

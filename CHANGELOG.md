@@ -9,6 +9,10 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 ## [Unreleased]
 
+### Fixed
+
+- The Overview distribution and Budget allocation donuts now draw a full ring with each slice sized to its share; previously the top-right quarter was missing and the first slice shrank.
+
 ## [3.4.0] — 2026-10-28
 
 ### Fixed
