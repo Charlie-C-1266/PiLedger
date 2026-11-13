@@ -13,7 +13,7 @@ import Skeleton from "../components/Skeleton";
 import AccountHistoryChart from "../components/charts/AccountHistoryChart";
 import InstitutionMark from "../components/InstitutionMark";
 import { resolveInstitution } from "../lib/institutions";
-import { lowBalanceLabel } from "./account/projectionModel";
+import { lowBalanceLabel } from "../lib/projection";
 import { PageStagger, StaggerItem } from "../components/PageStagger";
 import type { StackVariant } from "../components/CardStack";
 import type { Account, AccountType, RangeKey } from "../types";

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, type KeyboardEvent } from "react";
 import Modal from "../Modal";
 import UpcomingRow from "./UpcomingRow";
 import { ChevronRightIcon, RepeatIcon } from "../icons";
-import { dayShort, dayWithWeekday } from "../../screens/account/projectionModel";
+import { dayShort, dayWithWeekday } from "../../lib/projection";
 import type { BalanceProjectionEvent } from "../../types";
 import styles from "./UpcomingActions.module.css";
 

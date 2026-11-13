@@ -14,10 +14,10 @@ import {
   signedAmount,
   upcoming,
   valueAxis,
-} from "./projectionModel";
-import { fmt } from "../../lib/currency";
-import { AS_OF, addDays, makeProjection } from "../../test/projectionFixture";
-import type { AccountBalanceEntry, BalanceProjectionEvent } from "../../types";
+} from "./projection";
+import { fmt } from "./currency";
+import { AS_OF, addDays, makeProjection } from "../test/projectionFixture";
+import type { AccountBalanceEntry, BalanceProjectionEvent } from "../types";
 
 const horizon = (p: ReturnType<typeof makeProjection>, months: number) =>
   p.horizons.find((h) => h.months === months)!;
