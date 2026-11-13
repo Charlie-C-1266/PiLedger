@@ -1,9 +1,11 @@
 """Transaction and transfer writes shared by the transactions router and the
 scheduled-item poster (``services/posting``).
 
-Each helper does the insert *and* the balance side effect through
-``adjust_account_balance``, so a transaction can never land without moving its
-account (or be removed without moving it back). None of them commit: the
+Every row goes in through ``_insert_row``, the one ``INSERT INTO
+transactions``. Each public helper pairs it with the balance side effect
+through ``adjust_account_balance``, so a transaction can never land without
+moving its account (or be removed without moving it back); the exception is a
+Balance adjustment, whose balance entry is already written. None commit: the
 caller owns the SQLite transaction, which lets the poster write a posting-log
 row and its transaction atomically. Validation (ownership, closed accounts,
 currencies) stays with the callers, because the router answers bad input with
@@ -35,6 +37,45 @@ TXN_SELECT = (
 )
 
 
+def _insert_row(
+    conn: sqlite3.Connection,
+    uid: int,
+    account_id: int,
+    amount_cents: int,
+    occurred_at: str,
+    merchant: str,
+    category: str,
+    note: str,
+    *,
+    transfer_id: Optional[str] = None,
+    import_hash: Optional[str] = None,
+    adjustment: bool = False,
+    balance_history_id: Optional[int] = None,
+) -> int:
+    """Write one transactions row and return its id — the row only; the
+    callers below decide whether it moves the balance. Does not commit."""
+    cur = conn.execute(
+        "INSERT INTO transactions(user_id, account_id, amount_cents, occurred_at,"
+        " merchant, category, note, transfer_id, import_hash, adjustment,"
+        " balance_history_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            uid,
+            account_id,
+            amount_cents,
+            occurred_at,
+            merchant,
+            category,
+            note,
+            transfer_id,
+            import_hash,
+            int(adjustment),
+            balance_history_id,
+        ),
+    )
+    assert cur.lastrowid is not None
+    return cur.lastrowid
+
+
 def insert_transaction(
     conn: sqlite3.Connection,
     uid: int,
@@ -44,17 +85,28 @@ def insert_transaction(
     merchant: str,
     category: str,
     note: str,
+    *,
+    import_hash: Optional[str] = None,
 ) -> int:
     """Insert one transaction and apply its signed amount to the account's
-    balance. Returns the new transaction id. Does not commit."""
-    cur = conn.execute(
-        "INSERT INTO transactions(user_id, account_id, amount_cents,"
-        " occurred_at, merchant, category, note) VALUES(?,?,?,?,?,?,?)",
-        (uid, account_id, amount_cents, occurred_at, merchant, category, note),
+    balance. Returns the new transaction id. Does not commit.
+
+    ``import_hash`` marks a CSV-imported row; its unique index makes a row
+    already imported raise ``sqlite3.IntegrityError`` before the balance moves,
+    which the import counts as a duplicate."""
+    tid = _insert_row(
+        conn,
+        uid,
+        account_id,
+        amount_cents,
+        occurred_at,
+        merchant,
+        category,
+        note,
+        import_hash=import_hash,
     )
     adjust_account_balance(conn, account_id, amount_cents)
-    assert cur.lastrowid is not None
-    return cur.lastrowid
+    return tid
 
 
 def insert_adjustment(
@@ -73,23 +125,18 @@ def insert_adjustment(
     is the visible record of that change. Deleting it later goes through
     ``delete_transaction_legs``, which undoes the update. Returns the new id.
     Does not commit."""
-    cur = conn.execute(
-        "INSERT INTO transactions(user_id, account_id, amount_cents,"
-        " occurred_at, merchant, category, note, adjustment, balance_history_id)"
-        " VALUES(?,?,?,?,?,?,?,1,?)",
-        (
-            uid,
-            account_id,
-            amount_cents,
-            occurred_at,
-            ADJUSTMENT_MERCHANT,
-            ADJUSTMENT_CATEGORY,
-            note,
-            balance_history_id,
-        ),
+    return _insert_row(
+        conn,
+        uid,
+        account_id,
+        amount_cents,
+        occurred_at,
+        ADJUSTMENT_MERCHANT,
+        ADJUSTMENT_CATEGORY,
+        note,
+        adjustment=True,
+        balance_history_id=balance_history_id,
     )
-    assert cur.lastrowid is not None
-    return cur.lastrowid
 
 
 def insert_transfer(
@@ -114,11 +161,9 @@ def insert_transfer(
         (from_account_id, -amount_cents, merchants[0]),
         (to_account_id, amount_cents, merchants[1]),
     ):
-        cur = conn.execute(
-            "INSERT INTO transactions(user_id, account_id, amount_cents,"
-            " occurred_at, merchant, category, note, transfer_id)"
-            " VALUES(?,?,?,?,?,?,?,?)",
-            (
+        ids.append(
+            _insert_row(
+                conn,
                 uid,
                 account_id,
                 signed,
@@ -126,11 +171,9 @@ def insert_transfer(
                 merchant,
                 category,
                 note,
-                transfer_id,
-            ),
+                transfer_id=transfer_id,
+            )
         )
-        assert cur.lastrowid is not None
-        ids.append(cur.lastrowid)
         adjust_account_balance(conn, account_id, signed)
     return transfer_id, ids
 

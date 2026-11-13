@@ -45,7 +45,7 @@ from schemas import (
     ImportRowError,
     TransactionIn,
 )
-from services.accounts import adjust_account_balance, require_open_account
+from services.accounts import require_open_account
 from services.csv_import import (
     import_row_hash,
     parse_amount,
@@ -54,6 +54,7 @@ from services.csv_import import (
     suggest_mapping,
 )
 from services.import_matching import ImportRow, claim_transaction, find_matches
+from services.transactions import insert_transaction
 
 router = APIRouter(tags=["imports"])
 
@@ -250,25 +251,20 @@ def commit_import(
                         continue
                     # Claimed by another import meanwhile: insert as usual.
                 try:
-                    conn.execute(
-                        "INSERT INTO transactions(user_id, account_id, amount_cents,"
-                        " occurred_at, merchant, category, note, import_hash)"
-                        " VALUES(?,?,?,?,?,?,?,?)",
-                        (
-                            uid,
-                            data.account_id,
-                            amount_cents,
-                            occurred_at,
-                            merchant,
-                            category,
-                            note,
-                            row_hash,
-                        ),
+                    insert_transaction(
+                        conn,
+                        uid,
+                        data.account_id,
+                        amount_cents,
+                        occurred_at,
+                        merchant,
+                        category,
+                        note,
+                        import_hash=row_hash,
                     )
                 except sqlite3.IntegrityError:
                     skipped += 1
                     continue
-                adjust_account_balance(conn, data.account_id, amount_cents)
                 imported += 1
 
     return ImportCommitOut(

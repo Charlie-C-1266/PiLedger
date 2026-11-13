@@ -24,7 +24,7 @@ Browser  ──HTTP──►  FastAPI (src/app.py — thin wiring + lifespan)
 - `currency` — FX conversion into the base currency.
 - `accounts` — balance adjustment, the latest-balance lookups, and the account rules routers and the poster share: `require_account`, `require_open_account` and `require_transfer_accounts` (two different accounts of the user's, open where it matters, one currency).
 - `errors` — `NotFoundError` and `RuleError`, which services raise instead of HTTP errors so non-HTTP callers can apply the same rules; `app.py` answers them as 404 and 400 with the message as `detail`. Services never import FastAPI or a router (`tests/test_layering.py` checks).
-- `transactions` — inserting and deleting transactions and transfers together with their balance effect. Shared by the transactions router and the poster, so a posted transaction moves the balance exactly as a hand-entered one does.
+- `transactions` — inserting and deleting transactions and transfers together with their balance effect, through the one `INSERT INTO transactions` in the codebase. Shared by the transactions router, CSV import and the poster, so a posted or imported transaction moves the balance exactly as a hand-entered one does.
 - `subscriptions` — recurrence date maths for scheduled items (due dates, month-end clamping).
 - `posting` — turning scheduled items' due dates into real transactions, exactly once, via the `subscription_postings` log; also Post now, Skip and Undo.
 - `projection` — the per-account projected balance: a pure, database-free roll-forward through scheduled items and monthly AER interest, behind `GET /api/accounts/{id}/projection`.
