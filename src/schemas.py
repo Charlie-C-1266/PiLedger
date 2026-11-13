@@ -17,6 +17,7 @@ from constants import (
     AccountType,
     Currency,
     DEBT_TYPES,
+    DEFAULT_CURRENCY,
     Frequency,
     HEX_COLOR_PATTERN,
     ImportDateFormat,
@@ -190,7 +191,7 @@ class AccountIn(_In):
     institution_name: Optional[str] = Field(
         default=None, max_length=MAX_INSTITUTION_NAME
     )
-    currency: Currency = "GBP"
+    currency: Currency = DEFAULT_CURRENCY
     interest_rate: Annotated[float, Field(ge=0, le=MAX_RATE, allow_inf_nan=False)] = 0.0
     color: Annotated[str, Field(pattern=HEX_COLOR_PATTERN)] = "#6366f1"
     counts_to_net_worth: bool = True
@@ -520,7 +521,7 @@ class UserOut(BaseModel):
 
 
 class PrefsOut(BaseModel):
-    base_currency: Currency = "GBP"
+    base_currency: Currency = DEFAULT_CURRENCY
 
 
 class RateOut(BaseModel):
@@ -565,7 +566,7 @@ class AccountOut(BaseModel):
     institution: Optional[InstitutionSlug] = None
     # The User-supplied label, set only when institution == 'other'.
     institution_name: Optional[str] = None
-    currency: Currency = "GBP"
+    currency: Currency = DEFAULT_CURRENCY
     interest_rate: float
     color: str
     counts_to_net_worth: bool = True
@@ -700,7 +701,7 @@ class SummaryOut(BaseModel):
     set_aside: float = 0.0
     total_net_worth: float = 0.0
     account_count: int
-    base_currency: Currency = "GBP"
+    base_currency: Currency = DEFAULT_CURRENCY
     missing_rates: list[Currency] = Field(default_factory=list)
 
 
@@ -714,7 +715,7 @@ class HistoryAccountOut(BaseModel):
     name: str
     color: str
     type: AccountType
-    currency: Currency = "GBP"
+    currency: Currency = DEFAULT_CURRENCY
     history: list[HistoryPointOut]
 
 

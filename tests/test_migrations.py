@@ -1534,3 +1534,23 @@ def test_gated_path_adds_adjustment_entry(stamped_v1_db):
 
 def test_legacy_path_has_adjustment_entry(migrated_db):
     assert "balance_history_id" in _table_columns(migrated_db, "transactions")
+
+
+# ── The migration table ───────────────────────────────────────────────────────
+
+
+def test_every_migration_is_registered_in_order():
+    """init() climbs through db._MIGRATIONS, so each `_migrate_to_N` needs a
+    row there and SCHEMA_VERSION must name the last one. A step defined but
+    left out of the table would never run."""
+    import db
+
+    versions = [v for v, _ in db._MIGRATIONS]
+    assert versions == list(range(2, db.SCHEMA_VERSION + 1))
+    assert all(step is getattr(db, f"_migrate_to_{v}") for v, step in db._MIGRATIONS)
+    defined = sorted(
+        int(name.removeprefix("_migrate_to_"))
+        for name in dir(db)
+        if name.startswith("_migrate_to_")
+    )
+    assert defined == versions

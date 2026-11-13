@@ -28,11 +28,11 @@ SQLite transactions (``write_transaction``), committing per occurrence.
 
 import logging
 import sqlite3
-from contextlib import contextmanager
 from datetime import date
-from typing import Iterable, Iterator, Optional
+from typing import Iterable, Optional
 
-from db import db
+from constants import DEFAULT_CURRENCY
+from db import db, write_transaction
 from services.subscriptions import occurrences_between
 from services.transactions import (
     delete_transaction_legs,
@@ -163,26 +163,6 @@ def get_posting(conn: sqlite3.Connection, sid: int, day: date) -> Optional[sqlit
 # ─── Writing ──────────────────────────────────────────────────────────────────
 
 
-@contextmanager
-def write_transaction(conn: sqlite3.Connection) -> Iterator[None]:
-    """Run the block as one SQLite write transaction, committed on success and
-    rolled back on any error. ``BEGIN IMMEDIATE`` takes the write lock up front
-    (waiting out ``busy_timeout``), so a check-then-write inside the block
-    can't race another run. If the caller already has a transaction open, the
-    block joins it and the caller commits."""
-    began = not conn.in_transaction
-    if began:
-        conn.execute("BEGIN IMMEDIATE")
-    try:
-        yield
-    except BaseException:
-        if began:
-            conn.rollback()
-        raise
-    if began:
-        conn.commit()
-
-
 def unpostable_reason(conn: sqlite3.Connection, sub: sqlite3.Row) -> Optional[str]:
     """Why ``sub`` can't post a transaction right now, or None if it can.
 
@@ -206,7 +186,7 @@ def unpostable_reason(conn: sqlite3.Connection, sub: sqlite3.Row) -> Optional[st
         return "Account not found"
     if any(r["closed"] for r in rows):
         return "Account is closed"
-    if len({r["currency"] or "GBP" for r in rows}) != 1:
+    if len({r["currency"] or DEFAULT_CURRENCY for r in rows}) != 1:
         return "Transfers between accounts of different currencies are not supported"
     return None
 

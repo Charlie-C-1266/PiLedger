@@ -32,7 +32,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import ValidationError
 
 from constants import ImportDateFormat, MAX_IMPORT_ROWS
-from db import db, from_cents, to_cents
+from db import db, from_cents, to_cents, write_transaction
 from auth import require_auth
 from schemas import (
     ImportCommitIn,
@@ -54,7 +54,6 @@ from services.csv_import import (
     suggest_mapping,
 )
 from services.import_matching import ImportRow, claim_transaction, find_matches
-from services.posting import write_transaction
 
 router = APIRouter(tags=["imports"])
 

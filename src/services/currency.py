@@ -6,7 +6,16 @@ currency omitted (it is implicitly 1.0).
 
 import sqlite3
 
+from constants import DEFAULT_CURRENCY
 from db import utcnow_iso
+
+
+def user_base_currency(conn: sqlite3.Connection, uid: int) -> str:
+    """The user's base currency, or ``DEFAULT_CURRENCY`` when it was never
+    set (``users.base_currency`` is nullable on databases from before it
+    existed) or the user is gone."""
+    row = conn.execute("SELECT base_currency FROM users WHERE id=?", (uid,)).fetchone()
+    return (row["base_currency"] if row else None) or DEFAULT_CURRENCY
 
 
 def load_rates(conn: sqlite3.Connection, uid: int) -> dict[str, float]:

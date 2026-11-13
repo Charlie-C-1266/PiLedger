@@ -30,6 +30,7 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
+from constants import DEFAULT_CURRENCY
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
@@ -94,7 +95,7 @@ def _check_links(
     require_account(conn, account_id, uid)
     require_account(conn, to_account_id, uid)
     currencies = {
-        r["currency"] or "GBP"
+        r["currency"] or DEFAULT_CURRENCY
         for r in conn.execute(
             "SELECT currency FROM accounts WHERE id IN (?, ?)",
             (account_id, to_account_id),

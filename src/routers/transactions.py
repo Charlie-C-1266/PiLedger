@@ -12,6 +12,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from constants import DEFAULT_CURRENCY
 from db import db, from_cents, to_cents, utcnow_iso
 from auth import require_auth
 from schemas import (
@@ -160,7 +161,9 @@ def create_transfer(
             raise HTTPException(404, "Account not found")
         if src["closed"] or dst["closed"]:
             raise HTTPException(400, "Account is closed")
-        if (src["currency"] or "GBP") != (dst["currency"] or "GBP"):
+        if (src["currency"] or DEFAULT_CURRENCY) != (
+            dst["currency"] or DEFAULT_CURRENCY
+        ):
             raise HTTPException(
                 400,
                 "Transfers between accounts of different currencies are not supported",

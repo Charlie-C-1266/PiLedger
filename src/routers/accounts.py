@@ -14,7 +14,13 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from constants import DEBT_TYPES, ISO_FMT, MAX_DAYS, SUBTYPES_BY_TYPE
+from constants import (
+    DEBT_TYPES,
+    DEFAULT_CURRENCY,
+    ISO_FMT,
+    MAX_DAYS,
+    SUBTYPES_BY_TYPE,
+)
 from db import db, from_cents, to_cents, utcnow_iso
 from auth import require_auth
 from schemas import (
@@ -60,7 +66,7 @@ def _account_row_to_out(
         subtype=row["subtype"] or "general",
         institution=row["institution"],
         institution_name=row["institution_name"],
-        currency=row["currency"] or "GBP",
+        currency=row["currency"] or DEFAULT_CURRENCY,
         interest_rate=row["interest_rate"],
         color=row["color"],
         counts_to_net_worth=bool(row["counts_to_net_worth"]),
@@ -501,7 +507,7 @@ def get_projection(
     summary = result.summary
     return AccountProjectionOut(
         account_id=aid,
-        currency=acct["currency"] or "GBP",
+        currency=acct["currency"] or DEFAULT_CURRENCY,
         as_of=today.isoformat(),
         start_balance=_money(result.start_balance_cents),
         points=[

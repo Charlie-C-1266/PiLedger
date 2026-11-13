@@ -7,7 +7,7 @@ the API boundary.
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Iterator, Optional
+from typing import Callable, Iterator, Optional
 import sqlite3
 
 import constants
@@ -109,6 +109,26 @@ def db() -> Iterator[sqlite3.Connection]:
         yield conn
     finally:
         conn.close()
+
+
+@contextmanager
+def write_transaction(conn: sqlite3.Connection) -> Iterator[None]:
+    """Run the block as one SQLite write transaction, committed on success and
+    rolled back on any error. ``BEGIN IMMEDIATE`` takes the write lock up front
+    (waiting out ``busy_timeout``), so a check-then-write inside the block
+    can't race another run. If the caller already has a transaction open, the
+    block joins it and the caller commits."""
+    began = not conn.in_transaction
+    if began:
+        conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        if began:
+            conn.rollback()
+        raise
+    if began:
+        conn.commit()
 
 
 def utcnow_iso() -> str:
@@ -777,6 +797,32 @@ def _migrate_to_19(conn: sqlite3.Connection) -> None:
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
+# Every version-gated migration in order, as (the version it brings the schema
+# to, the step). init() runs each one above the stamped version; adding a
+# schema change means a new `_migrate_to_N`, a row here, and a SCHEMA_VERSION
+# bump (tests/test_migrations.py checks the three agree).
+_MIGRATIONS: tuple[tuple[int, Callable[[sqlite3.Connection], None]], ...] = (
+    (2, _migrate_to_2),
+    (3, _migrate_to_3),
+    (4, _migrate_to_4),
+    (5, _migrate_to_5),
+    (6, _migrate_to_6),
+    (7, _migrate_to_7),
+    (8, _migrate_to_8),
+    (9, _migrate_to_9),
+    (10, _migrate_to_10),
+    (11, _migrate_to_11),
+    (12, _migrate_to_12),
+    (13, _migrate_to_13),
+    (14, _migrate_to_14),
+    (15, _migrate_to_15),
+    (16, _migrate_to_16),
+    (17, _migrate_to_17),
+    (18, _migrate_to_18),
+    (19, _migrate_to_19),
+)
+
+
 def init() -> None:
     """Create tables on first run; apply additive migrations on subsequent runs."""
     with db() as conn:
@@ -880,77 +926,10 @@ def init() -> None:
 
         # ── Version-gated migrations ─────────────────────────────────
 
-        if version < 2:
-            _migrate_to_2(conn)
-            version = 2
-
-        if version < 3:
-            _migrate_to_3(conn)
-            version = 3
-
-        if version < 4:
-            _migrate_to_4(conn)
-            version = 4
-
-        if version < 5:
-            _migrate_to_5(conn)
-            version = 5
-
-        if version < 6:
-            _migrate_to_6(conn)
-            version = 6
-
-        if version < 7:
-            _migrate_to_7(conn)
-            version = 7
-
-        if version < 8:
-            _migrate_to_8(conn)
-            version = 8
-
-        if version < 9:
-            _migrate_to_9(conn)
-            version = 9
-
-        if version < 10:
-            _migrate_to_10(conn)
-            version = 10
-
-        if version < 11:
-            _migrate_to_11(conn)
-            version = 11
-
-        if version < 12:
-            _migrate_to_12(conn)
-            version = 12
-
-        if version < 13:
-            _migrate_to_13(conn)
-            version = 13
-
-        if version < 14:
-            _migrate_to_14(conn)
-            version = 14
-
-        if version < 15:
-            _migrate_to_15(conn)
-            version = 15
-
-        if version < 16:
-            _migrate_to_16(conn)
-            version = 16
-
-        if version < 17:
-            _migrate_to_17(conn)
-            version = 17
-
-        if version < 18:
-            _migrate_to_18(conn)
-            version = 18
-
-        if version < 19:
-            _migrate_to_19(conn)
-            version = 19
+        for target, migrate in _MIGRATIONS:
+            if version < target:
+                migrate(conn)
+                version = target
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

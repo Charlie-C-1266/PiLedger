@@ -15,18 +15,19 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from constants import DEFAULT_CURRENCY
 from db import db
 from auth import require_auth
 from schemas import PrefsOut, PrefsPatch
-from services.currency import rescale_rates
+from services.currency import rescale_rates, user_base_currency
 
 router = APIRouter(tags=["prefs"])
 
 
 def _prefs_out(row: sqlite3.Row) -> PrefsOut:
     """Map a ``users`` row to ``PrefsOut``, defaulting a legacy NULL base
-    currency to GBP."""
-    return PrefsOut(base_currency=row["base_currency"] or "GBP")
+    currency to ``DEFAULT_CURRENCY``."""
+    return PrefsOut(base_currency=row["base_currency"] or DEFAULT_CURRENCY)
 
 
 @router.get("/api/prefs", response_model=PrefsOut)
@@ -59,10 +60,7 @@ def update_prefs(
         # Old base gains a row (its rate in the new base) unless it equals new
         # base; new base itself never has a row (implicit 1.0).
         if "base_currency" in patch:
-            old = conn.execute(
-                "SELECT base_currency FROM users WHERE id=?", (uid,)
-            ).fetchone()
-            old_base = (old["base_currency"] if old else None) or "GBP"
+            old_base = user_base_currency(conn, uid)
             new_base = patch["base_currency"]
             if new_base != old_base:
                 # Rescaling pivots on the new base's rate against the old base.
