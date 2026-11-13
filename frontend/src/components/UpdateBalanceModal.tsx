@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { recordBalance } from "../api/client";
 import { useInvalidate } from "../hooks/useInvalidate";
+import { localIsoDate } from "../lib/dates";
 import { useMoney } from "../privacy/useMoney";
 import { useToast } from "./toast/useToast";
 import Modal from "./Modal";
@@ -14,14 +15,6 @@ interface Props {
   onClose: () => void;
 }
 
-/** Today as `YYYY-MM-DD` in the user's own timezone (what a date input shows). */
-function localToday(): string {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
 /**
  * Record what an account holds right now (or held on an earlier day), with an
  * optional note. Today's balance is stamped now; an earlier date is stamped at
@@ -31,7 +24,7 @@ export default function UpdateBalanceModal({ account, onClose }: Props) {
   const { fmt } = useMoney();
   const inv = useInvalidate();
   const toast = useToast();
-  const today = localToday();
+  const today = localIsoDate();
   const [balance, setBalance] = useState("");
   const [date, setDate] = useState(today);
   const [note, setNote] = useState("");
