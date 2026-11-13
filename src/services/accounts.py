@@ -89,7 +89,8 @@ def require_account(conn: sqlite3.Connection, account_id: int, uid: int) -> None
 def require_open_account(conn: sqlite3.Connection, account_id: int, uid: int) -> None:
     """Raise 404 unless the account exists and belongs to the user, or 400 if
     it's closed. Closed accounts are kept for history but don't accept new
-    transactions, transfers, imports, or subscriptions."""
+    transactions, transfers, imports, subscriptions, or balance updates
+    (``record_balance`` checks the last itself, as it also needs the type)."""
     row = conn.execute(
         "SELECT closed FROM accounts WHERE id=? AND user_id=?", (account_id, uid)
     ).fetchone()

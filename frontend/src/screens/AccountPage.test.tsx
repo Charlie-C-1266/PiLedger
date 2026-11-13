@@ -231,6 +231,15 @@ describe("AccountPage header", () => {
     expect(screen.queryByRole("button", { name: "Transfer" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add transaction" })).not.toBeInTheDocument();
   });
+
+  it("offers Update balance on an open account but not a closed one", () => {
+    const { unmount } = renderPage("/accounts/12");
+    expect(screen.getByRole("button", { name: "Update balance" })).toBeInTheDocument();
+    unmount();
+
+    renderPage("/accounts/12", { accounts: [makeAccount({ closed: true })] });
+    expect(screen.queryByRole("button", { name: "Update balance" })).not.toBeInTheDocument();
+  });
 });
 
 describe("AccountPage actions", () => {

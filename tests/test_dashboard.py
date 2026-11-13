@@ -693,6 +693,32 @@ def test_networth_carry_forward(alice):
     assert points[0]["value"] == 1500.0
 
 
+def test_networth_carry_forward_uses_the_latest_date_not_the_latest_entry(alice):
+    """A past balance entered afterwards (an older day, newer row) mustn't
+    replace the account's later balance as the line's starting value."""
+    from datetime import datetime, timedelta, timezone
+
+    def ago(days: int) -> str:
+        return (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+
+    held = alice.post("/api/accounts", json={"name": "Monzo", "type": "current"})
+    aid = held.json()["id"]
+    alice.post(
+        f"/api/accounts/{aid}/balance", json={"balance": 100.0, "recorded_at": ago(10)}
+    )
+    alice.post(
+        f"/api/accounts/{aid}/balance", json={"balance": 50.0, "recorded_at": ago(20)}
+    )
+    # Another account changing inside the window puts a point on the line.
+    other = alice.post("/api/accounts", json={"name": "Cash", "type": "current"})
+    alice.post(f"/api/accounts/{other.json()['id']}/balance", json={"balance": 1.0})
+
+    points = alice.get("/api/history/networth?range=7D").json()
+    assert [p["value"] for p in points] == [101.0]
+
+
 def test_networth_multi_currency(alice):
     alice.put("/api/rates", json={"rates": [{"currency": "USD", "rate": 0.80}]})
     gbp = alice.post(

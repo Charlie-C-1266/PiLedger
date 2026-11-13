@@ -64,17 +64,19 @@ def insert_adjustment(
     amount_cents: int,
     occurred_at: str,
     note: str,
+    balance_history_id: int,
 ) -> int:
     """Record a Balance adjustment: the cash flow a manual balance update made,
-    flagged ``adjustment = 1``. Unlike ``insert_transaction`` it does *not*
-    move the balance, because the balance-history entry the update wrote has
-    already set it; the row is the visible record of that change. Deleting it
-    later goes through ``delete_transaction_legs`` like any other row, which
-    reverses it. Returns the new id. Does not commit."""
+    flagged ``adjustment = 1`` and linked to the balance-history entry
+    (``balance_history_id``) the update wrote. Unlike ``insert_transaction`` it
+    does *not* move the balance, because that entry has already set it; the row
+    is the visible record of that change. Deleting it later goes through
+    ``delete_transaction_legs``, which undoes the update. Returns the new id.
+    Does not commit."""
     cur = conn.execute(
         "INSERT INTO transactions(user_id, account_id, amount_cents,"
-        " occurred_at, merchant, category, note, adjustment)"
-        " VALUES(?,?,?,?,?,?,?,1)",
+        " occurred_at, merchant, category, note, adjustment, balance_history_id)"
+        " VALUES(?,?,?,?,?,?,?,1,?)",
         (
             uid,
             account_id,
@@ -83,6 +85,7 @@ def insert_adjustment(
             ADJUSTMENT_MERCHANT,
             ADJUSTMENT_CATEGORY,
             note,
+            balance_history_id,
         ),
     )
     assert cur.lastrowid is not None
@@ -140,9 +143,11 @@ def delete_transaction_legs(
 ) -> int:
     """Delete a transaction — or, given a ``transfer_id`` (or a transaction that
     is a transfer leg), both legs of that transfer — reversing each balance
-    effect. Rows already gone are simply not found, so this is safe to call for
-    a posting whose transaction the user has since deleted. Returns how many
-    rows were removed. Does not commit."""
+    effect. A Balance adjustment from a backdated update that didn't change the
+    current balance is undone by removing its balance entry instead (see
+    ``_backfilled_entry``). Rows already gone are simply not found, so this is
+    safe to call for a posting whose transaction the user has since deleted.
+    Returns how many rows were removed. Does not commit."""
     if transfer_id is None and transaction_id is not None:
         row = conn.execute(
             "SELECT transfer_id FROM transactions WHERE id=? AND user_id=?",
@@ -150,21 +155,52 @@ def delete_transaction_legs(
         ).fetchone()
         if row is not None:
             transfer_id = row["transfer_id"]
+    columns = "id, account_id, amount_cents, adjustment, balance_history_id"
     if transfer_id is not None:
         legs = conn.execute(
-            "SELECT id, account_id, amount_cents FROM transactions"
-            " WHERE transfer_id=? AND user_id=?",
+            f"SELECT {columns} FROM transactions WHERE transfer_id=? AND user_id=?",
             (transfer_id, uid),
         ).fetchall()
     elif transaction_id is not None:
         legs = conn.execute(
-            "SELECT id, account_id, amount_cents FROM transactions"
-            " WHERE id=? AND user_id=?",
+            f"SELECT {columns} FROM transactions WHERE id=? AND user_id=?",
             (transaction_id, uid),
         ).fetchall()
     else:
         legs = []
     for leg in legs:
-        adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
+        backfilled = _backfilled_entry(conn, leg)
+        if backfilled is not None:
+            conn.execute("DELETE FROM balance_history WHERE id=?", (backfilled,))
+        else:
+            adjust_account_balance(conn, leg["account_id"], -leg["amount_cents"])
         conn.execute("DELETE FROM transactions WHERE id=?", (leg["id"],))
     return len(legs)
+
+
+def _backfilled_entry(conn: sqlite3.Connection, leg: sqlite3.Row) -> Optional[int]:
+    """The balance entry behind a Balance adjustment whose update was a
+    backfill, or None for any other row.
+
+    A balance update dated before an entry the account already had corrects the
+    history but leaves the current balance alone (the later entry still wins),
+    so reversing its adjustment against the current balance would invent a
+    change. Undoing it means removing the entry it wrote. An entry is a
+    backfill when some entry dated after it was recorded before it (smaller
+    ``id``): at the time, it wasn't the latest. An update that was the latest
+    did move the current balance, and later transactions build on it, so its
+    adjustment is reversed like any other transaction."""
+    if not leg["adjustment"] or leg["balance_history_id"] is None:
+        return None
+    entry = conn.execute(
+        "SELECT id, account_id, recorded_at FROM balance_history WHERE id=?",
+        (leg["balance_history_id"],),
+    ).fetchone()
+    if entry is None:
+        return None
+    later = conn.execute(
+        "SELECT 1 FROM balance_history"
+        " WHERE account_id=? AND recorded_at>? AND id<? LIMIT 1",
+        (entry["account_id"], entry["recorded_at"], entry["id"]),
+    ).fetchone()
+    return entry["id"] if later else None

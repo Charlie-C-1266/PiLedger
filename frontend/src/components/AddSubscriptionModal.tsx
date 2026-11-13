@@ -9,6 +9,7 @@ import { ACCENT_OPTIONS } from "../theme/tokens";
 import { useAccounts } from "../hooks/useAccounts";
 import { useCategories } from "../hooks/useCategories";
 import { useInvalidate } from "../hooks/useInvalidate";
+import { localIsoDate } from "../lib/dates";
 import { KIND_OPTIONS, autoPostBlocker } from "../lib/scheduled";
 import Modal from "./Modal";
 import ModalActions from "./ModalActions";
@@ -61,7 +62,7 @@ export default function AddSubscriptionModal({ subscription, onClose }: Props) {
     subscription?.frequency ?? "monthly"
   );
   const [startDate, setStartDate] = useState(
-    subscription?.start_date ?? new Date().toISOString().slice(0, 10)
+    subscription?.start_date ?? localIsoDate()
   );
   const [endDate, setEndDate] = useState(subscription?.end_date ?? "");
   const [color, setColor] = useState<string>(

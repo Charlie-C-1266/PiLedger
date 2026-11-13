@@ -123,7 +123,7 @@ def utcnow_iso() -> str:
 # meta table; the first init() run detects that, applies the old sniff-based
 # migrations, and stamps the version.
 
-SCHEMA_VERSION: int = 18
+SCHEMA_VERSION: int = 19
 
 
 def _get_schema_version(conn: sqlite3.Connection) -> int | None:
@@ -267,6 +267,9 @@ def _run_legacy_migrations(conn: sqlite3.Connection) -> None:
     # 18. Add transactions.adjustment (marks a Balance adjustment row).
     _ensure_adjustment_column(conn)
 
+    # 19. Add transactions.balance_history_id (an adjustment's balance entry).
+    _ensure_adjustment_entry_column(conn)
+
 
 def _ensure_transfer_id_column(conn: sqlite3.Connection) -> None:
     """Idempotently add transactions.transfer_id. The two transactions making
@@ -386,6 +389,36 @@ def _ensure_adjustment_column(conn: sqlite3.Connection) -> None:
             "ALTER TABLE transactions ADD COLUMN adjustment INTEGER NOT NULL DEFAULT 0"
         )
         conn.commit()
+
+
+def _ensure_adjustment_entry_column(conn: sqlite3.Connection) -> None:
+    """Idempotently add transactions.balance_history_id: on a Balance adjustment,
+    the balance-history entry its update wrote, so deleting the row can undo
+    exactly that update (see ``services.transactions.delete_transaction_legs``).
+
+    Existing adjustments are linked to the entry on their account stamped at
+    the moment they're dated, which is how the update wrote them. Where two
+    entries share that moment (two updates for the same past day) the match is
+    ambiguous, so the row is left unlinked and deletes as before."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+    if "balance_history_id" in cols:
+        return
+    conn.execute(
+        "ALTER TABLE transactions ADD COLUMN balance_history_id INTEGER"
+        " REFERENCES balance_history(id) ON DELETE SET NULL"
+    )
+    conn.execute(
+        "UPDATE transactions SET balance_history_id = ("
+        " SELECT b.id FROM balance_history b"
+        " WHERE b.account_id = transactions.account_id"
+        " AND b.recorded_at = transactions.occurred_at"
+        ") WHERE adjustment = 1 AND ("
+        " SELECT COUNT(*) FROM balance_history b"
+        " WHERE b.account_id = transactions.account_id"
+        " AND b.recorded_at = transactions.occurred_at"
+        ") = 1"
+    )
+    conn.commit()
 
 
 def _drop_legacy_theme_columns(conn: sqlite3.Connection) -> None:
@@ -733,6 +766,14 @@ def _migrate_to_18(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_to_19(conn: sqlite3.Connection) -> None:
+    """Add transactions.balance_history_id (links a Balance adjustment to the
+    balance entry its update wrote, so deleting it undoes just that update)."""
+    _ensure_adjustment_entry_column(conn)
+    _set_schema_version(conn, 19)
+    conn.commit()
+
+
 # ─── Schema init + migrations ─────────────────────────────────────────────────
 
 
@@ -798,7 +839,9 @@ def init() -> None:
                 transfer_id  TEXT,
                 import_hash  TEXT,
                 created_at   TEXT    DEFAULT (datetime('now')),
-                adjustment   INTEGER NOT NULL DEFAULT 0
+                adjustment   INTEGER NOT NULL DEFAULT 0,
+                balance_history_id INTEGER
+                    REFERENCES balance_history(id) ON DELETE SET NULL
             );
             CREATE TABLE IF NOT EXISTS goals (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -904,6 +947,10 @@ def init() -> None:
         if version < 18:
             _migrate_to_18(conn)
             version = 18
+
+        if version < 19:
+            _migrate_to_19(conn)
+            version = 19
 
         if version < SCHEMA_VERSION:
             _set_schema_version(conn, SCHEMA_VERSION)

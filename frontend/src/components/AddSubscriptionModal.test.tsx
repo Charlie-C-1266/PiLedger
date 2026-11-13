@@ -103,6 +103,21 @@ beforeEach(() => {
 });
 
 describe("AddSubscriptionModal", () => {
+  it("starts a new item on the user's local day, not the UTC one", () => {
+    // 00:30 BST on 2 July is still 1 July in UTC. Node re-reads TZ when it's
+    // set, so this runs ahead of UTC even on a UTC machine.
+    vi.stubEnv("TZ", "Europe/London");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-07-01T23:30:00Z"));
+    try {
+      render(<AddSubscriptionModal onClose={() => {}} />, { wrapper });
+      expect(screen.getByLabelText("Start date")).toHaveValue("2026-07-02");
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("submits the parsed payload to createSubscription", async () => {
     render(<AddSubscriptionModal onClose={() => {}} />, { wrapper });
 

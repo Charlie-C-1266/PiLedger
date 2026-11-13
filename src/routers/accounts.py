@@ -308,7 +308,9 @@ def record_balance(
     uid: int = Depends(require_auth),
 ) -> OkOut:
     """Append a balance-history point for one of the user's accounts (404 if not
-    theirs), timestamped now unless the body supplies ``recorded_at``.
+    theirs, 400 if closed), timestamped now unless the body supplies
+    ``recorded_at``. A closed account takes no new activity, and a changed
+    balance records a transaction.
 
     When the account already had a balance at that moment and this one differs,
     the difference is also recorded as a Balance adjustment transaction dated
@@ -318,18 +320,21 @@ def record_balance(
     out). An account's first balance, or one that matches, records none."""
     with db() as conn:
         account = conn.execute(
-            "SELECT type FROM accounts WHERE id=? AND user_id=?", (aid, uid)
+            "SELECT type, closed FROM accounts WHERE id=? AND user_id=?", (aid, uid)
         ).fetchone()
         if not account:
             raise HTTPException(404, "Not found")
+        if account["closed"]:
+            raise HTTPException(400, "Account is closed")
         ts = data.recorded_at or utcnow_iso()
         new_cents = to_cents(data.balance)
         before_cents = balance_cents_at(conn, aid, ts)
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO balance_history(account_id, balance_cents, notes, recorded_at)"
             " VALUES(?,?,?,?)",
             (aid, new_cents, data.notes, ts),
         )
+        assert cur.lastrowid is not None
         if before_cents is not None and new_cents != before_cents:
             insert_adjustment(
                 conn,
@@ -338,6 +343,7 @@ def record_balance(
                 balance_delta(account["type"], new_cents - before_cents),
                 ts,
                 data.notes or "",
+                cur.lastrowid,
             )
         conn.commit()
     return OkOut(ok=True)

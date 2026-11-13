@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import { useOccurrences, useSubscriptions } from "../hooks/useSubscriptions";
 import { useAccounts } from "../hooks/useAccounts";
+import { localIsoDate } from "../lib/dates";
 import {
   closedPostingAccount,
   matchesScheduledFilter,
@@ -24,15 +25,6 @@ const MONTHS = [
 ];
 const GRID_CELLS = 42; // 6 weeks × 7 days
 const MAX_DOTS = 3;
-
-/** Local-time `YYYY-MM-DD` key — never via toISOString(), which would shift the
- * day across the UTC boundary. */
-function isoKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 /** The cell's accessible name: the day, then how many items fall on it and
  * how many of those are already posted or skipped. */
@@ -143,9 +135,9 @@ export default function SubscriptionsCalendar({ currency, filter }: Props) {
       );
       return {
         date: d,
-        key: isoKey(d),
+        key: localIsoDate(d),
         inMonth: d.getMonth() === month,
-        isToday: isoKey(d) === isoKey(today),
+        isToday: localIsoDate(d) === localIsoDate(today),
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
