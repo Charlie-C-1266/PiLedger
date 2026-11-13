@@ -24,5 +24,25 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+  },
+  {
+    // Screens sit on top: they may use anything, but shared code (components,
+    // hooks, lib, ...) must not reach up into a screen's module or stylesheet.
+    // What two places need belongs in lib/ or beside the component.
+    files: ["src/{api,components,hooks,lib,privacy,theme}/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/screens/**"],
+              message:
+                "Shared code mustn't import from screens/; move what's shared to lib/ or next to the component.",
+            },
+          ],
+        },
+      ],
+    },
   }
 );

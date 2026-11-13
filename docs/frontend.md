@@ -13,6 +13,10 @@ The frontend is a React 19 single-page application built with Vite and TypeScrip
 | Charts | Recharts |
 | Routing | React Router v7 |
 
+## Source layout
+
+Under `frontend/src/`, `screens/` holds one top-level component per route, plus helpers only that screen uses. Everything shared sits below the screens: `components/` (with each component's own `*.module.css`), `hooks/` (data fetching and UI state), `lib/` (pure helpers such as formatting, dates and the projection model), `api/` (the one HTTP client), and `privacy/` and `theme/` (context providers). Shared code never imports from `screens/`; an ESLint `no-restricted-imports` rule enforces it, so anything two screens or a component need moves to `lib/` or beside the component.
+
 ## Login page (`login.html`)
 
 A self-contained page with no external JavaScript dependencies. It contains:
@@ -80,7 +84,7 @@ The Budget screen's sliders and steppers edit through `useBudgetEdit`: it patche
 
 ## Account page
 
-`AccountPage` (`/accounts/:id`) finds the account in `useAccounts()` and lays it out in two columns that stack on narrower screens: the balance card and recent transactions on the left, and a side column with the account's tile, its details and the Upcoming card. The pure rules behind it live beside the screen in `screens/account/` so each can be unit-tested without rendering: `accountModel.ts` (rate and date wording, the share-of-net-worth line, FX to base) and `projectionModel.ts` (chart rows and axes, horizon wording, the low-point note, the Upcoming window). The server does all the date and interest maths; the client only slices and formats its answer.
+`AccountPage` (`/accounts/:id`) finds the account in `useAccounts()` and lays it out in two columns that stack on narrower screens: the balance card and recent transactions on the left, and a side column with the account's tile, its details and the Upcoming card. The pure rules behind it are unit-tested without rendering: `screens/account/accountModel.ts` (rate and date wording, the share-of-net-worth line, FX to base), used only by this screen, and `lib/projection.ts` (chart rows and axes, horizon wording, the low-point note, the Upcoming window), which the Accounts screen and shared components use too. The server does all the date and interest maths; the client only slices and formats its answer.
 
 - **Balance card** — the current balance, a `DeltaPill` with the change from `GET /api/accounts/{aid}/activity`, the share-of-net-worth line, the "Update balance" pill (`UpdateBalanceModal`), and `ProjectionPanel`.
 - **`ProjectionPanel`** — one 12-month projection and one 90-day history (with `opening=true`) serve every horizon. `HorizonTiles` shows the 1/3/6/12-month balances and doubles as the chart's range picker: a radio group with a roving tabindex, so the arrow keys move the selection. `ProjectionChart` draws the actual balance up to today and the projection after it, with a "Today" marker, the low point (asset accounts only), a crosshair driven by pointer or arrow keys, and a visually hidden table of month-end balances. Under it, the note reads "Goes overdrawn on …" or gives the lowest point. Closed accounts request neither query.
