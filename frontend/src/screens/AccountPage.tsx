@@ -310,13 +310,16 @@ function AccountPageBody({ account }: { account: Account }) {
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                className={styles.addPill}
-                onClick={() => setModal("balance")}
-              >
-                Update balance
-              </button>
+              {/* A closed account takes no new balance either. */}
+              {!account.closed && (
+                <button
+                  type="button"
+                  className={styles.addPill}
+                  onClick={() => setModal("balance")}
+                >
+                  Update balance
+                </button>
+              )}
             </div>
             <ProjectionPanel account={account} />
           </section>

@@ -95,11 +95,17 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
   });
 
   // The details go first, so a refused change (a currency a scheduled
-  // transfer can't follow, say) doesn't leave a new balance half-saved.
+  // transfer can't follow, say) doesn't leave a new balance half-saved. A
+  // closed account takes no new balance, though, so when this save also
+  // closes the account, the closing waits until the balance is in.
   const saveMutation = useMutation({
-    mutationFn: async (save: { patch: Partial<Account>; newBalance: number | null }) => {
-      if (Object.keys(save.patch).length) await updateAccount(account.id, save.patch);
-      if (save.newBalance != null) await recordBalance(account.id, save.newBalance);
+    mutationFn: async ({ patch, newBalance }: { patch: Partial<Account>; newBalance: number | null }) => {
+      const closesAfterBalance = patch.closed === true && newBalance != null;
+      const details = { ...patch };
+      if (closesAfterBalance) delete details.closed;
+      if (Object.keys(details).length) await updateAccount(account.id, details);
+      if (newBalance != null) await recordBalance(account.id, newBalance);
+      if (closesAfterBalance) await updateAccount(account.id, { closed: true });
     },
     onSuccess: (_, save) => {
       // A new balance may also record a Balance adjustment transaction.
@@ -130,6 +136,9 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
   const rateInvalid = Number.isNaN(rateValue);
   const currencyChanged = currency !== account.currency;
   const symbol = currencySymbol(currency);
+  // A closed account takes no new balance; reopening it here brings the field
+  // back, and closing it here still allows one last balance first.
+  const staysClosed = account.closed && closed;
 
   const handleTypeChange = (next: AccountType) => {
     setType(next);
@@ -174,7 +183,7 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
       patch.low_balance_threshold = thresholdValue;
     }
     const parsedBalance = parseFloat(balance);
-    const newBalance = Number.isNaN(parsedBalance) ? null : parsedBalance;
+    const newBalance = staysClosed || Number.isNaN(parsedBalance) ? null : parsedBalance;
 
     if (!Object.keys(patch).length && newBalance == null) {
       onClose();
@@ -338,24 +347,26 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
           )}
         </div>
 
-        <div className={styles.field}>
-          <label className={styles.fieldLabel} htmlFor={ids.balance}>
-            New balance
-          </label>
-          <input
-            id={ids.balance}
-            className={styles.input}
-            placeholder="New balance (e.g. 2500.00)"
-            value={balance}
-            onChange={(e) => setBalance(e.target.value)}
-            inputMode="decimal"
-            autoComplete="off"
-            aria-describedby={`${ids.balance}-hint`}
-          />
-          <span className={styles.fieldHint} id={`${ids.balance}-hint`}>
-            Leave empty to keep the current balance.
-          </span>
-        </div>
+        {!staysClosed && (
+          <div className={styles.field}>
+            <label className={styles.fieldLabel} htmlFor={ids.balance}>
+              New balance
+            </label>
+            <input
+              id={ids.balance}
+              className={styles.input}
+              placeholder="New balance (e.g. 2500.00)"
+              value={balance}
+              onChange={(e) => setBalance(e.target.value)}
+              inputMode="decimal"
+              autoComplete="off"
+              aria-describedby={`${ids.balance}-hint`}
+            />
+            <span className={styles.fieldHint} id={`${ids.balance}-hint`}>
+              Leave empty to keep the current balance.
+            </span>
+          </div>
+        )}
 
         {warnsLow && (
           <div className={styles.field}>
@@ -395,7 +406,7 @@ export default function EditAccountModal({ account, onClose, onDeleted }: Props)
 
         <ToggleSwitch
           label="Closed"
-          hint="Kept for history, but won't accept new transactions, transfers, or imports."
+          hint="Kept for history, but won't accept new transactions, transfers, imports, or balance updates."
           checked={closed}
           onChange={setClosed}
         />

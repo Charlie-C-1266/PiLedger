@@ -155,6 +155,52 @@ describe("EditAccountModal", () => {
     });
   });
 
+  it("records a final balance before closing the account in the same save", async () => {
+    const calls: string[] = [];
+    vi.mocked(updateAccount).mockImplementation(async (_id, patch) => {
+      calls.push(`update ${JSON.stringify(patch)}`);
+      return {} as Account;
+    });
+    vi.mocked(recordBalance).mockImplementation(async (_id, value) => {
+      calls.push(`balance ${value}`);
+      return { ok: true };
+    });
+    render(<EditAccountModal account={makeAccount()} onClose={() => {}} />, { wrapper });
+    await userEvent.clear(screen.getByLabelText("Nickname"));
+    await userEvent.type(screen.getByLabelText("Nickname"), "Old");
+    await userEvent.type(screen.getByLabelText("New balance"), "0");
+    await userEvent.click(screen.getByRole("switch", { name: "Closed" }));
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    // A closed account takes no new balance, so the closing goes in last.
+    await waitFor(() =>
+      expect(calls).toEqual([
+        'update {"name":"Old"}',
+        "balance 0",
+        'update {"closed":true}',
+      ])
+    );
+  });
+
+  it("offers no new balance on an account that stays closed", () => {
+    render(<EditAccountModal account={makeAccount({ closed: true })} onClose={() => {}} />, {
+      wrapper,
+    });
+    expect(screen.queryByLabelText("New balance")).not.toBeInTheDocument();
+  });
+
+  it("offers a new balance again once a closed account is reopened", async () => {
+    render(<EditAccountModal account={makeAccount({ closed: true })} onClose={() => {}} />, {
+      wrapper,
+    });
+    await userEvent.click(screen.getByRole("switch", { name: "Closed" }));
+    await userEvent.type(screen.getByLabelText("New balance"), "25");
+    await userEvent.click(screen.getByRole("button", { name: "Update account" }));
+
+    await waitFor(() => expect(recordBalance).toHaveBeenCalledWith(1, 25));
+    expect(updateAccount).toHaveBeenCalledWith(1, { closed: false });
+  });
+
   it("does not call updateAccount for closed when the toggle is untouched", async () => {
     render(<EditAccountModal account={makeAccount({ closed: false })} onClose={() => {}} />, {
       wrapper,

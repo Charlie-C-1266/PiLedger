@@ -22,7 +22,7 @@ Three buttons sit alongside:
 - **Transfer** moves money to another account, starting with this one as the source.
 - **Add transaction** records a transaction on this account.
 
-A closed account takes no new transactions or transfers, so it only shows **Edit**.
+A closed account takes no new transactions, transfers or balance updates, so it only shows **Edit**.
 
 ## Current balance
 

@@ -279,3 +279,29 @@ def test_budget_spend_ignores_adjustments(alice):
     assert len(_adjustments(alice, aid)) == 1
     env = alice.get("/api/budget").json()["groups"][0]["envelopes"][0]
     assert env["spent"] == 0.0
+
+
+# ── Closed accounts ───────────────────────────────────────────────────────────
+
+
+def test_a_closed_account_refuses_a_balance_update(alice):
+    """A closed account takes no new transactions, and a changed balance
+    records one, so the update is refused and nothing is written."""
+    aid = _account(alice)
+    _set_balance(alice, aid, 100.00)
+    alice.put(f"/api/accounts/{aid}", json={"closed": True})
+
+    r = alice.post(f"/api/accounts/{aid}/balance", json={"balance": 50.00})
+    assert r.status_code == 400
+    assert r.json()["detail"] == "Account is closed"
+    assert _balance(alice, aid) == 100.00
+    assert _txns(alice, aid) == []
+
+
+def test_a_reopened_account_takes_balance_updates_again(alice):
+    aid = _account(alice)
+    _set_balance(alice, aid, 100.00)
+    alice.put(f"/api/accounts/{aid}", json={"closed": True})
+    alice.put(f"/api/accounts/{aid}", json={"closed": False})
+    _set_balance(alice, aid, 50.00)
+    assert _balance(alice, aid) == 50.00
