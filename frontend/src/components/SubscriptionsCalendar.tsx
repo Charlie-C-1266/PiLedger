@@ -16,7 +16,7 @@ import ScheduledAmount, {
 } from "./ScheduledAmount";
 import { CheckIcon } from "./icons";
 import type { Subscription, SubscriptionOccurrence } from "../types";
-import styles from "../screens/Subscriptions.module.css";
+import styles from "./SubscriptionsCalendar.module.css";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const MONTHS = [
