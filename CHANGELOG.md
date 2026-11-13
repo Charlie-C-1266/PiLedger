@@ -13,6 +13,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 
 - The Overview distribution and Budget allocation donuts now draw a full ring with each slice sized to its share; previously the top-right quarter was missing and the first slice shrank.
 - Deleting the Balance adjustment from a backdated balance update no longer changes the account's current balance; it removes that day's entry instead.
+- The net-worth trend starts from each account's latest balance before the range; entering an older balance afterwards used to make the line start from that older figure.
 
 ## [3.4.0] — 2026-10-28
 

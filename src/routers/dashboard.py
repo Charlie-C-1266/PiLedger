@@ -186,14 +186,16 @@ def networth_history(
             return []
         acct_ids = tuple(accounts)
         placeholders = ",".join("?" * len(acct_ids))
-        # Carry-forward: latest balance per account before the window
+        # Carry-forward: each account's latest balance before the window, by
+        # date like ``latest_balance_cents`` — not the latest *inserted* row,
+        # which is an older day when a past balance was entered afterwards.
         seeds = conn.execute(
-            f"SELECT account_id, balance_cents FROM balance_history"
-            f" WHERE id IN ("
-            f"  SELECT MAX(bh2.id) FROM balance_history bh2"
-            f"  WHERE bh2.account_id IN ({placeholders}) AND bh2.recorded_at < ?"
-            f"  GROUP BY bh2.account_id"
-            f" )",
+            f"SELECT account_id, balance_cents FROM ("
+            f"  SELECT account_id, balance_cents, ROW_NUMBER() OVER ("
+            f"   PARTITION BY account_id ORDER BY recorded_at DESC, id DESC"
+            f"  ) AS rn FROM balance_history"
+            f"  WHERE account_id IN ({placeholders}) AND recorded_at < ?"
+            f" ) WHERE rn = 1",
             (*acct_ids, since),
         ).fetchall()
         latest: dict[int, int] = {r["account_id"]: r["balance_cents"] for r in seeds}
