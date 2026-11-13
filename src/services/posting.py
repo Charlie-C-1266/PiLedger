@@ -33,6 +33,7 @@ from typing import Iterable, Optional
 
 from constants import DEFAULT_CURRENCY
 from db import db, write_transaction
+from services.errors import RuleError
 from services.subscriptions import occurrences_between
 from services.transactions import (
     delete_transaction_legs,
@@ -52,9 +53,9 @@ POST_NOW_NOTE = "Posted from schedule"
 _TRANSFER_CATEGORY = "Transfer"
 
 
-class PostingError(Exception):
+class PostingError(RuleError):
     """An item can't be posted right now (e.g. its account is closed). The
-    message is user-facing; the routers return it as a 400."""
+    message is user-facing; as a ``RuleError`` it reaches the client as a 400."""
 
 
 def occurred_at_for(day: date) -> str:

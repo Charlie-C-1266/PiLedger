@@ -45,7 +45,6 @@ from schemas import (
 )
 from services.accounts import require_account, require_open_account
 from services.posting import (
-    PostingError,
     handled_dates,
     is_occurrence,
     item_schedule,
@@ -507,11 +506,7 @@ def post_subscription_occurrence(
     with db() as conn:
         sub = _require_subscription(conn, sid, uid)
         day = _require_occurrence(sub, data.date)
-        try:
-            row = post_now(conn, sub, day, today)
-        except PostingError as e:
-            raise HTTPException(400, str(e)) from None
-        return _posting_to_out(row)
+        return _posting_to_out(post_now(conn, sub, day, today))
 
 
 @router.post("/api/subscriptions/{sid}/skip", response_model=SubscriptionPostingOut)
