@@ -16,7 +16,7 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from constants import DEFAULT_CATEGORIES
+from constants import DEFAULT_CATEGORIES, DEFAULT_CURRENCY
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
@@ -35,7 +35,7 @@ from schemas import (
     BudgetOut,
     OkOut,
 )
-from services.currency import convert_to_base, load_rates
+from services.currency import convert_to_base, load_rates, user_base_currency
 
 router = APIRouter(tags=["budget"])
 
@@ -137,10 +137,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
     window_start = f"{months[0]}-01T00:00:00Z"
 
     with db() as conn:
-        user = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        base = (user["base_currency"] if user else None) or "GBP"
+        base = user_base_currency(conn, uid)
         rates = load_rates(conn, uid)
 
         income_rows = conn.execute(
@@ -178,7 +175,7 @@ def get_budget(uid: int = Depends(require_auth)) -> BudgetOut:
     spent_by_category: dict[str, float] = {}
     spent_by_month: dict[str, float] = {}
     for t in txn_rows:
-        cur = t["currency"] or "GBP"
+        cur = t["currency"] or DEFAULT_CURRENCY
         if cur != base and cur not in rates:
             missing.add(cur)
         amount = convert_to_base(abs(t["amount_cents"]) / 100, cur, base, rates)

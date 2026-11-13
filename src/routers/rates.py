@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from db import db, utcnow_iso
 from auth import require_auth
 from schemas import RateOut, RatesOut, RatesPut
+from services.currency import user_base_currency
 
 router = APIRouter(tags=["rates"])
 
@@ -18,15 +19,12 @@ def get_rates(uid: int = Depends(require_auth)) -> RatesOut:
     """Return the user's base currency and their stored exchange rates (sorted by
     currency). The base currency is implicit 1.0 and never appears in the list."""
     with db() as conn:
-        row = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
+        base = user_base_currency(conn, uid)
         rows = conn.execute(
             "SELECT currency, rate, updated_at FROM exchange_rates"
             " WHERE user_id=? ORDER BY currency",
             (uid,),
         ).fetchall()
-    base = (row["base_currency"] if row else None) or "GBP"
     return RatesOut(
         base_currency=base,
         rates=[
@@ -46,10 +44,7 @@ def put_rates(data: RatesPut, uid: int = Depends(require_auth)) -> RatesOut:
     currency are rejected — base is implicitly 1.0 and storing it would create
     ambiguity if the base is later changed."""
     with db() as conn:
-        row = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        base = (row["base_currency"] if row else None) or "GBP"
+        base = user_base_currency(conn, uid)
         # Validate up-front so a partial write never happens.
         seen: set[str] = set()
         for r in data.rates:

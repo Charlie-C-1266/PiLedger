@@ -32,6 +32,7 @@ from contextlib import contextmanager
 from datetime import date
 from typing import Iterable, Iterator, Optional
 
+from constants import DEFAULT_CURRENCY
 from db import db
 from services.subscriptions import occurrences_between
 from services.transactions import (
@@ -206,7 +207,7 @@ def unpostable_reason(conn: sqlite3.Connection, sub: sqlite3.Row) -> Optional[st
         return "Account not found"
     if any(r["closed"] for r in rows):
         return "Account is closed"
-    if len({r["currency"] or "GBP" for r in rows}) != 1:
+    if len({r["currency"] or DEFAULT_CURRENCY for r in rows}) != 1:
         return "Transfers between accounts of different currencies are not supported"
     return None
 

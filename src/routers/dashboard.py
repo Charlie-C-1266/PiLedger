@@ -11,7 +11,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from constants import ISO_FMT, MAX_DAYS, MAX_MONTHS, RANGE_TO_DAYS, RangeKey
+from constants import (
+    DEBT_TYPES,
+    DEFAULT_CURRENCY,
+    ISO_FMT,
+    MAX_DAYS,
+    MAX_MONTHS,
+    RANGE_TO_DAYS,
+    RangeKey,
+)
 from db import db, from_cents
 from auth import require_auth
 from schemas import (
@@ -23,7 +31,7 @@ from schemas import (
     SummaryOut,
 )
 from services.accounts import LATEST_BALANCE_JOIN
-from services.currency import convert_to_base, load_rates
+from services.currency import convert_to_base, load_rates, user_base_currency
 from services.projection import monthly_points
 from services.projection_inputs import load_schedule, project_account
 
@@ -46,9 +54,7 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
     1:1 and are reported in ``missing_rates`` so the UI can warn.
     """
     with db() as conn:
-        user = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
+        base = user_base_currency(conn, uid)
         rows = conn.execute(
             f"""
             SELECT a.type, a.currency, a.counts_to_net_worth, b.balance_cents
@@ -59,17 +65,16 @@ def get_summary(uid: int = Depends(require_auth)) -> SummaryOut:
             (uid,),
         ).fetchall()
         rates = load_rates(conn, uid)
-    base = (user["base_currency"] if user else None) or "GBP"
     current_t = savings_t = loans_t = credit_t = invest_t = 0.0
     set_aside = 0.0
     missing: set[str] = set()
     for r in rows:
-        cur = r["currency"] or "GBP"
+        cur = r["currency"] or DEFAULT_CURRENCY
         amt = (r["balance_cents"] or 0) / 100
         if cur != base and cur not in rates:
             missing.add(cur)
         converted = convert_to_base(amt, cur, base, rates)
-        is_debt = r["type"] in ("loan", "credit")
+        is_debt = r["type"] in DEBT_TYPES
         if not r["counts_to_net_worth"]:
             # Set-aside Account: contributes to the excluded total only, as a
             # signed net-worth figure (a debt lowers it just like in the headline).
@@ -135,7 +140,7 @@ def all_history(
                         name=a["name"],
                         color=a["color"],
                         type=a["type"],
-                        currency=a["currency"] or "GBP",
+                        currency=a["currency"] or DEFAULT_CURRENCY,
                         history=[
                             HistoryPointOut(
                                 balance=from_cents(h["balance_cents"]) or 0.0,
@@ -169,10 +174,7 @@ def networth_history(
     days = RANGE_TO_DAYS[range_key]
     since = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(ISO_FMT)
     with db() as conn:
-        user = conn.execute(
-            "SELECT base_currency FROM users WHERE id=?", (uid,)
-        ).fetchone()
-        base = (user["base_currency"] if user else None) or "GBP"
+        base = user_base_currency(conn, uid)
         rates = load_rates(conn, uid)
         accounts = {
             r["id"]: r
@@ -222,9 +224,9 @@ def networth_history(
             if acc is None:
                 continue
             amt = cents / 100
-            cur = acc["currency"] or "GBP"
+            cur = acc["currency"] or DEFAULT_CURRENCY
             converted = convert_to_base(amt, cur, base, rates)
-            if acc["type"] in ("loan", "credit"):
+            if acc["type"] in DEBT_TYPES:
                 # Mirror /api/summary: a debt is a positive magnitude subtracted
                 # from net worth, whether its balance was recorded as a positive
                 # number (e.g. 2000 owed) or a negative one (-2000). Without abs()
@@ -287,7 +289,7 @@ def get_projections(
                 id=row["id"],
                 name=row["name"],
                 color=row["color"],
-                currency=row["currency"] or "GBP",
+                currency=row["currency"] or DEFAULT_CURRENCY,
                 initial_balance=result.start_balance_cents / 100,
                 interest_rate=row["interest_rate"] or 0.0,
                 one_year=one,

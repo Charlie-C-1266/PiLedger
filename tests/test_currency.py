@@ -304,3 +304,31 @@ def test_base_change_with_no_rates_is_allowed(alice):
     body = alice.get("/api/rates").json()
     assert body["base_currency"] == "JPY"
     assert body["rates"] == []
+
+
+# ── user_base_currency ────────────────────────────────────────────────────────
+
+
+def test_user_base_currency_reads_the_stored_value(alice):
+    from db import db
+    from services.currency import user_base_currency
+
+    alice.put("/api/prefs", json={"base_currency": "EUR"})
+    uid = alice.get("/api/auth/me").json()["id"]
+    with db() as conn:
+        assert user_base_currency(conn, uid) == "EUR"
+
+
+def test_user_base_currency_falls_back_to_the_default(alice):
+    """A NULL base (databases from before it existed) or a missing user both
+    read as DEFAULT_CURRENCY."""
+    from constants import DEFAULT_CURRENCY
+    from db import db
+    from services.currency import user_base_currency
+
+    uid = alice.get("/api/auth/me").json()["id"]
+    with db() as conn:
+        conn.execute("UPDATE users SET base_currency=NULL WHERE id=?", (uid,))
+        conn.commit()
+        assert user_base_currency(conn, uid) == DEFAULT_CURRENCY
+        assert user_base_currency(conn, uid + 999) == DEFAULT_CURRENCY
