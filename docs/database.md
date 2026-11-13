@@ -224,7 +224,7 @@ Key-value infrastructure table. Currently holds a single row: `schema_version` (
 18. **`transactions.adjustment`** — added via `ALTER TABLE`, defaults to `0`.
 19. **`transactions.balance_history_id`** — added via `ALTER TABLE`; existing adjustments are linked as in v19.
 
-After the legacy path completes, the version is stamped. Subsequent runs read the stamp and gate future migrations on `if version < N` — no more column sniffing.
+After the legacy path completes, the version is stamped. Subsequent runs read the stamp and run each step in `db._MIGRATIONS` whose version is above it — no more column sniffing. Adding a schema change means a new `_migrate_to_N`, a row in `_MIGRATIONS` and a `SCHEMA_VERSION` bump; `tests/test_migrations.py` checks the three agree.
 
 **Versioned migrations** (applied by `schema_version` gate after the legacy path):
 
