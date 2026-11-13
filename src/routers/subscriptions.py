@@ -30,7 +30,6 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
-from constants import DEFAULT_CURRENCY
 from db import db, from_cents, to_cents
 from auth import require_auth
 from schemas import (
@@ -43,7 +42,11 @@ from schemas import (
     SubscriptionPatch,
     SubscriptionPostingOut,
 )
-from services.accounts import require_account, require_open_account
+from services.accounts import (
+    require_account,
+    require_open_account,
+    require_transfer_accounts,
+)
 from services.posting import (
     handled_dates,
     is_occurrence,
@@ -76,10 +79,11 @@ def _check_links(
 ) -> None:
     """Enforce the kind ↔ account rules for a scheduled item about to be saved.
 
-    A transfer needs a from and a to account that differ, both owned by the user
-    (404 otherwise) and sharing a currency (400, the same rule as
-    ``POST /api/transfers``). An expense or income may link one account (404 if
-    it isn't the user's) and must not name a destination (400).
+    A transfer needs a from and a to account (400), which then follow
+    ``require_transfer_accounts`` like ``POST /api/transfers`` — except that
+    either may be closed, since it only matters once the item comes to post. An
+    expense or income may link one account (404 if it isn't the user's) and
+    must not name a destination (400).
     """
     if kind != "transfer":
         if to_account_id is not None:
@@ -89,22 +93,7 @@ def _check_links(
         return
     if account_id is None or to_account_id is None:
         raise HTTPException(400, "A transfer needs both a from and a to account")
-    if account_id == to_account_id:
-        raise HTTPException(400, "Cannot transfer to the same account")
-    require_account(conn, account_id, uid)
-    require_account(conn, to_account_id, uid)
-    currencies = {
-        r["currency"] or DEFAULT_CURRENCY
-        for r in conn.execute(
-            "SELECT currency FROM accounts WHERE id IN (?, ?)",
-            (account_id, to_account_id),
-        ).fetchall()
-    }
-    if len(currencies) != 1:
-        raise HTTPException(
-            400,
-            "Transfers between accounts of different currencies are not supported",
-        )
+    require_transfer_accounts(conn, uid, account_id, to_account_id, open_only=False)
 
 
 def _check_auto_post(

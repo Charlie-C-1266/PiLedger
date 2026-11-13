@@ -12,7 +12,6 @@ import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from constants import DEFAULT_CURRENCY
 from db import db, from_cents, to_cents, utcnow_iso
 from auth import require_auth
 from schemas import (
@@ -22,7 +21,11 @@ from schemas import (
     TransactionPatch,
     TransferIn,
 )
-from services.accounts import adjust_account_balance, require_open_account
+from services.accounts import (
+    adjust_account_balance,
+    require_open_account,
+    require_transfer_accounts,
+)
 from services.transactions import (
     TXN_SELECT,
     delete_transaction_legs,
@@ -145,29 +148,12 @@ def create_transfer(
     """Move money between two of the user's accounts. Recorded as two linked
     transactions — `-amount` on the source and `+amount` on the destination —
     sharing a transfer_id, so net worth is unchanged and both legs delete
-    together. Restricted to accounts sharing a currency."""
-    if data.from_account_id == data.to_account_id:
-        raise HTTPException(400, "Cannot transfer to the same account")
+    together. Follows ``require_transfer_accounts``: two different accounts of
+    the user's (404 otherwise), both open and in one currency (400)."""
     with db() as conn:
-        src = conn.execute(
-            "SELECT id, name, currency, closed FROM accounts WHERE id=? AND user_id=?",
-            (data.from_account_id, uid),
-        ).fetchone()
-        dst = conn.execute(
-            "SELECT id, name, currency, closed FROM accounts WHERE id=? AND user_id=?",
-            (data.to_account_id, uid),
-        ).fetchone()
-        if not src or not dst:
-            raise HTTPException(404, "Account not found")
-        if src["closed"] or dst["closed"]:
-            raise HTTPException(400, "Account is closed")
-        if (src["currency"] or DEFAULT_CURRENCY) != (
-            dst["currency"] or DEFAULT_CURRENCY
-        ):
-            raise HTTPException(
-                400,
-                "Transfers between accounts of different currencies are not supported",
-            )
+        src, dst = require_transfer_accounts(
+            conn, uid, data.from_account_id, data.to_account_id, open_only=True
+        )
         _, ids = insert_transfer(
             conn,
             uid,
