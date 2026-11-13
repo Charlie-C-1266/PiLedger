@@ -111,6 +111,26 @@ def db() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+@contextmanager
+def write_transaction(conn: sqlite3.Connection) -> Iterator[None]:
+    """Run the block as one SQLite write transaction, committed on success and
+    rolled back on any error. ``BEGIN IMMEDIATE`` takes the write lock up front
+    (waiting out ``busy_timeout``), so a check-then-write inside the block
+    can't race another run. If the caller already has a transaction open, the
+    block joins it and the caller commits."""
+    began = not conn.in_transaction
+    if began:
+        conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        if began:
+            conn.rollback()
+        raise
+    if began:
+        conn.commit()
+
+
 def utcnow_iso() -> str:
     """Return the current UTC time as a canonical ``ISO_FMT`` string."""
     return datetime.now(timezone.utc).strftime(constants.ISO_FMT)
