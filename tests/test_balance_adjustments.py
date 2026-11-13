@@ -147,6 +147,66 @@ def test_deleting_an_adjustment_moves_the_balance_back(alice):
     assert _txns(alice, aid) == []
 
 
+def _entries(aid: int) -> list[tuple[str, int]]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT recorded_at, balance_cents FROM balance_history"
+            " WHERE account_id=? ORDER BY recorded_at, id",
+            (aid,),
+        ).fetchall()
+    return [(r["recorded_at"][:10], r["balance_cents"]) for r in rows]
+
+
+def test_deleting_a_backdated_adjustment_leaves_the_current_balance(alice):
+    """A backdated update that lands before a later entry corrects the history
+    but not the current balance, so deleting its adjustment removes that entry
+    rather than moving today's balance by the reverse amount."""
+    aid = _account(alice)
+    _set_balance(alice, aid, 1000.00, recorded_at="2026-01-01T09:00:00Z")
+    _set_balance(alice, aid, 1200.00, recorded_at="2026-03-01T09:00:00Z")
+    _set_balance(alice, aid, 1100.00, recorded_at="2026-02-01T12:00:00Z")
+    feb = next(
+        t for t in _adjustments(alice, aid) if t["occurred_at"][:10] == "2026-02-01"
+    )
+
+    assert alice.delete(f"/api/transactions/{feb['id']}").status_code == 200
+    assert _balance(alice, aid) == 1200.00
+    assert _entries(aid) == [("2026-01-01", 100000), ("2026-03-01", 120000)]
+    assert [t["amount"] for t in _adjustments(alice, aid)] == [200.00]
+
+
+def test_deleting_one_of_two_same_day_backfills_removes_only_its_entry(alice):
+    """The UI stamps every past day at midday, so two updates for one day share
+    a moment; each adjustment still undoes just its own entry."""
+    aid = _account(alice)
+    _set_balance(alice, aid, 1000.00, recorded_at="2026-01-01T09:00:00Z")
+    _set_balance(alice, aid, 1200.00, recorded_at="2026-03-01T09:00:00Z")
+    _set_balance(alice, aid, 1100.00, recorded_at="2026-02-01T12:00:00Z")
+    _set_balance(alice, aid, 1150.00, recorded_at="2026-02-01T12:00:00Z")
+    second = next(t for t in _adjustments(alice, aid) if t["amount"] == 50.00)
+
+    alice.delete(f"/api/transactions/{second['id']}")
+    assert _entries(aid) == [
+        ("2026-01-01", 100000),
+        ("2026-02-01", 110000),
+        ("2026-03-01", 120000),
+    ]
+    assert _balance(alice, aid) == 1200.00
+
+
+def test_deleting_an_adjustment_after_later_transactions_still_reverses_it(alice):
+    """An update that was the latest did move the balance, and transactions
+    since have built on it, so deleting it takes the difference back off."""
+    aid, adj = _one_adjustment(alice)
+    alice.post(
+        "/api/transactions",
+        json={"account_id": aid, "amount": -10.0, "merchant": "Tesco"},
+    )
+    assert _balance(alice, aid) == 1090.00
+    alice.delete(f"/api/transactions/{adj['id']}")
+    assert _balance(alice, aid) == 990.00
+
+
 def test_an_adjustments_amount_cant_be_edited(alice):
     aid, adj = _one_adjustment(alice)
     r = alice.put(f"/api/transactions/{adj['id']}", json={"amount": 250.0})

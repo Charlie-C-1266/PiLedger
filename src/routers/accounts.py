@@ -325,11 +325,12 @@ def record_balance(
         ts = data.recorded_at or utcnow_iso()
         new_cents = to_cents(data.balance)
         before_cents = balance_cents_at(conn, aid, ts)
-        conn.execute(
+        cur = conn.execute(
             "INSERT INTO balance_history(account_id, balance_cents, notes, recorded_at)"
             " VALUES(?,?,?,?)",
             (aid, new_cents, data.notes, ts),
         )
+        assert cur.lastrowid is not None
         if before_cents is not None and new_cents != before_cents:
             insert_adjustment(
                 conn,
@@ -338,6 +339,7 @@ def record_balance(
                 balance_delta(account["type"], new_cents - before_cents),
                 ts,
                 data.notes or "",
+                cur.lastrowid,
             )
         conn.commit()
     return OkOut(ok=True)

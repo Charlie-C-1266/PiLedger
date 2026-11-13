@@ -1389,7 +1389,6 @@ def stamped_v17_db(tmp_path, monkeypatch):
 def test_v17_db_climbs_to_v18(stamped_v17_db):
     from db import SCHEMA_VERSION
 
-    assert SCHEMA_VERSION == 18
     assert _read_schema_version(stamped_v17_db) == SCHEMA_VERSION
 
 
@@ -1421,3 +1420,117 @@ def test_gated_path_adds_adjustment(stamped_v1_db):
 
 def test_legacy_path_has_adjustment(migrated_db):
     assert "adjustment" in _table_columns(migrated_db, "transactions")
+
+
+# ── v18 → v19: transactions.balance_history_id (an adjustment's entry) ──────
+
+
+@pytest.fixture
+def stamped_v18_db(tmp_path, monkeypatch):
+    """A DB stamped at schema_version 18 whose transactions table predates
+    transactions.balance_history_id, holding three Balance adjustments: one
+    with a single balance entry at its moment, two sharing a moment (two
+    updates for the same past day), plus an ordinary transaction."""
+    db_path = tmp_path / "v18.db"
+
+    import constants
+
+    monkeypatch.setattr(constants, "DB", str(db_path))
+    from db import init, _set_schema_version
+
+    init()
+    conn = sqlite3.connect(str(db_path))
+    try:
+        conn.execute("ALTER TABLE transactions DROP COLUMN balance_history_id")
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash) VALUES(1, 'alice', 'x')"
+        )
+        conn.execute(
+            "INSERT INTO accounts(id, user_id, name, type) VALUES"
+            "(1, 1, 'Current', 'current')"
+        )
+        conn.executemany(
+            "INSERT INTO balance_history(id, account_id, balance_cents, recorded_at)"
+            " VALUES(?, 1, ?, ?)",
+            [
+                (1, 100000, "2026-01-01T09:00:00Z"),
+                (2, 110000, "2026-02-01T09:00:00Z"),
+                (3, 120000, "2026-03-01T12:00:00Z"),
+                (4, 125000, "2026-03-01T12:00:00Z"),
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO transactions(id, user_id, account_id, amount_cents,"
+            " occurred_at, merchant, category, adjustment) VALUES(?, 1, 1, ?, ?, ?, ?, ?)",
+            [
+                (
+                    1,
+                    10000,
+                    "2026-02-01T09:00:00Z",
+                    "Balance adjustment",
+                    "Adjustment",
+                    1,
+                ),
+                (
+                    2,
+                    10000,
+                    "2026-03-01T12:00:00Z",
+                    "Balance adjustment",
+                    "Adjustment",
+                    1,
+                ),
+                (
+                    3,
+                    5000,
+                    "2026-03-01T12:00:00Z",
+                    "Balance adjustment",
+                    "Adjustment",
+                    1,
+                ),
+                (4, -4250, "2026-02-01T09:00:00Z", "Tesco", "", 0),
+            ],
+        )
+        _set_schema_version(conn, 18)
+        conn.commit()
+    finally:
+        conn.close()
+
+    init()
+    return db_path
+
+
+def test_v18_db_climbs_to_v19(stamped_v18_db):
+    from db import SCHEMA_VERSION
+
+    assert SCHEMA_VERSION == 19
+    assert _read_schema_version(stamped_v18_db) == SCHEMA_VERSION
+
+
+def test_v18_adjustments_are_linked_to_their_entry(stamped_v18_db):
+    """_migrate_to_19 links an adjustment to the one entry stamped at its
+    moment; where two entries share it the match is ambiguous, so those stay
+    unlinked, and ordinary transactions are never linked."""
+    conn = sqlite3.connect(str(stamped_v18_db))
+    try:
+        rows = conn.execute(
+            "SELECT id, balance_history_id FROM transactions ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert rows == [(1, 2), (2, None), (3, None), (4, None)]
+
+
+def test_v19_rerun_is_a_no_op(stamped_v18_db):
+    from db import init, SCHEMA_VERSION
+
+    init()
+    assert _read_schema_version(stamped_v18_db) == SCHEMA_VERSION
+    assert "balance_history_id" in _table_columns(stamped_v18_db, "transactions")
+
+
+def test_gated_path_adds_adjustment_entry(stamped_v1_db):
+    assert "balance_history_id" in _table_columns(stamped_v1_db, "transactions")
+
+
+def test_legacy_path_has_adjustment_entry(migrated_db):
+    assert "balance_history_id" in _table_columns(migrated_db, "transactions")
