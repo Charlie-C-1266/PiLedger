@@ -6,10 +6,9 @@ too; routers must not import one another.
 
 import sqlite3
 
-from fastapi import HTTPException
-
-from constants import DEBT_TYPES
+from constants import DEBT_TYPES, DEFAULT_CURRENCY
 from db import utcnow_iso
+from services.errors import NotFoundError, RuleError
 
 
 def latest_balance_cents(conn: sqlite3.Connection, account_id: int) -> int | None:
@@ -79,22 +78,64 @@ def adjust_account_balance(
 
 
 def require_account(conn: sqlite3.Connection, account_id: int, uid: int) -> None:
-    """Raise 404 unless the account exists and belongs to the user."""
+    """Raise ``NotFoundError`` (404) unless the account exists and belongs to
+    the user."""
     if not conn.execute(
         "SELECT 1 FROM accounts WHERE id=? AND user_id=?", (account_id, uid)
     ).fetchone():
-        raise HTTPException(404, "Account not found")
+        raise NotFoundError("Account not found")
 
 
 def require_open_account(conn: sqlite3.Connection, account_id: int, uid: int) -> None:
-    """Raise 404 unless the account exists and belongs to the user, or 400 if
-    it's closed. Closed accounts are kept for history but don't accept new
-    transactions, transfers, imports, subscriptions, or balance updates
-    (``record_balance`` checks the last itself, as it also needs the type)."""
+    """Raise ``NotFoundError`` (404) unless the account exists and belongs to
+    the user, or ``RuleError`` (400) if it's closed. Closed accounts are kept
+    for history but don't accept new transactions, transfers, imports,
+    subscriptions, or balance updates (``record_balance`` checks the last
+    itself, as it also needs the type)."""
     row = conn.execute(
         "SELECT closed FROM accounts WHERE id=? AND user_id=?", (account_id, uid)
     ).fetchone()
     if not row:
-        raise HTTPException(404, "Account not found")
+        raise NotFoundError("Account not found")
     if row["closed"]:
-        raise HTTPException(400, "Account is closed")
+        raise RuleError("Account is closed")
+
+
+def require_transfer_accounts(
+    conn: sqlite3.Connection,
+    uid: int,
+    from_account_id: int,
+    to_account_id: int,
+    *,
+    open_only: bool,
+) -> tuple[sqlite3.Row, sqlite3.Row]:
+    """Apply the rules every transfer between two accounts follows — a manual
+    transfer, a scheduled one being saved, and one being posted — and return
+    the (source, destination) rows with ``id``, ``name``, ``currency`` and
+    ``closed``.
+
+    The accounts must differ (``RuleError``), both be the user's
+    (``NotFoundError``), be open when ``open_only`` (``RuleError``; a scheduled
+    transfer may name a closed account until it comes to post), and share a
+    currency (``RuleError``: amounts are never converted).
+    """
+    if from_account_id == to_account_id:
+        raise RuleError("Cannot transfer to the same account")
+    rows = {
+        r["id"]: r
+        for r in conn.execute(
+            "SELECT id, name, currency, closed FROM accounts"
+            " WHERE user_id=? AND id IN (?, ?)",
+            (uid, from_account_id, to_account_id),
+        ).fetchall()
+    }
+    if len(rows) != 2:
+        raise NotFoundError("Account not found")
+    src, dst = rows[from_account_id], rows[to_account_id]
+    if open_only and (src["closed"] or dst["closed"]):
+        raise RuleError("Account is closed")
+    if (src["currency"] or DEFAULT_CURRENCY) != (dst["currency"] or DEFAULT_CURRENCY):
+        raise RuleError(
+            "Transfers between accounts of different currencies are not supported"
+        )
+    return src, dst

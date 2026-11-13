@@ -39,6 +39,7 @@ from db import (
 from logging_config import configure_logging
 import autopost
 from security import RequestIdMiddleware, SecurityHeadersMiddleware
+from services.errors import NotFoundError, RuleError
 from limiter import limiter
 
 from routers import auth as auth_router
@@ -95,6 +96,20 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RequestIdMiddleware)
 configure_logging()
 init()
+
+
+# Services raise domain errors rather than HTTP ones (see services/errors.py);
+# answer them the way an HTTPException with the same message would.
+@app.exception_handler(NotFoundError)
+def _not_found_to_404(request: Request, exc: NotFoundError) -> JSONResponse:
+    """A service couldn't find what the request names (or it isn't the user's)."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(RuleError)
+def _rule_to_400(request: Request, exc: RuleError) -> JSONResponse:
+    """A service refused the request under a business rule."""
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 # Pydantic validation failures default to 422, but the public contract documented

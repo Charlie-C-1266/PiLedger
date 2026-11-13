@@ -31,8 +31,9 @@ import sqlite3
 from datetime import date
 from typing import Iterable, Optional
 
-from constants import DEFAULT_CURRENCY
 from db import db, write_transaction
+from services.accounts import require_open_account, require_transfer_accounts
+from services.errors import NotFoundError, RuleError
 from services.subscriptions import occurrences_between
 from services.transactions import (
     delete_transaction_legs,
@@ -52,9 +53,9 @@ POST_NOW_NOTE = "Posted from schedule"
 _TRANSFER_CATEGORY = "Transfer"
 
 
-class PostingError(Exception):
+class PostingError(RuleError):
     """An item can't be posted right now (e.g. its account is closed). The
-    message is user-facing; the routers return it as a 400."""
+    message is user-facing; as a ``RuleError`` it reaches the client as a 400."""
 
 
 def occurred_at_for(day: date) -> str:
@@ -166,28 +167,28 @@ def get_posting(conn: sqlite3.Connection, sid: int, day: date) -> Optional[sqlit
 def unpostable_reason(conn: sqlite3.Connection, sub: sqlite3.Row) -> Optional[str]:
     """Why ``sub`` can't post a transaction right now, or None if it can.
 
-    An expense or income needs its linked account; a transfer needs both ends,
-    different from each other and in one currency. Every account must still be
-    the user's and open — a closed account takes no new activity.
+    An expense or income needs its linked account, still the user's and open
+    (``require_open_account``) — a closed account takes no new activity. A
+    transfer needs both ends, following ``require_transfer_accounts`` like a
+    manual transfer. The reason is the rule's own message.
     """
-    ids = [sub["account_id"]]
-    if sub["kind"] == "transfer":
-        ids.append(sub["to_account_id"])
-    if any(i is None for i in ids):
+    if sub["account_id"] is None or (
+        sub["kind"] == "transfer" and sub["to_account_id"] is None
+    ):
         return "Link an account before posting this item"
-    if len(set(ids)) != len(ids):
-        return "Cannot transfer to the same account"
-    rows = conn.execute(
-        "SELECT closed, currency FROM accounts"
-        f" WHERE user_id=? AND id IN ({','.join('?' * len(ids))})",
-        [sub["user_id"], *ids],
-    ).fetchall()
-    if len(rows) != len(ids):
-        return "Account not found"
-    if any(r["closed"] for r in rows):
-        return "Account is closed"
-    if len({r["currency"] or DEFAULT_CURRENCY for r in rows}) != 1:
-        return "Transfers between accounts of different currencies are not supported"
+    try:
+        if sub["kind"] == "transfer":
+            require_transfer_accounts(
+                conn,
+                sub["user_id"],
+                sub["account_id"],
+                sub["to_account_id"],
+                open_only=True,
+            )
+        else:
+            require_open_account(conn, sub["account_id"], sub["user_id"])
+    except (NotFoundError, RuleError) as e:
+        return str(e)
     return None
 
 
