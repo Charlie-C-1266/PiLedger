@@ -547,6 +547,31 @@ def test_update_merchant_does_not_adjust_balance(alice):
     assert bal == 950.0
 
 
+def test_resending_the_same_amount_and_account_writes_no_balance_entries(alice):
+    """The edit form always resends the amount and account. Unchanged, they
+    don't move money, so the edit mustn't add a reverse-and-reapply pair of
+    balance-history entries."""
+    from db import db
+
+    aid = _acct(alice)
+    alice.post(f"/api/accounts/{aid}/balance", json={"balance": 1000.0})
+    txn = _txn(alice, aid, amount=-50.0)
+
+    def entries() -> int:
+        with db() as conn:
+            return conn.execute(
+                "SELECT COUNT(*) FROM balance_history WHERE account_id=?", (aid,)
+            ).fetchone()[0]
+
+    before = entries()
+    r = alice.put(
+        f"/api/transactions/{txn['id']}",
+        json={"merchant": "Sainsburys", "amount": -50.0, "account_id": aid},
+    )
+    assert r.status_code == 200, r.text
+    assert entries() == before
+
+
 # ── Validation ───────────────────────────────────────────────────────────────
 
 

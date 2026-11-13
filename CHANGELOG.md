@@ -16,6 +16,7 @@ Releases before the current cycle live in [CHANGELOG-ARCHIVE.md](CHANGELOG-ARCHI
 - The net-worth trend starts from each account's latest balance before the range; entering an older balance afterwards used to make the line start from that older figure.
 - A closed account no longer accepts balance updates, which used to add a Balance adjustment to it; closing an account and entering its final balance in one save still works.
 - A new scheduled item now starts on today's date in your timezone; just after midnight in a timezone ahead of UTC (such as UK summer time) it used to default to yesterday.
+- Editing a transaction without changing its amount or account no longer adds two redundant entries to the account's balance history.
 
 ## [3.4.0] — 2026-10-28
 

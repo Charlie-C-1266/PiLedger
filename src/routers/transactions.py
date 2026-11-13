@@ -236,7 +236,13 @@ def update_transaction(
             conn.execute(
                 f"UPDATE transactions SET {sets} WHERE id=?", [*patch.values(), tid]
             )
-            if "amount_cents" in patch or "account_id" in patch:
+            # The edit form resends the current amount and account; only an
+            # actual change moves money, so a merchant-only edit writes no
+            # balance entries.
+            if (
+                patch.get("amount_cents", old["amount_cents"]) != old["amount_cents"]
+                or patch.get("account_id", old["account_id"]) != old["account_id"]
+            ):
                 adjust_account_balance(conn, old["account_id"], -old["amount_cents"])
                 adjust_account_balance(
                     conn,
