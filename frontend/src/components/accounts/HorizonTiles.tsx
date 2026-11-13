@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent } from "react";
 import { useMoney } from "../../privacy/useMoney";
-import { dayShort, horizonLabel, signedAmount } from "../../screens/account/projectionModel";
+import { dayShort, horizonLabel, signedAmount } from "../../lib/projection";
 import type { BalanceProjectionHorizon } from "../../types";
 import styles from "./HorizonTiles.module.css";
 

@@ -19,7 +19,7 @@ import {
   nextOccurrence,
   signedAmount,
   upcoming,
-} from "./projectionModel";
+} from "../../lib/projection";
 import type { Account, BalanceProjectionEvent, Subscription } from "../../types";
 import styles from "../AccountPage.module.css";
 

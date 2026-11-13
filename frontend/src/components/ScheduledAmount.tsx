@@ -2,7 +2,7 @@ import { useMoney } from "../privacy/useMoney";
 import { kindSign } from "../lib/scheduled";
 import { TransferIcon } from "./icons";
 import type { SubscriptionKind } from "../types";
-import styles from "../screens/Subscriptions.module.css";
+import styles from "./ScheduledAmount.module.css";
 
 interface Props {
   kind: SubscriptionKind;

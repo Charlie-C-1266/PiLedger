@@ -11,7 +11,7 @@ import {
   dayShort,
   includesNote,
   lowNote,
-} from "./projectionModel";
+} from "../../lib/projection";
 import type { Account } from "../../types";
 import styles from "../AccountPage.module.css";
 

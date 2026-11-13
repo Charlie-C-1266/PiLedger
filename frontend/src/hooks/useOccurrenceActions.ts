@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ApiError, postOccurrence, skipOccurrence, undoOccurrence } from "../api/client";
 import { useToast } from "../components/toast/useToast";
-import { dayShort } from "../screens/account/projectionModel";
+import { dayShort } from "../lib/projection";
 import type { BalanceProjectionEvent } from "../types";
 import { useInvalidate } from "./useInvalidate";
 

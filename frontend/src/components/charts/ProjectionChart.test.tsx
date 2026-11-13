@@ -3,7 +3,7 @@ import { render, screen, within, fireEvent } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "../../theme/ThemeProvider";
 import { PrivacyProvider, STORAGE_KEY } from "../../privacy/PrivacyProvider";
-import { buildChartSeries } from "../../screens/account/projectionModel";
+import { buildChartSeries } from "../../lib/projection";
 import {
   AS_OF,
   addDays,

@@ -5,8 +5,8 @@ import type {
   BalanceProjectionHorizon,
   Frequency,
   LowBalance,
-} from "../../types";
-import { localIsoDate } from "../../lib/dates";
+} from "../types";
+import { localIsoDate } from "./dates";
 
 /**
  * Pure helpers behind the account page's projection half: the chart's rows and
@@ -42,8 +42,6 @@ export function parseDay(iso: string): Date {
   return new Date(y, m - 1, d);
 }
 
-/** A local calendar day as `YYYY-MM-DD`. */
-export const isoDay = localIsoDate;
 
 /** "9 Nov" */
 export function dayShort(iso: string): string {
@@ -172,7 +170,7 @@ export interface ChartSeries {
  * first reading. */
 function closingBalances(history: AccountBalanceEntry[], days: string[]): (number | undefined)[] {
   const readings = history
-    .map((h) => ({ day: isoDay(new Date(h.recorded_at)), balance: h.balance }))
+    .map((h) => ({ day: localIsoDate(new Date(h.recorded_at)), balance: h.balance }))
     .filter((r) => !Number.isNaN(parseDay(r.day).getTime()))
     .sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
   let next = 0;
@@ -201,7 +199,7 @@ export function buildChartSeries(
   for (let k = historyDaysFor(horizon.months); k >= 1; k -= 1) {
     const d = new Date(today);
     d.setDate(d.getDate() - k);
-    past.push(isoDay(d));
+    past.push(localIsoDate(d));
   }
   const closing = closingBalances(history ?? [], past);
   const firstKnown = closing.findIndex((b) => b !== undefined);
@@ -361,6 +359,6 @@ export function includesNote(rate: number | null | undefined, isDebt: boolean): 
 /** The tile chip for an account projected to run low: "Low by 14 Jan", or
  * "Low now" when it's already under its threshold. `today` is a local
  * `YYYY-MM-DD`. */
-export function lowBalanceLabel(low: LowBalance, today: string = isoDay(new Date())): string {
+export function lowBalanceLabel(low: LowBalance, today: string = localIsoDate(new Date())): string {
   return low.date <= today ? "Low now" : `Low by ${dayShort(low.date)}`;
 }

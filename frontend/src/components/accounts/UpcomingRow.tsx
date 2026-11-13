@@ -7,7 +7,7 @@ import {
   dayParts,
   eventSubline,
   signedAmount,
-} from "../../screens/account/projectionModel";
+} from "../../lib/projection";
 import type { BalanceProjectionEvent } from "../../types";
 import styles from "./UpcomingRow.module.css";
 

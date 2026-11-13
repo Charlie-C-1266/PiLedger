@@ -2,7 +2,7 @@ import { colorToGradient } from "../theme/swatches";
 import { useMoney } from "../privacy/useMoney";
 import { resolveInstitution } from "../lib/institutions";
 import InstitutionEmblem from "./InstitutionEmblem";
-import { lowBalanceLabel } from "../screens/account/projectionModel";
+import { lowBalanceLabel } from "../lib/projection";
 import type { Account } from "../types";
 import styles from "./AccountTile.module.css";
 

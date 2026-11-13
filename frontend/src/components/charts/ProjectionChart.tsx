@@ -22,7 +22,7 @@ import {
   rowValue,
   valueAxis,
   type ChartSeries,
-} from "../../screens/account/projectionModel";
+} from "../../lib/projection";
 import styles from "./ProjectionChart.module.css";
 
 interface Props {
